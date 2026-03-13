@@ -1,0 +1,21 @@
+{
+  "name": "@project/env",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": "./src/server.ts",
+    "./web": "./src/web.ts"
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  },
+  "scripts": {
+    "check-types": "tsgo --noEmit"
+  },
+  "devDependencies": {
+    "@project/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "^5"
+  }
+}

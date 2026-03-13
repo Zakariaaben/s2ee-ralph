@@ -1,0 +1,22 @@
+{
+  "name": "@project/rpc",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "check-types": "tsgo --noEmit"
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@project/config": "workspace:*",
+    "typescript": "^5"
+  }
+}
