@@ -5,7 +5,6 @@ This file explains the server-side structure inside `apps/web/src/server`.
 This area is where the web app composes Effect services, repositories, RPC handlers, and runtime wiring.
 
 ## Folder Responsibilities
-- `domain`: app-local domain shapes that are not shared transport contracts
 - `repositories`: infrastructure-facing data access and external integration boundaries
 - `services`: business/application logic built on repositories or shared services
 - `rpc/handlers`: RPC method implementations
@@ -29,6 +28,10 @@ More concretely:
 - Prefer `Effect.gen(function*() { ... })` for service construction and handler bodies.
 - Put request-scoped contextual data into RPC middleware services when handlers need to `yield*` them.
 - Keep handlers transport-thin: decode via the contract, delegate to services, and return transport DTOs.
+
+## Domain Guidance
+- If the task is about defining entities, value objects, IDs, timestamps, or domain errors, read `packages/domain/AGENTS.md`.
+- Keep the server guide high-level; keep modeling rules in the shared domain package guide.
 
 ## Middleware Pattern
 Use this pattern when request context must be available inside handlers:

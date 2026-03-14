@@ -12,6 +12,7 @@
     "@effect/atom-react": "catalog:",
     "@project/auth": "workspace:*",
     "@project/db": "workspace:*",
+    "@project/domain": "workspace:*",
     "@project/env": "workspace:*",
     "@project/rpc": "workspace:*",
     "@project/ui": "workspace:*",

@@ -1,6 +1,5 @@
-import { Effect, Layer, ServiceMap } from "effect";
-
-import type { HealthStatus } from "../domain/health";
+import { HealthStatus } from "@project/domain";
+import { DateTime, Effect, Layer, ServiceMap } from "effect";
 
 export class HealthService extends ServiceMap.Service<
   HealthService,
@@ -11,9 +10,12 @@ export class HealthService extends ServiceMap.Service<
   static readonly layer = Layer.succeed(
     HealthService,
     HealthService.of({
-      check: Effect.succeed({
-        status: "ok",
-        timestamp: new Date().toISOString(),
+      check: Effect.gen(function* () {
+        const timestamp = yield* DateTime.now;
+        return new HealthStatus({
+          status: "ok",
+          timestamp,
+        });
       }),
     }),
   );

@@ -9,8 +9,9 @@ This is intentionally generic and reusable. Project-specific business rules and 
 ## Monorepo Shape
 - `apps/web`: the TanStack Start application. This is the user-facing app and currently also hosts the server entrypoints used by the app.
 - `packages/auth`: Better Auth setup and Effect-friendly auth construction.
-- `packages/db`: Drizzle schema, relations, and Effect PostgreSQL integration.
-- `packages/env`: Effect-native environment/config layers for server and browser.
+- `packages/db`: Drizzle schema, relations, and typed PostgreSQL access.
+- `packages/domain`: shared domain models, value objects, IDs, timestamps, and domain errors.
+- `packages/env`: Effect-native environment/config layers for server and client runtimes.
 - `packages/rpc`: shared RPC contracts, middleware definitions, and transport-facing types.
 - `packages/ui`: shared UI components and design primitives.
 - `packages/config`: shared tooling/config package.
@@ -35,6 +36,7 @@ When you need to understand the repo quickly, read in this order:
 ## Navigation Hints
 - If the task mentions routes, UI, or page behavior, start in `apps/web`.
 - If the task mentions auth/session behavior, inspect `packages/auth` and the server repository layer in `apps/web/src/server`.
+- If the task mentions domain models, IDs, timestamps, or domain errors, inspect `packages/domain`.
 - If the task mentions DB typing, schema, or relations, inspect `packages/db`.
 - If the task mentions typed RPC contracts, middleware, or Atom integration, inspect `packages/rpc` and `apps/web/src/lib/rpc-client.ts`.
 - If the task mentions environment/config loading, inspect `packages/env`.

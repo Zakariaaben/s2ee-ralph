@@ -13,12 +13,11 @@ export class AuthSessionRepository extends ServiceMap.Service<
 >()("@project/web/AuthSessionRepository") {
   static readonly layer = Layer.effect(
     AuthSessionRepository,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const auth = yield* makeAuth;
-
       return AuthSessionRepository.of({
         getCurrentUser: (headers) =>
-          Effect.gen(function*() {
+          Effect.gen(function* () {
             const session = yield* Effect.promise(() =>
               auth.api.getSession({
                 headers,

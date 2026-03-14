@@ -25,6 +25,7 @@
         "@effect/atom-react": "catalog:",
         "@project/auth": "workspace:*",
         "@project/db": "workspace:*",
+        "@project/domain": "workspace:*",
         "@project/env": "workspace:*",
         "@project/rpc": "workspace:*",
         "@project/ui": "workspace:*",
@@ -95,6 +96,16 @@
         "@project/config": "workspace:*",
         "@types/pg": "^8.16.0",
         "drizzle-kit": "1.0.0-beta.1-f654053",
+        "typescript": "^5",
+      },
+    },
+    "packages/domain": {
+      "name": "@project/domain",
+      "dependencies": {
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@project/config": "workspace:*",
         "typescript": "^5",
       },
     },
@@ -547,6 +558,8 @@
     "@project/config": ["@project/config@workspace:packages/config"],
 
     "@project/db": ["@project/db@workspace:packages/db"],
+
+    "@project/domain": ["@project/domain@workspace:packages/domain"],
 
     "@project/env": ["@project/env@workspace:packages/env"],
 

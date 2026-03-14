@@ -6,6 +6,7 @@ This file explains how to navigate and use the shared packages in `packages/*`.
 ## Package Ownership
 - `auth`: auth construction and auth-related reusable integration
 - `db`: schema, relations, migrations, and typed DB access
+- `domain`: shared domain models, primitives, and domain errors
 - `env`: typed config and environment loading
 - `rpc`: shared RPC contracts and RPC middleware service definitions
 - `ui`: reusable UI components
@@ -18,9 +19,10 @@ If it depends on route structure, page UX, or app-only orchestration, it probabl
 ## Package Read Order
 For platform/infrastructure tasks:
 1. `env`
-2. `db`
-3. `auth`
-4. `rpc`
+2. `domain`
+3. `db`
+4. `auth`
+5. `rpc`
 
 For UI work:
 1. `ui`
@@ -42,6 +44,11 @@ For UI work:
 - Owns Drizzle schema and relations.
 - DB typing should come from actual schema/relations, not inferred shortcuts.
 
+### `packages/domain`
+- Owns shared domain meaning: entities, value objects, IDs, timestamps, and domain errors.
+- Do not put RPC DTOs or Drizzle table definitions here.
+- `@project/rpc` may depend on domain types only when they are intentionally part of the public API contract.
+
 ### `packages/auth`
 - Owns Better Auth construction.
 - App code should consume auth through a clean boundary, not rebuild auth setup inline.
@@ -49,6 +56,7 @@ For UI work:
 ### `packages/rpc`
 - Owns RPC groups, DTOs, and shared middleware service definitions.
 - Keep request-context service tags here if handlers across apps may depend on them.
+- Prefer Effect's built-in `effect/unstable/httpapi/HttpApiError` types for generic public transport errors before defining custom ones.
 
 ### `packages/ui`
 - Owns reusable presentation components.
