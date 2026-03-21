@@ -69,6 +69,7 @@
       "name": "@project/auth",
       "dependencies": {
         "@project/db": "workspace:*",
+        "@project/domain": "workspace:*",
         "@project/env": "workspace:*",
         "better-auth": "catalog:",
         "dotenv": "catalog:",
@@ -88,6 +89,7 @@
       "name": "@project/db",
       "dependencies": {
         "@effect/sql-pg": "catalog:",
+        "@project/domain": "workspace:*",
         "@project/env": "workspace:*",
         "dotenv": "catalog:",
         "drizzle-orm": "^1.0.0-beta.17-67b1795",
@@ -127,6 +129,7 @@
     "packages/rpc": {
       "name": "@project/rpc",
       "dependencies": {
+        "@project/domain": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {

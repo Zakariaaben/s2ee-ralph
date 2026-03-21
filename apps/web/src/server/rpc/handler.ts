@@ -5,7 +5,7 @@ import { Layer } from "effect";
 import { HttpRouter } from "effect/unstable/http";
 import { RpcSerialization, RpcServer } from "effect/unstable/rpc";
 
-import { AppRpcLive } from "./live";
+import { AppRpcLive, AppRpcMiddlewareLive } from "./live";
 import { appMemoMap } from "../runtime";
 
 const HttpProtocol = RpcServer.layerProtocolHttp({
@@ -15,7 +15,7 @@ const HttpProtocol = RpcServer.layerProtocolHttp({
 const RpcServerLive = RpcServer.layer(AppRpc, {
   disableFatalDefects: true,
 }).pipe(
-  Layer.provide(AppRpcLive),
+  Layer.provide([AppRpcLive, AppRpcMiddlewareLive]),
 );
 
 const RpcAppLive = RpcServerLive.pipe(

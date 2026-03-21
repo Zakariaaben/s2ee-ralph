@@ -1,10 +1,14 @@
+import { UserRoleValues } from "@project/domain";
 import { defineRelations } from "drizzle-orm/relations";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+
+export const userRole = pgEnum("user_role", UserRoleValues);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  role: userRole("role").notNull().default("student"),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

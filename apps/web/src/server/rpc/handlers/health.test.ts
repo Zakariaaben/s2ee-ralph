@@ -2,11 +2,11 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { DBLive } from "@project/db";
 import { ServerEnv } from "@project/env/server";
-import { AppRpc } from "@project/rpc";
+import { HealthRpcGroup } from "@project/rpc";
 import { Effect, Layer, Redacted } from "effect";
 import { RpcTest } from "effect/unstable/rpc";
 
-import { AppRpcLive } from "../live";
+import { HealthRpcLive } from "../live";
 
 const composeProjectRoot = new URL("../../../../../..", import.meta.url);
 
@@ -30,7 +30,7 @@ const TestServerEnvLive = Layer.succeed(
 
 const DatabaseTestLive = DBLive.pipe(Layer.provide(TestServerEnvLive));
 
-const AppReadinessLive = AppRpcLive.pipe(
+const AppReadinessLive = HealthRpcLive.pipe(
   Layer.provideMerge(DatabaseTestLive),
   Layer.provideMerge(TestServerEnvLive),
 );
@@ -43,7 +43,7 @@ const runCompose = (args: string[]) => {
 
 const invokeHealth = () =>
   Effect.gen(function* () {
-    const client = yield* RpcTest.makeClient(AppRpc);
+    const client = yield* RpcTest.makeClient(HealthRpcGroup);
 
     return yield* client.health();
   }).pipe(Effect.scoped, Effect.provide(AppReadinessLive));
