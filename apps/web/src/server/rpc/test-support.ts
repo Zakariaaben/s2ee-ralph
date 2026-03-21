@@ -63,6 +63,11 @@ export const startPostgresTestInfra = () => {
   runBun(["run", "db:push"]);
 };
 
+export const startPostgresAndStorageTestInfra = () => {
+  runCompose(["up", "-d", "postgres", "minio", "minio-setup"]);
+  runBun(["run", "db:push"]);
+};
+
 export const resetTables = (tables: ReadonlyArray<AnyPgTable>) =>
   Effect.gen(function*() {
     const db = yield* DB;

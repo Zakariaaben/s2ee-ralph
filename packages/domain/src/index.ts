@@ -1,4 +1,5 @@
 export * from "./company";
+export * from "./cv-profile";
 export * from "./health";
 export * from "./ids";
 export * from "./student";
