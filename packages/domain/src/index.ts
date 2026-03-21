@@ -1,3 +1,4 @@
+export * from "./admin";
 export * from "./company";
 export * from "./cv-profile";
 export * from "./health";

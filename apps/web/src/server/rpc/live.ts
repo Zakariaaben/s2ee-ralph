@@ -1,4 +1,5 @@
 import {
+  AdminRpcGroup,
   ActorRpcGroup,
   CompanyRpcGroup,
   CvProfileRpcGroup,
@@ -10,6 +11,7 @@ import {
 } from "@project/rpc";
 import { Layer } from "effect";
 
+import { AdminService } from "../services/admin-service";
 import { CompanyService } from "../services/company-service";
 import { CvProfileService } from "../services/cv-profile-service";
 import { InfrastructureProbeRepository } from "../repositories/infrastructure-probe-repository";
@@ -18,6 +20,7 @@ import { StudentService } from "../services/student-service";
 import { VenueService } from "../services/venue-service";
 import { VocabularyService } from "../services/vocabulary-service";
 import { HealthService } from "../services/health-service";
+import { makeAdminRpcHandlers } from "./handlers/admin";
 import { makeActorRpcHandlers } from "./handlers/actor";
 import { makeCompanyRpcHandlers } from "./handlers/company";
 import { makeCvProfileRpcHandlers } from "./handlers/cv-profile";
@@ -27,6 +30,10 @@ import { makeStudentRpcHandlers } from "./handlers/student";
 import { makeVenueRpcHandlers } from "./handlers/venue";
 import { makeVocabularyRpcHandlers } from "./handlers/vocabulary";
 import { CurrentActorRpcMiddlewareLive } from "./middleware/current-actor";
+
+export const AdminRpcLive = AdminRpcGroup.toLayer(makeAdminRpcHandlers).pipe(
+  Layer.provide(AdminService.layer),
+);
 
 export const HealthRpcLive = HealthRpcGroup.toLayer(
   makeHealthRpcHandlers,
@@ -64,6 +71,7 @@ export const VocabularyRpcLive = VocabularyRpcGroup.toLayer(
 
 export const AppRpcLive = Layer.mergeAll(
   HealthRpcLive,
+  AdminRpcLive,
   ActorRpcLive,
   CompanyRpcLive,
   CvProfileRpcLive,

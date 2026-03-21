@@ -1,3 +1,4 @@
+export * from "./groups/admin";
 export * from "./groups/actor";
 export * from "./groups/company";
 export * from "./groups/cv-profile";
@@ -8,6 +9,7 @@ export * from "./groups/vocabulary";
 export * from "./groups/venue";
 export * from "./middleware/current-actor";
 
+import { AdminRpcGroup } from "./groups/admin";
 import { ActorRpcGroup } from "./groups/actor";
 import { CompanyRpcGroup } from "./groups/company";
 import { CvProfileRpcGroup } from "./groups/cv-profile";
@@ -17,7 +19,8 @@ import { StudentRpcGroup } from "./groups/student";
 import { VocabularyRpcGroup } from "./groups/vocabulary";
 import { VenueRpcGroup } from "./groups/venue";
 
-export const AppRpc = HealthRpcGroup.merge(ActorRpcGroup)
+export const AppRpc = HealthRpcGroup.merge(AdminRpcGroup)
+  .merge(ActorRpcGroup)
   .merge(CompanyRpcGroup)
   .merge(CvProfileRpcGroup)
   .merge(InterviewRpcGroup)
