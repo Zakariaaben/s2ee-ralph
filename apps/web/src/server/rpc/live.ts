@@ -3,6 +3,7 @@ import {
   CompanyRpcGroup,
   CvProfileRpcGroup,
   HealthRpcGroup,
+  InterviewRpcGroup,
   StudentRpcGroup,
   VenueRpcGroup,
   VocabularyRpcGroup,
@@ -12,6 +13,7 @@ import { Layer } from "effect";
 import { CompanyService } from "../services/company-service";
 import { CvProfileService } from "../services/cv-profile-service";
 import { InfrastructureProbeRepository } from "../repositories/infrastructure-probe-repository";
+import { InterviewService } from "../services/interview-service";
 import { StudentService } from "../services/student-service";
 import { VenueService } from "../services/venue-service";
 import { VocabularyService } from "../services/vocabulary-service";
@@ -20,6 +22,7 @@ import { makeActorRpcHandlers } from "./handlers/actor";
 import { makeCompanyRpcHandlers } from "./handlers/company";
 import { makeCvProfileRpcHandlers } from "./handlers/cv-profile";
 import { makeHealthRpcHandlers } from "./handlers/health";
+import { makeInterviewRpcHandlers } from "./handlers/interview";
 import { makeStudentRpcHandlers } from "./handlers/student";
 import { makeVenueRpcHandlers } from "./handlers/venue";
 import { makeVocabularyRpcHandlers } from "./handlers/vocabulary";
@@ -43,6 +46,10 @@ export const CvProfileRpcLive = CvProfileRpcGroup.toLayer(
   makeCvProfileRpcHandlers,
 ).pipe(Layer.provide(CvProfileService.layer));
 
+export const InterviewRpcLive = InterviewRpcGroup.toLayer(
+  makeInterviewRpcHandlers,
+).pipe(Layer.provide(InterviewService.layer));
+
 export const StudentRpcLive = StudentRpcGroup.toLayer(
   makeStudentRpcHandlers,
 ).pipe(Layer.provide(StudentService.layer));
@@ -60,6 +67,7 @@ export const AppRpcLive = Layer.mergeAll(
   ActorRpcLive,
   CompanyRpcLive,
   CvProfileRpcLive,
+  InterviewRpcLive,
   StudentRpcLive,
   VocabularyRpcLive,
   VenueRpcLive,

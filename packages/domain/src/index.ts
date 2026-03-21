@@ -2,6 +2,7 @@ export * from "./company";
 export * from "./cv-profile";
 export * from "./health";
 export * from "./ids";
+export * from "./interview";
 export * from "./student";
 export * from "./timestamps";
 export * from "./user";
