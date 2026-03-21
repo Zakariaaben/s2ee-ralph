@@ -1,8 +1,6 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { RegistryProvider } from "@effect/atom-react";
 
-import Loader from "./components/loader";
-
 import "./index.css";
 import { routeTree } from "./routeTree.gen";
 
@@ -12,7 +10,7 @@ export const getRouter = () => {
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
     context: {},
-    defaultPendingComponent: () => <Loader />,
+    defaultPendingComponent: () => <div />,
     defaultNotFoundComponent: () => <div>Not Found</div>,
     Wrap: ({ children }) => <RegistryProvider>{children}</RegistryProvider>,
   });

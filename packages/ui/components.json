@@ -11,6 +11,7 @@
     "prefix": ""
   },
   "iconLibrary": "lucide",
+  "rtl": false,
   "aliases": {
     "components": "@project/ui/components",
     "utils": "@project/ui/lib/utils",
@@ -18,7 +19,7 @@
     "lib": "@project/ui/lib",
     "ui": "@project/ui/components"
   },
-  "menuColor": "default",
-  "menuAccent": "subtle",
-  "registries": {}
+  "registries": {
+    "@coss": "https://coss.com/ui/r/{name}.json"
+  }
 }
