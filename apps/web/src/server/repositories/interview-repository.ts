@@ -1,15 +1,21 @@
 import { DB } from "@project/db";
+import { cvProfile } from "@project/db/schema/cv-profile";
 import {
   companyInterviewTag,
   interview as interviewTable,
   interviewCompanyTag,
   interviewGlobalTag,
 } from "@project/db/schema/interview";
+import { student } from "@project/db/schema/student";
 import { globalInterviewTag } from "@project/db/schema/vocabulary";
 import {
+  CompanyCompletedInterviewLedgerEntry,
   CompanyInterviewTag,
+  CvProfile,
+  CvProfileType,
   GlobalInterviewTag,
   Interview,
+  Student,
 } from "@project/domain";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { Effect, Layer, ServiceMap } from "effect";
@@ -46,12 +52,36 @@ const toInterview = (input: {
     ),
   });
 
+const toStudent = (row: typeof student.$inferSelect) =>
+  new Student({
+    id: row.id as Student["id"],
+    firstName: row.firstName,
+    lastName: row.lastName,
+    course: row.course,
+  });
+
+const toCvProfile = (row: typeof cvProfile.$inferSelect) =>
+  new CvProfile({
+    id: row.id as CvProfile["id"],
+    studentId: row.studentId as CvProfile["studentId"],
+    profileType: new CvProfileType({
+      id: row.profileTypeId as CvProfileType["id"],
+      label: row.profileTypeLabel,
+    }),
+    fileName: row.fileName,
+    contentType: row.contentType,
+    fileSizeBytes: row.fileSizeBytes,
+  });
+
 export class InterviewRepository extends ServiceMap.Service<
   InterviewRepository,
   {
     readonly listByCompanyId: (
       companyId: string,
     ) => Effect.Effect<ReadonlyArray<Interview>>;
+    readonly listCompletedLedgerByCompanyId: (
+      companyId: string,
+    ) => Effect.Effect<ReadonlyArray<CompanyCompletedInterviewLedgerEntry>>;
     readonly createCompleted: (input: {
       readonly companyId: string;
       readonly studentId: string;
@@ -162,11 +192,79 @@ export class InterviewRepository extends ServiceMap.Service<
           return interviews[0] ?? null;
         });
 
+      const loadCompletedLedgerByCompanyId = (companyId: string) =>
+        Effect.gen(function*() {
+          const completedRows = yield* Effect.promise(() =>
+            db
+              .select()
+              .from(interviewTable)
+              .where(
+                and(
+                  eq(interviewTable.companyId, companyId),
+                  eq(interviewTable.status, "completed"),
+                ),
+              )
+              .orderBy(asc(interviewTable.createdAt), asc(interviewTable.id)),
+          );
+
+          if (completedRows.length === 0) {
+            return [];
+          }
+
+          const interviews = yield* loadByCompanyId({ companyId });
+          const completedInterviewsById = new Map<string, Interview>(
+            interviews
+              .filter((interview) => interview.status === "completed")
+              .map((interview) => [interview.id, interview]),
+          );
+          const studentRows = yield* Effect.promise(() =>
+            db
+              .select()
+              .from(student)
+              .where(
+                inArray(
+                  student.id,
+                  completedRows.map((row) => row.studentId),
+                ),
+              ),
+          );
+          const cvProfileRows = yield* Effect.promise(() =>
+            db
+              .select()
+              .from(cvProfile)
+              .where(
+                inArray(
+                  cvProfile.id,
+                  completedRows.map((row) => row.cvProfileId),
+                ),
+              ),
+          );
+          const studentsById = new Map(studentRows.map((row) => [row.id, row]));
+          const cvProfilesById = new Map(cvProfileRows.map((row) => [row.id, row]));
+
+          return completedRows.map((row) => {
+            const interview = completedInterviewsById.get(row.id);
+            const studentRow = studentsById.get(row.studentId);
+            const cvProfileRow = cvProfilesById.get(row.cvProfileId);
+
+            if (!interview || !studentRow || !cvProfileRow) {
+              throw new Error("Completed interview ledger query returned incomplete rows");
+            }
+
+            return new CompanyCompletedInterviewLedgerEntry({
+              interview,
+              student: toStudent(studentRow),
+              cvProfile: toCvProfile(cvProfileRow),
+            });
+          });
+        });
+
       return InterviewRepository.of({
         listByCompanyId: (companyId) =>
           loadByCompanyId({
             companyId,
           }),
+        listCompletedLedgerByCompanyId: loadCompletedLedgerByCompanyId,
         createCompleted: ({
           companyId,
           studentId,

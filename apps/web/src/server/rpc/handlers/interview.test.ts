@@ -95,6 +95,94 @@ afterEach(async () => {
 
 describe("interview rpc", () => {
   it.effect(
+    "company actors can list only their completed interview ledger entries with joined student and CV context",
+    () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const companyHeaders = yield* provisionSessionHeaders("company");
+        const otherCompanyHeaders = yield* provisionSessionHeaders("company");
+        const studentHeaders = yield* provisionSessionHeaders("student");
+        const companyClient = yield* makeCompanyClient;
+        const cvProfileClient = yield* makeCvProfileClient;
+        const interviewClient = yield* makeInterviewClient;
+        const studentClient = yield* makeStudentClient;
+        const vocabularyClient = yield* makeVocabularyClient;
+
+        yield* vocabularyClient.seedControlledVocabularies({
+          cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
+          globalInterviewTags: [{ id: "curious", label: "Curious" }],
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
+          RpcClient.withHeaders(companyHeaders),
+        );
+        const companyWithRecruiter = yield* companyClient.addRecruiter({
+          name: "Nora Recruiter",
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+
+        yield* companyClient.upsertCompanyProfile({ name: "Globex" }).pipe(
+          RpcClient.withHeaders(otherCompanyHeaders),
+        );
+        const otherCompanyWithRecruiter = yield* companyClient.addRecruiter({
+          name: "Iris Recruiter",
+        }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
+
+        const student = yield* studentClient.upsertStudentOnboarding({
+          firstName: "Ada",
+          lastName: "Lovelace",
+          course: "Computer Science",
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+
+        const selectedCvProfile = yield* cvProfileClient.createStudentCvProfile({
+          profileTypeId: "software-engineering",
+          fileName: "ada-backend.pdf",
+          contentType: "application/pdf",
+          contentsBase64: Buffer.from("ada-backend-cv", "utf8").toString("base64"),
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+
+        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+          RpcClient.withHeaders(studentHeaders),
+        );
+
+        const completedInterview = yield* interviewClient.completeInterview({
+          recruiterId: companyWithRecruiter.recruiters[0]!.id,
+          qrIdentity,
+          cvProfileId: selectedCvProfile.id,
+          score: 4.3,
+          globalTagIds: [asGlobalInterviewTagId("curious")],
+          companyTagLabels: ["Backend Ready"],
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+
+        yield* interviewClient.cancelInterview({
+          recruiterId: companyWithRecruiter.recruiters[0]!.id,
+          qrIdentity,
+          cvProfileId: selectedCvProfile.id,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+
+        yield* interviewClient.completeInterview({
+          recruiterId: otherCompanyWithRecruiter.recruiters[0]!.id,
+          qrIdentity,
+          cvProfileId: selectedCvProfile.id,
+          score: 3.7,
+          globalTagIds: [],
+          companyTagLabels: [],
+        }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
+
+        expect(
+          yield* interviewClient.listCurrentCompanyCompletedInterviews().pipe(
+            RpcClient.withHeaders(companyHeaders),
+          ),
+        ).toEqual([
+          {
+            interview: completedInterview,
+            student,
+            cvProfile: selectedCvProfile,
+          },
+        ]);
+      }),
+  );
+
+  it.effect(
     "company actors can complete an interview for a scanned student CV profile with recruiter snapshots and scoped tags",
     () =>
       Effect.gen(function*() {
@@ -223,6 +311,143 @@ describe("interview rpc", () => {
           globalTags: [],
           companyTags: [],
         });
+      }),
+  );
+
+  it.effect(
+    "company actors can export only their completed interviews with optional CV file contents",
+    () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const companyHeaders = yield* provisionSessionHeaders("company");
+        const otherCompanyHeaders = yield* provisionSessionHeaders("company");
+        const studentHeaders = yield* provisionSessionHeaders("student");
+        const companyClient = yield* makeCompanyClient;
+        const cvProfileClient = yield* makeCvProfileClient;
+        const interviewClient = yield* makeInterviewClient;
+        const studentClient = yield* makeStudentClient;
+        const vocabularyClient = yield* makeVocabularyClient;
+
+        yield* vocabularyClient.seedControlledVocabularies({
+          cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
+          globalInterviewTags: [{ id: "curious", label: "Curious" }],
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
+          RpcClient.withHeaders(companyHeaders),
+        );
+        const companyWithRecruiter = yield* companyClient.addRecruiter({
+          name: "Nora Recruiter",
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+
+        yield* companyClient.upsertCompanyProfile({ name: "Globex" }).pipe(
+          RpcClient.withHeaders(otherCompanyHeaders),
+        );
+        const otherCompanyWithRecruiter = yield* companyClient.addRecruiter({
+          name: "Iris Recruiter",
+        }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
+
+        yield* studentClient.upsertStudentOnboarding({
+          firstName: "Grace",
+          lastName: "Hopper",
+          course: "Computer Science",
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+
+        const selectedCvProfile = yield* cvProfileClient.createStudentCvProfile({
+          profileTypeId: "software-engineering",
+          fileName: "grace-backend.pdf",
+          contentType: "application/pdf",
+          contentsBase64: Buffer.from("grace-backend-cv", "utf8").toString("base64"),
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+
+        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+          RpcClient.withHeaders(studentHeaders),
+        );
+
+        const completedInterview = yield* interviewClient.completeInterview({
+          recruiterId: companyWithRecruiter.recruiters[0]!.id,
+          qrIdentity,
+          cvProfileId: selectedCvProfile.id,
+          score: 4.7,
+          globalTagIds: [asGlobalInterviewTagId("curious")],
+          companyTagLabels: ["Backend Ready"],
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+
+        yield* interviewClient.cancelInterview({
+          recruiterId: companyWithRecruiter.recruiters[0]!.id,
+          qrIdentity,
+          cvProfileId: selectedCvProfile.id,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+
+        yield* interviewClient.completeInterview({
+          recruiterId: otherCompanyWithRecruiter.recruiters[0]!.id,
+          qrIdentity,
+          cvProfileId: selectedCvProfile.id,
+          score: 3.4,
+          globalTagIds: [],
+          companyTagLabels: [],
+        }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
+
+        const withoutCvFiles = yield* interviewClient.exportCurrentCompanyCompletedInterviews({
+          includeCvFiles: false,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const parsedWithoutCvFiles = JSON.parse(
+          Buffer.from(withoutCvFiles.contentsBase64, "base64").toString("utf8"),
+        ) as {
+          companyId: string;
+          companyName: string;
+          interviews: Array<{
+            interview: { id: string; status: string; score: number | null };
+            student: { firstName: string; lastName: string };
+            cvProfile: { id: string; fileName: string };
+            cvFile?: unknown;
+          }>;
+        };
+
+        expect(withoutCvFiles.contentType).toBe("application/json");
+        expect(parsedWithoutCvFiles).toEqual({
+          companyId: companyWithRecruiter.id,
+          companyName: "Acme Systems",
+          interviews: [
+            {
+              interview: {
+                id: completedInterview.id,
+                status: "completed",
+                score: 4.7,
+              },
+              student: {
+                firstName: "Grace",
+                lastName: "Hopper",
+              },
+              cvProfile: {
+                id: selectedCvProfile.id,
+                fileName: "grace-backend.pdf",
+              },
+            },
+          ],
+        });
+
+        const withCvFiles = yield* interviewClient.exportCurrentCompanyCompletedInterviews({
+          includeCvFiles: true,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const parsedWithCvFiles = JSON.parse(
+          Buffer.from(withCvFiles.contentsBase64, "base64").toString("utf8"),
+        ) as {
+          interviews: Array<{
+            interview: { id: string };
+            cvFile?: { fileName: string; contentsBase64: string };
+          }>;
+        };
+
+        expect(parsedWithCvFiles.interviews).toEqual([
+          {
+            interview: { id: completedInterview.id },
+            cvFile: {
+              fileName: "grace-backend.pdf",
+              contentsBase64: Buffer.from("grace-backend-cv", "utf8").toString("base64"),
+            },
+          },
+        ]);
       }),
   );
 

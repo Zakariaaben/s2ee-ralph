@@ -1,4 +1,6 @@
 import {
+  CompanyCompletedInterviewLedgerEntry,
+  CompanyCompletedInterviewExportFile,
   CvProfileId,
   GlobalInterviewTagId,
   Interview,
@@ -29,6 +31,12 @@ export class CancelInterviewInput extends Schema.Class<CancelInterviewInput>(
   cvProfileId: CvProfileId,
 }) {}
 
+export class ExportCurrentCompanyCompletedInterviewsInput extends Schema.Class<ExportCurrentCompanyCompletedInterviewsInput>(
+  "ExportCurrentCompanyCompletedInterviewsInput",
+)({
+  includeCvFiles: Schema.Boolean,
+}) {}
+
 export const InterviewRpcAccessError = Schema.Union([
   HttpApiError.Unauthorized,
   HttpApiError.Forbidden,
@@ -44,6 +52,15 @@ export const InterviewRpcGroup = RpcGroup.make(
   Rpc.make("listCurrentCompanyInterviews", {
     success: Schema.Array(Interview),
     error: InterviewRpcAccessError,
+  }),
+  Rpc.make("listCurrentCompanyCompletedInterviews", {
+    success: Schema.Array(CompanyCompletedInterviewLedgerEntry),
+    error: InterviewRpcAccessError,
+  }),
+  Rpc.make("exportCurrentCompanyCompletedInterviews", {
+    success: CompanyCompletedInterviewExportFile,
+    error: Schema.Union([InterviewRpcAccessError, HttpApiError.NotFound]),
+    payload: ExportCurrentCompanyCompletedInterviewsInput,
   }),
   Rpc.make("completeInterview", {
     success: Interview,

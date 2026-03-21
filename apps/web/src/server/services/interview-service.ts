@@ -1,4 +1,9 @@
-import { type AuthenticatedActor, type Interview } from "@project/domain";
+import {
+  CompanyCompletedInterviewExportFile,
+  type AuthenticatedActor,
+  type CompanyCompletedInterviewLedgerEntry,
+  type Interview,
+} from "@project/domain";
 import { Effect, Layer, ServiceMap } from "effect";
 import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 
@@ -69,12 +74,32 @@ const uniqueValues = <Value>(values: ReadonlyArray<Value>) => {
   return unique;
 };
 
+const toFileNameSegment = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "company";
+
 export class InterviewService extends ServiceMap.Service<
   InterviewService,
   {
     readonly listCurrentCompanyInterviews: (
       actor: AuthenticatedActor,
     ) => Effect.Effect<ReadonlyArray<Interview>, HttpApiError.Forbidden>;
+    readonly listCurrentCompanyCompletedInterviews: (
+      actor: AuthenticatedActor,
+    ) => Effect.Effect<
+      ReadonlyArray<CompanyCompletedInterviewLedgerEntry>,
+      HttpApiError.Forbidden
+    >;
+    readonly exportCurrentCompanyCompletedInterviews: (input: {
+      readonly actor: AuthenticatedActor;
+      readonly includeCvFiles: boolean;
+    }) => Effect.Effect<
+      CompanyCompletedInterviewExportFile,
+      HttpApiError.Forbidden | HttpApiError.NotFound
+    >;
     readonly completeInterview: (input: {
       readonly actor: AuthenticatedActor;
       readonly recruiterId: string;
@@ -163,6 +188,83 @@ export class InterviewService extends ServiceMap.Service<
             }
 
             return yield* interviewRepository.listByCompanyId(company.id);
+          }),
+        listCurrentCompanyCompletedInterviews: (actor) =>
+          Effect.gen(function*() {
+            const companyActor = yield* requireCompanyActor(actor);
+            const company = yield* companyRepository.getByOwnerUserId(companyActor.id);
+
+            if (!company) {
+              return [];
+            }
+
+            return yield* interviewRepository.listCompletedLedgerByCompanyId(company.id);
+          }),
+        exportCurrentCompanyCompletedInterviews: ({ actor, includeCvFiles }) =>
+          Effect.gen(function*() {
+            const companyActor = yield* requireCompanyActor(actor);
+            const company = yield* companyRepository.getByOwnerUserId(companyActor.id);
+
+            if (!company) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            const completedInterviews =
+              yield* interviewRepository.listCompletedLedgerByCompanyId(company.id);
+
+            const interviews = yield* Effect.forEach(completedInterviews, (entry) =>
+              Effect.gen(function*() {
+                const cvFile = includeCvFiles
+                  ? yield* cvProfileRepository.downloadForStudent({
+                      studentId: entry.student.id,
+                      cvProfileId: entry.cvProfile.id,
+                    })
+                  : null;
+
+                if (includeCvFiles && !cvFile) {
+                  return yield* Effect.fail(new HttpApiError.NotFound({}));
+                }
+
+                return {
+                  interview: {
+                    id: entry.interview.id,
+                    status: entry.interview.status,
+                    score: entry.interview.score,
+                  },
+                  student: {
+                    firstName: entry.student.firstName,
+                    lastName: entry.student.lastName,
+                  },
+                  cvProfile: {
+                    id: entry.cvProfile.id,
+                    fileName: entry.cvProfile.fileName,
+                  },
+                  ...(cvFile
+                    ? {
+                        cvFile: {
+                          fileName: cvFile.fileName,
+                          contentsBase64: cvFile.contentsBase64,
+                        },
+                      }
+                    : {}),
+                };
+              }),
+            );
+            const contents = JSON.stringify(
+              {
+                companyId: company.id,
+                companyName: company.name,
+                interviews,
+              },
+              null,
+              2,
+            );
+
+            return new CompanyCompletedInterviewExportFile({
+              fileName: `${toFileNameSegment(company.name)}-completed-interviews.json`,
+              contentType: "application/json",
+              contentsBase64: Buffer.from(contents, "utf8").toString("base64"),
+            });
           }),
         completeInterview: ({
           actor,
