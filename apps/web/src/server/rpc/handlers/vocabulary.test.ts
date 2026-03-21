@@ -11,10 +11,12 @@ import { RpcTest } from "effect/unstable/rpc";
 
 import { AppRpcMiddlewareLive, VocabularyRpcLive } from "../live";
 import {
+  getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
   startPostgresTestInfra,
+  warnComposeTestInfraUnavailable,
 } from "../test-support";
 
 const VocabularyTestLive = makeRpcTestLive(
@@ -26,9 +28,11 @@ const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup).pipe(
   Effect.provide(VocabularyTestLive),
 );
 
-beforeAll(() => {
-  startPostgresTestInfra();
-});
+const postgresTestInfra = getComposeTestInfraAvailability();
+
+if (!postgresTestInfra.available) {
+  warnComposeTestInfraUnavailable(postgresTestInfra);
+}
 
 afterEach(async () => {
   await Effect.runPromise(
@@ -36,7 +40,13 @@ afterEach(async () => {
   );
 });
 
-describe("vocabulary rpc", () => {
+const describeWithPostgres = postgresTestInfra.available ? describe : describe.skip;
+
+describeWithPostgres("vocabulary rpc", () => {
+  beforeAll(() => {
+    startPostgresTestInfra();
+  });
+
   it.effect(
     "admin actors can seed controlled vocabularies and authenticated actors can read them back",
     () =>

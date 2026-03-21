@@ -36,10 +36,12 @@ import {
   VocabularyRpcLive,
 } from "../live";
 import {
+  getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
   startPostgresAndStorageTestInfra,
+  warnComposeTestInfraUnavailable,
 } from "../test-support";
 
 const AdminTestLive = makeRpcTestLive(
@@ -84,9 +86,11 @@ const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup).pipe(
 const asGlobalInterviewTagId = (value: string) =>
   value as GlobalInterviewTagModel["id"];
 
-beforeAll(() => {
-  startPostgresAndStorageTestInfra();
-});
+const storageTestInfra = getComposeTestInfraAvailability();
+
+if (!storageTestInfra.available) {
+  warnComposeTestInfraUnavailable(storageTestInfra);
+}
 
 afterEach(async () => {
   await Effect.runPromise(
@@ -109,7 +113,13 @@ afterEach(async () => {
   );
 });
 
-describe("admin rpc", () => {
+const describeWithStorage = storageTestInfra.available ? describe : describe.skip;
+
+describeWithStorage("admin rpc", () => {
+  beforeAll(() => {
+    startPostgresAndStorageTestInfra();
+  });
+
   it.effect(
     "admin actors can list the global company ledger with recruiter, placement, and arrival context",
     () =>

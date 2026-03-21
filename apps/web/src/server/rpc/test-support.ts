@@ -8,8 +8,28 @@ import type { AnyPgTable } from "drizzle-orm/pg-core";
 import { execFileSync } from "node:child_process";
 
 const composeProjectRoot = new URL("../../../../..", import.meta.url);
+const warnedComposeInfraReasonsKey = "__projectRpcWarnedComposeInfraReasons";
 
 export const testOrigin = "http://127.0.0.1:3001";
+
+type ComposeTestInfraAvailability =
+  | {
+      available: true;
+    }
+  | {
+      available: false;
+      reason: string;
+    };
+
+const getWarnedComposeInfraReasons = () => {
+  const globalState = globalThis as typeof globalThis & {
+    [warnedComposeInfraReasonsKey]?: Set<string>;
+  };
+
+  globalState[warnedComposeInfraReasonsKey] ??= new Set<string>();
+
+  return globalState[warnedComposeInfraReasonsKey];
+};
 
 export const TestServerEnvLive = Layer.succeed(
   ServerEnv,
@@ -40,9 +60,69 @@ export const makeRpcTestLive = (
   ]
 ) =>
   Layer.mergeAll(...layers).pipe(
-    Layer.provideMerge(DatabaseTestLive),
-    Layer.provideMerge(TestServerEnvLive),
+  Layer.provideMerge(DatabaseTestLive),
+  Layer.provideMerge(TestServerEnvLive),
   );
+
+const runDockerInfo = () => {
+  execFileSync("docker", ["info"], {
+    cwd: composeProjectRoot,
+    stdio: "pipe",
+  });
+};
+
+const formatComposeInfraError = (error: unknown) => {
+  if (
+    typeof error === "object"
+    && error !== null
+    && "stderr" in error
+    && error.stderr instanceof Buffer
+  ) {
+    const stderr = error.stderr.toString("utf8").trim();
+
+    if (stderr.length > 0) {
+      return stderr;
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "unknown docker error";
+};
+
+export const getComposeTestInfraAvailability = (
+  dockerInfo: () => void = runDockerInfo,
+): ComposeTestInfraAvailability => {
+  try {
+    dockerInfo();
+
+    return {
+      available: true,
+    };
+  } catch (error) {
+    return {
+      available: false,
+      reason: formatComposeInfraError(error),
+    };
+  }
+};
+
+export const warnComposeTestInfraUnavailable = (
+  availability: Extract<ComposeTestInfraAvailability, { available: false }>,
+) => {
+  const warnedComposeInfraReasons = getWarnedComposeInfraReasons();
+
+  if (warnedComposeInfraReasons.has(availability.reason)) {
+    return;
+  }
+
+  warnedComposeInfraReasons.add(availability.reason);
+  console.warn(
+    `[rpc test support] skipping compose-backed integration tests: ${availability.reason}`,
+  );
+};
 
 export const runCompose = (args: ReadonlyArray<string>) => {
   execFileSync("docker", ["compose", ...args], {

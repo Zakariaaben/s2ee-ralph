@@ -19,10 +19,12 @@ import {
   VocabularyRpcLive,
 } from "../live";
 import {
+  getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
   startPostgresAndStorageTestInfra,
+  warnComposeTestInfraUnavailable,
 } from "../test-support";
 
 const CvProfileTestLive = makeRpcTestLive(
@@ -44,9 +46,11 @@ const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup).pipe(
   Effect.provide(CvProfileTestLive),
 );
 
-beforeAll(() => {
-  startPostgresAndStorageTestInfra();
-});
+const storageTestInfra = getComposeTestInfraAvailability();
+
+if (!storageTestInfra.available) {
+  warnComposeTestInfraUnavailable(storageTestInfra);
+}
 
 afterEach(async () => {
   await Effect.runPromise(
@@ -54,7 +58,13 @@ afterEach(async () => {
   );
 });
 
-describe("cv profile rpc", () => {
+const describeWithStorage = storageTestInfra.available ? describe : describe.skip;
+
+describeWithStorage("cv profile rpc", () => {
+  beforeAll(() => {
+    startPostgresAndStorageTestInfra();
+  });
+
   it.effect(
     "student actors can create controlled CV profiles, download stored files, and company actors can list them after QR resolution",
     () =>

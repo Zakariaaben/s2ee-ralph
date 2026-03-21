@@ -31,10 +31,12 @@ import {
   VocabularyRpcLive,
 } from "../live";
 import {
+  getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
   startPostgresAndStorageTestInfra,
+  warnComposeTestInfraUnavailable,
 } from "../test-support";
 
 const InterviewTestLive = makeRpcTestLive(
@@ -69,9 +71,11 @@ const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup).pipe(
 const asGlobalInterviewTagId = (value: string) =>
   value as GlobalInterviewTagModel["id"];
 
-beforeAll(() => {
-  startPostgresAndStorageTestInfra();
-});
+const storageTestInfra = getComposeTestInfraAvailability();
+
+if (!storageTestInfra.available) {
+  warnComposeTestInfraUnavailable(storageTestInfra);
+}
 
 afterEach(async () => {
   await Effect.runPromise(
@@ -93,7 +97,13 @@ afterEach(async () => {
   );
 });
 
-describe("interview rpc", () => {
+const describeWithStorage = storageTestInfra.available ? describe : describe.skip;
+
+describeWithStorage("interview rpc", () => {
+  beforeAll(() => {
+    startPostgresAndStorageTestInfra();
+  });
+
   it.effect(
     "company actors can list only their completed interview ledger entries with joined student and CV context",
     () =>

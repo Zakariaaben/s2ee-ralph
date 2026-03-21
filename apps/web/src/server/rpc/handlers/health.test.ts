@@ -7,7 +7,9 @@ import { HealthRpcLive } from "../live";
 import {
   DatabaseTestLive,
   TestServerEnvLive,
+  getComposeTestInfraAvailability,
   runCompose,
+  warnComposeTestInfraUnavailable,
 } from "../test-support";
 
 const AppReadinessLive = HealthRpcLive.pipe(
@@ -19,6 +21,12 @@ const invokeHealth = RpcTest.makeClient(HealthRpcGroup).pipe(
   Effect.provide(AppReadinessLive),
   Effect.flatMap((client) => client.health()),
 );
+
+const storageTestInfra = getComposeTestInfraAvailability();
+
+if (!storageTestInfra.available) {
+  warnComposeTestInfraUnavailable(storageTestInfra);
+}
 
 const waitForHealth = async (timeoutMs: number) => {
   const startedAt = Date.now();
@@ -36,12 +44,14 @@ const waitForHealth = async (timeoutMs: number) => {
   throw lastError;
 };
 
-beforeAll(async () => {
-  runCompose(["up", "-d", "postgres", "minio", "minio-setup"]);
-  await waitForHealth(30_000);
-});
+const describeWithStorage = storageTestInfra.available ? describe : describe.skip;
 
-describe("health rpc", () => {
+describeWithStorage("health rpc", () => {
+  beforeAll(async () => {
+    runCompose(["up", "-d", "postgres", "minio", "minio-setup"]);
+    await waitForHealth(30_000);
+  });
+
   it.effect("reports postgres and object storage readiness", () =>
     Effect.promise(() => waitForHealth(5_000)).pipe(
       Effect.tap((health) =>

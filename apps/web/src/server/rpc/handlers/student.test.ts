@@ -8,10 +8,12 @@ import { RpcTest } from "effect/unstable/rpc";
 
 import { AppRpcMiddlewareLive, StudentRpcLive } from "../live";
 import {
+  getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
   startPostgresTestInfra,
+  warnComposeTestInfraUnavailable,
 } from "../test-support";
 
 const StudentTestLive = makeRpcTestLive(
@@ -23,15 +25,23 @@ const makeStudentClient = RpcTest.makeClient(StudentRpcGroup).pipe(
   Effect.provide(StudentTestLive),
 );
 
-beforeAll(() => {
-  startPostgresTestInfra();
-});
+const postgresTestInfra = getComposeTestInfraAvailability();
+
+if (!postgresTestInfra.available) {
+  warnComposeTestInfraUnavailable(postgresTestInfra);
+}
 
 afterEach(async () => {
   await Effect.runPromise(resetTables([studentTable, session, account, user]));
 });
 
-describe("student rpc", () => {
+const describeWithPostgres = postgresTestInfra.available ? describe : describe.skip;
+
+describeWithPostgres("student rpc", () => {
+  beforeAll(() => {
+    startPostgresTestInfra();
+  });
+
   it.effect(
     "student actors can create and read back their onboarding record and issue a QR identity",
     () =>

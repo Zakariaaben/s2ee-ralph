@@ -9,10 +9,12 @@ import { RpcTest } from "effect/unstable/rpc";
 
 import { AppRpcLive, AppRpcMiddlewareLive } from "../live";
 import {
+  getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
   startPostgresTestInfra,
+  warnComposeTestInfraUnavailable,
 } from "../test-support";
 
 const VenueTestLive = makeRpcTestLive(
@@ -24,15 +26,23 @@ const makeAppClient = RpcTest.makeClient(AppRpc).pipe(
   Effect.provide(VenueTestLive),
 );
 
-beforeAll(() => {
-  startPostgresTestInfra();
-});
+const postgresTestInfra = getComposeTestInfraAvailability();
+
+if (!postgresTestInfra.available) {
+  warnComposeTestInfraUnavailable(postgresTestInfra);
+}
 
 afterEach(async () => {
   await Effect.runPromise(resetTables([company, room, session, account, user]));
 });
 
-describe("venue rpc", () => {
+const describeWithPostgres = postgresTestInfra.available ? describe : describe.skip;
+
+describeWithPostgres("venue rpc", () => {
+  beforeAll(() => {
+    startPostgresTestInfra();
+  });
+
   it.effect("admin actors can create rooms and list them in the venue state", () =>
     Effect.gen(function*() {
       const headers = yield* provisionSessionHeaders("admin");

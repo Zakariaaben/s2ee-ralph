@@ -8,10 +8,12 @@ import { RpcTest } from "effect/unstable/rpc";
 
 import { ActorRpcLive, AppRpcMiddlewareLive } from "../live";
 import {
+  getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
   startPostgresTestInfra,
+  warnComposeTestInfraUnavailable,
 } from "../test-support";
 
 const ActorTestLive = makeRpcTestLive(
@@ -23,15 +25,23 @@ const makeActorClient = RpcTest.makeClient(ActorRpcGroup).pipe(
   Effect.provide(ActorTestLive),
 );
 
-beforeAll(() => {
-  startPostgresTestInfra();
-});
+const postgresTestInfra = getComposeTestInfraAvailability();
+
+if (!postgresTestInfra.available) {
+  warnComposeTestInfraUnavailable(postgresTestInfra);
+}
 
 afterEach(async () => {
   await Effect.runPromise(resetTables([session, account, user]));
 });
 
-describe("actor rpc", () => {
+const describeWithPostgres = postgresTestInfra.available ? describe : describe.skip;
+
+describeWithPostgres("actor rpc", () => {
+  beforeAll(() => {
+    startPostgresTestInfra();
+  });
+
   it.effect("resolves the current actor role from the auth session", () =>
     Effect.gen(function*() {
       const headers = yield* provisionSessionHeaders("company");

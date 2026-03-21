@@ -8,10 +8,12 @@ import { RpcTest } from "effect/unstable/rpc";
 
 import { AppRpcMiddlewareLive, CompanyRpcLive } from "../live";
 import {
+  getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
   startPostgresTestInfra,
+  warnComposeTestInfraUnavailable,
 } from "../test-support";
 
 const CompanyTestLive = makeRpcTestLive(
@@ -23,9 +25,11 @@ const makeCompanyClient = RpcTest.makeClient(CompanyRpcGroup).pipe(
   Effect.provide(CompanyTestLive),
 );
 
-beforeAll(() => {
-  startPostgresTestInfra();
-});
+const postgresTestInfra = getComposeTestInfraAvailability();
+
+if (!postgresTestInfra.available) {
+  warnComposeTestInfraUnavailable(postgresTestInfra);
+}
 
 afterEach(async () => {
   await Effect.runPromise(
@@ -33,7 +37,13 @@ afterEach(async () => {
   );
 });
 
-describe("company rpc", () => {
+const describeWithPostgres = postgresTestInfra.available ? describe : describe.skip;
+
+describeWithPostgres("company rpc", () => {
+  beforeAll(() => {
+    startPostgresTestInfra();
+  });
+
   it.effect("company actors can create and read back their onboarding record", () =>
     Effect.gen(function*() {
       const headers = yield* provisionSessionHeaders("company");
