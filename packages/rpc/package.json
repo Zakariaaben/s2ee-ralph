@@ -10,6 +10,7 @@
     }
   },
   "scripts": {
+    "typecheck": "tsgo --noEmit",
     "check-types": "tsgo --noEmit"
   },
   "dependencies": {

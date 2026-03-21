@@ -22,12 +22,21 @@ First, install the dependencies:
 bun install
 ```
 
-## Database Setup
+## Local Backend Setup
 
-This project uses PostgreSQL with Drizzle ORM.
+This project uses PostgreSQL with Drizzle ORM and MinIO for object storage.
 
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/web/.env` file with your PostgreSQL connection details.
+1. Start the local dependencies:
+
+```bash
+docker compose up -d
+```
+
+2. Create your local env file from the example:
+
+```bash
+cp apps/web/.env.example apps/web/.env
+```
 
 3. Apply the schema to your database:
 
@@ -89,6 +98,8 @@ project/
 
 - `bun run dev`: Start all applications in development mode
 - `bun run build`: Build all applications
+- `bun run test`: Run workspace tests
+- `bun run typecheck`: Run workspace typechecking
 - `bun run dev:web`: Start only the web application
 - `bun run check-types`: Check TypeScript types across all apps
 - `bun run db:push`: Push schema changes to database

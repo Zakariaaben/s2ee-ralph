@@ -11,6 +11,7 @@
     "./postcss.config": "./postcss.config.mjs"
   },
   "scripts": {
+    "typecheck": "tsgo --noEmit",
     "check-types": "tsgo --noEmit"
   },
   "dependencies": {

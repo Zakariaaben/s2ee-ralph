@@ -11,6 +11,7 @@
     "effect": "catalog:"
   },
   "scripts": {
+    "typecheck": "tsgo --noEmit",
     "check-types": "tsgo --noEmit"
   },
   "devDependencies": {

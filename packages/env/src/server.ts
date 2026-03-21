@@ -10,6 +10,11 @@ const serverConfigShape = {
   betterAuthUrl: Config.url("betterAuthUrl"),
   corsOrigin: Config.url("corsOrigin"),
   nodeEnv: Config.string("nodeEnv").pipe(Config.withDefault("development")),
+  s3AccessKeyId: Config.redacted("s3AccessKeyId"),
+  s3SecretAccessKey: Config.redacted("s3SecretAccessKey"),
+  s3Bucket: Config.string("s3Bucket"),
+  s3Endpoint: Config.url("s3Endpoint"),
+  s3Region: Config.string("s3Region").pipe(Config.withDefault("us-east-1")),
 } as const;
 
 export const serverConfig = Config.all(serverConfigShape);

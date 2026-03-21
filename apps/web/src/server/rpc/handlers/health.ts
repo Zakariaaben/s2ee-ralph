@@ -1,4 +1,4 @@
-import { HealthRpcGroup, RpcHealth } from "@project/rpc";
+import { HealthRpcGroup, RpcHealth, RpcHealthChecks } from "@project/rpc";
 import { DateTime, Effect } from "effect";
 
 import { HealthService } from "../../services/health-service";
@@ -10,9 +10,14 @@ export const makeHealthRpcHandlers = Effect.gen(function* () {
     health: () =>
       Effect.gen(function* () {
         const health = yield* healthService.check;
+
         return new RpcHealth({
           status: health.status,
           timestamp: DateTime.formatIso(health.timestamp),
+          checks: new RpcHealthChecks({
+            database: health.checks.database,
+            storage: health.checks.storage,
+          }),
         });
       }),
   });
