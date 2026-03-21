@@ -28,6 +28,7 @@
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "effect": "catalog:",
+    "drizzle-orm": "^1.0.0-beta.17-67b1795",
     "lucide-react": "catalog:",
     "next-themes": "catalog:",
     "react": "catalog:",

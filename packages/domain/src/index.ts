@@ -1,3 +1,4 @@
+export * from "./company";
 export * from "./health";
 export * from "./ids";
 export * from "./timestamps";
