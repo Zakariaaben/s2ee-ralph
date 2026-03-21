@@ -1,52 +1,24 @@
-import { beforeAll, describe, expect, test } from "bun:test";
-import { execFileSync } from "node:child_process";
-import { DBLive } from "@project/db";
-import { ServerEnv } from "@project/env/server";
+import { beforeAll, describe, expect, it } from "@effect/vitest";
+import { Effect, Layer } from "effect";
 import { HealthRpcGroup } from "@project/rpc";
-import { Effect, Layer, Redacted } from "effect";
 import { RpcTest } from "effect/unstable/rpc";
 
 import { HealthRpcLive } from "../live";
-
-const composeProjectRoot = new URL("../../../../../..", import.meta.url);
-
-const TestServerEnvLive = Layer.succeed(
-  ServerEnv,
-  ServerEnv.of({
-    databaseUrl: Redacted.make(
-      "postgresql://project:project@127.0.0.1:5432/project",
-    ),
-    betterAuthSecret: Redacted.make("development-only-secret"),
-    betterAuthUrl: new URL("http://127.0.0.1:3001"),
-    corsOrigin: new URL("http://127.0.0.1:3001"),
-    nodeEnv: "test",
-    s3AccessKeyId: Redacted.make("minioadmin"),
-    s3SecretAccessKey: Redacted.make("minioadmin"),
-    s3Bucket: "project-local",
-    s3Endpoint: new URL("http://127.0.0.1:9000"),
-    s3Region: "us-east-1",
-  }),
-);
-
-const DatabaseTestLive = DBLive.pipe(Layer.provide(TestServerEnvLive));
+import {
+  DatabaseTestLive,
+  TestServerEnvLive,
+  runCompose,
+} from "../test-support";
 
 const AppReadinessLive = HealthRpcLive.pipe(
   Layer.provideMerge(DatabaseTestLive),
   Layer.provideMerge(TestServerEnvLive),
 );
-const runCompose = (args: string[]) => {
-  execFileSync("docker", ["compose", ...args], {
-    cwd: composeProjectRoot,
-    stdio: "pipe",
-  });
-};
 
-const invokeHealth = () =>
-  Effect.gen(function* () {
-    const client = yield* RpcTest.makeClient(HealthRpcGroup);
-
-    return yield* client.health();
-  }).pipe(Effect.scoped, Effect.provide(AppReadinessLive));
+const invokeHealth = RpcTest.makeClient(HealthRpcGroup).pipe(
+  Effect.provide(AppReadinessLive),
+  Effect.flatMap((client) => client.health()),
+);
 
 const waitForHealth = async (timeoutMs: number) => {
   const startedAt = Date.now();
@@ -54,10 +26,10 @@ const waitForHealth = async (timeoutMs: number) => {
 
   while (Date.now() - startedAt < timeoutMs) {
     try {
-      return await Effect.runPromise(invokeHealth());
+      return await Effect.runPromise(Effect.scoped(invokeHealth));
     } catch (error) {
       lastError = error;
-      await Bun.sleep(1_000);
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
     }
   }
 
@@ -70,13 +42,16 @@ beforeAll(async () => {
 });
 
 describe("health rpc", () => {
-  test("reports postgres and object storage readiness", async () => {
-    const health = await waitForHealth(5_000);
-
-    expect(health.status).toBe("ok");
-    expect(health.checks).toEqual({
-      database: "ok",
-      storage: "ok",
-    });
-  });
+  it.effect("reports postgres and object storage readiness", () =>
+    Effect.promise(() => waitForHealth(5_000)).pipe(
+      Effect.tap((health) =>
+        Effect.sync(() => {
+          expect(health.status).toBe("ok");
+          expect(health.checks).toEqual({
+            database: "ok",
+            storage: "ok",
+          });
+        }),
+      ),
+    ));
 });

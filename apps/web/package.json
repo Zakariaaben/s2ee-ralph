@@ -6,7 +6,7 @@
     "build": "vite build",
     "serve": "vite preview",
     "dev": "vite dev",
-    "test": "bun test --timeout 60000",
+    "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsgo --noEmit",
     "check-types": "tsgo --noEmit"
   },
@@ -35,10 +35,10 @@
     "react-dom": "catalog:",
     "sonner": "catalog:",
     "tailwindcss": "catalog:",
-    "vite-tsconfig-paths": "^5.1.4",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@effect/vitest": "catalog:",
     "@project/config": "workspace:*",
     "@tanstack/react-router-devtools": "^1.141.1",
     "@testing-library/dom": "^10.4.0",
@@ -51,6 +51,7 @@
     "jsdom": "^26.0.0",
     "typescript": "^5",
     "vite": "^8.0.0",
+    "vitest": "catalog:",
     "web-vitals": "^5.0.3"
   }
 }
