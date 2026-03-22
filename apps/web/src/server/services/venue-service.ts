@@ -24,24 +24,6 @@ const requireCheckInActor = (actor: AuthenticatedActor) =>
     return actor;
   });
 
-const normalizeRoomCode = (value: string) => {
-  const normalized = value.trim().toUpperCase();
-
-  if (normalized.length === 0) {
-    return Effect.fail(new HttpApiError.BadRequest({}));
-  }
-
-  return Effect.succeed(normalized);
-};
-
-const normalizeStandNumber = (value: number) => {
-  if (!Number.isInteger(value) || value <= 0) {
-    return Effect.fail(new HttpApiError.BadRequest({}));
-  }
-
-  return Effect.succeed(value);
-};
-
 export class VenueService extends ServiceMap.Service<
   VenueService,
   {
@@ -53,7 +35,7 @@ export class VenueService extends ServiceMap.Service<
         readonly actor: AuthenticatedActor;
         readonly code: string;
       },
-    ) => Effect.Effect<Room, HttpApiError.Forbidden | HttpApiError.BadRequest>;
+    ) => Effect.Effect<Room, HttpApiError.Forbidden>;
     readonly assignCompanyPlacement: (
       input: {
         readonly actor: AuthenticatedActor;
@@ -63,7 +45,7 @@ export class VenueService extends ServiceMap.Service<
       },
     ) => Effect.Effect<
       VenueCompany,
-      HttpApiError.Forbidden | HttpApiError.BadRequest | HttpApiError.NotFound
+      HttpApiError.Forbidden | HttpApiError.NotFound
     >;
     readonly markCompanyArrived: (
       input: {
@@ -89,21 +71,17 @@ export class VenueService extends ServiceMap.Service<
           Effect.gen(function*() {
             yield* requireAdminActor(actor);
 
-            const normalizedCode = yield* normalizeRoomCode(code);
-
             return yield* venueRepository.createRoom({
-              code: normalizedCode,
+              code,
             });
           }),
         assignCompanyPlacement: ({ actor, companyId, roomId, standNumber }) =>
           Effect.gen(function*() {
             yield* requireAdminActor(actor);
-
-            const normalizedStandNumber = yield* normalizeStandNumber(standNumber);
             const placedCompany = yield* venueRepository.assignCompanyPlacement({
               companyId,
               roomId,
-              standNumber: normalizedStandNumber,
+              standNumber,
             });
 
             if (!placedCompany) {

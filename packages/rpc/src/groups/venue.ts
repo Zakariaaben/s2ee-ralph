@@ -4,11 +4,12 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
+import { PositiveInteger, RoomCode } from "../request-schemas";
 
 export class CreateRoomInput extends Schema.Class<CreateRoomInput>(
   "CreateRoomInput",
 )({
-  code: Schema.String,
+  code: RoomCode,
 }) {}
 
 export class AssignCompanyPlacementInput extends Schema.Class<AssignCompanyPlacementInput>(
@@ -16,7 +17,7 @@ export class AssignCompanyPlacementInput extends Schema.Class<AssignCompanyPlace
 )({
   companyId: Schema.String,
   roomId: RoomId,
-  standNumber: Schema.Number,
+  standNumber: PositiveInteger,
 }) {}
 
 export class MarkCompanyArrivedInput extends Schema.Class<MarkCompanyArrivedInput>(

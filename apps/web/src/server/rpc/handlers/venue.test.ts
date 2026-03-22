@@ -47,12 +47,18 @@ describeWithPostgres("venue rpc", () => {
     Effect.gen(function*() {
       const headers = yield* provisionSessionHeaders("admin");
       const client = yield* makeAppClient;
+      const blankRoomExit = yield* Effect.exit(
+        client.createRoom({ code: "   " }).pipe(
+          RpcClient.withHeaders(headers),
+        ),
+      );
 
       expect(
         yield* client.listVenueRooms().pipe(RpcClient.withHeaders(headers)),
       ).toEqual([]);
+      expect(blankRoomExit._tag).toBe("Failure");
 
-      const createdRoom = yield* client.createRoom({ code: "S27" }).pipe(
+      const createdRoom = yield* client.createRoom({ code: "  s27  " }).pipe(
         RpcClient.withHeaders(headers),
       );
 
@@ -81,12 +87,21 @@ describeWithPostgres("venue rpc", () => {
         const companyProfile = yield* client.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
           RpcClient.withHeaders(companyHeaders),
         );
+        const invalidStandExit = yield* Effect.exit(
+          client.assignCompanyPlacement({
+            companyId: companyProfile.id,
+            roomId: placedRoom.id,
+            standNumber: 0,
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        );
 
         yield* client.assignCompanyPlacement({
           companyId: companyProfile.id,
           roomId: placedRoom.id,
           standNumber: 12,
         }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        expect(invalidStandExit._tag).toBe("Failure");
 
         expect(
           yield* client.listVenueRooms().pipe(

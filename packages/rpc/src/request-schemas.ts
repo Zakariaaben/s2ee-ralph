@@ -10,6 +10,14 @@ export const RequiredText = Schema.Trim.pipe(
   Schema.check(Schema.isNonEmpty()),
 );
 
+export const RoomCode = RequiredText.pipe(
+  Schema.decode(SchemaTransformation.toUpperCase()),
+);
+
+export const PositiveInteger = Schema.Number.check(Schema.isInt()).pipe(
+  Schema.check(Schema.isGreaterThan(0)),
+);
+
 const studentQrIdentityPrefix = "student:v1:";
 const invalidStudentQrIdentityMessage = "Expected a student QR identity";
 
