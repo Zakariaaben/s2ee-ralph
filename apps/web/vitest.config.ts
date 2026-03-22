@@ -8,7 +8,7 @@ export default defineConfig({
     environment: "node",
     fileParallelism: false,
     hookTimeout: 60_000,
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: ["src/**/*.test.ts"],
     setupFiles: ["./vitest.setup.ts"],
     testTimeout: 60_000,
   },
