@@ -9,10 +9,34 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StudentRouteImport } from './routes/student'
+import { Route as CompanyRouteImport } from './routes/company'
+import { Route as CheckInRouteImport } from './routes/check-in'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiRpcRouteImport } from './routes/api/rpc'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
+const StudentRoute = StudentRouteImport.update({
+  id: '/student',
+  path: '/student',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompanyRoute = CompanyRouteImport.update({
+  id: '/company',
+  path: '/company',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckInRoute = CheckInRouteImport.update({
+  id: '/check-in',
+  path: '/check-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,36 +55,102 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/check-in': typeof CheckInRoute
+  '/company': typeof CompanyRoute
+  '/student': typeof StudentRoute
   '/api/rpc': typeof ApiRpcRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/check-in': typeof CheckInRoute
+  '/company': typeof CompanyRoute
+  '/student': typeof StudentRoute
   '/api/rpc': typeof ApiRpcRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/check-in': typeof CheckInRoute
+  '/company': typeof CompanyRoute
+  '/student': typeof StudentRoute
   '/api/rpc': typeof ApiRpcRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/rpc' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/check-in'
+    | '/company'
+    | '/student'
+    | '/api/rpc'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/rpc' | '/api/auth/$'
-  id: '__root__' | '/' | '/api/rpc' | '/api/auth/$'
+  to:
+    | '/'
+    | '/admin'
+    | '/check-in'
+    | '/company'
+    | '/student'
+    | '/api/rpc'
+    | '/api/auth/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/check-in'
+    | '/company'
+    | '/student'
+    | '/api/rpc'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  CheckInRoute: typeof CheckInRoute
+  CompanyRoute: typeof CompanyRoute
+  StudentRoute: typeof StudentRoute
   ApiRpcRoute: typeof ApiRpcRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/student': {
+      id: '/student'
+      path: '/student'
+      fullPath: '/student'
+      preLoaderRoute: typeof StudentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/company': {
+      id: '/company'
+      path: '/company'
+      fullPath: '/company'
+      preLoaderRoute: typeof CompanyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/check-in': {
+      id: '/check-in'
+      path: '/check-in'
+      fullPath: '/check-in'
+      preLoaderRoute: typeof CheckInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +177,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  CheckInRoute: CheckInRoute,
+  CompanyRoute: CompanyRoute,
+  StudentRoute: StudentRoute,
   ApiRpcRoute: ApiRpcRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
