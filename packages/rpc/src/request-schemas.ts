@@ -18,6 +18,30 @@ export const PositiveInteger = Schema.Number.check(Schema.isInt()).pipe(
   Schema.check(Schema.isGreaterThan(0)),
 );
 
+export const VocabularyEntryId = RequiredText;
+
+export const VocabularyEntryLabel = RequiredText;
+
+const uniqueIds = Schema.makeFilter<ReadonlyArray<{ readonly id: string }>>(
+  (entries) => {
+    const seenIds = new Set<string>();
+
+    for (const entry of entries) {
+      if (seenIds.has(entry.id)) {
+        return "Expected vocabulary entry ids to be unique";
+      }
+
+      seenIds.add(entry.id);
+    }
+
+    return true;
+  },
+);
+
+export const UniqueIdArray = <S extends Schema.Schema<{ readonly id: string }>>(
+  item: S,
+) => Schema.Array(item).check(uniqueIds);
+
 const studentQrIdentityPrefix = "student:v1:";
 const invalidStudentQrIdentityMessage = "Expected a student QR identity";
 

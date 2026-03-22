@@ -8,31 +8,36 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
+import {
+  UniqueIdArray,
+  VocabularyEntryId,
+  VocabularyEntryLabel,
+} from "../request-schemas";
 
 export class SeedVocabularyEntryInput extends Schema.Class<SeedVocabularyEntryInput>(
   "SeedVocabularyEntryInput",
 )({
-  id: Schema.String,
-  label: Schema.String,
+  id: VocabularyEntryId,
+  label: VocabularyEntryLabel,
 }) {}
 
 export class ReplaceVocabularyEntriesInput extends Schema.Class<ReplaceVocabularyEntriesInput>(
   "ReplaceVocabularyEntriesInput",
 )({
-  entries: Schema.Array(SeedVocabularyEntryInput),
+  entries: UniqueIdArray(SeedVocabularyEntryInput),
 }) {}
 
 export class DeleteVocabularyEntryInput extends Schema.Class<DeleteVocabularyEntryInput>(
   "DeleteVocabularyEntryInput",
 )({
-  id: Schema.String,
+  id: VocabularyEntryId,
 }) {}
 
 export class SeedControlledVocabulariesInput extends Schema.Class<SeedControlledVocabulariesInput>(
   "SeedControlledVocabulariesInput",
 )({
-  cvProfileTypes: Schema.Array(SeedVocabularyEntryInput),
-  globalInterviewTags: Schema.Array(SeedVocabularyEntryInput),
+  cvProfileTypes: UniqueIdArray(SeedVocabularyEntryInput),
+  globalInterviewTags: UniqueIdArray(SeedVocabularyEntryInput),
 }) {}
 
 export const VocabularyRpcAccessError = HttpApiError.Unauthorized;

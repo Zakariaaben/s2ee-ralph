@@ -216,4 +216,60 @@ describeWithPostgres("vocabulary rpc", () => {
         ]);
       }),
   );
+
+  it.effect(
+    "vocabulary mutations normalize trimmed payloads and reject blank or duplicate entries at the rpc boundary",
+    () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const client = yield* makeVocabularyClient;
+
+        const blankAddExit = yield* Effect.exit(
+          client.addCvProfileType({
+            id: "   ",
+            label: "Software Engineering",
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        );
+
+        expect(blankAddExit._tag).toBe("Failure");
+        expect(
+          yield* client.addCvProfileType({
+            id: "  software-engineering  ",
+            label: "  Software Engineering  ",
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        ).toEqual([
+          { id: "software-engineering", label: "Software Engineering" },
+        ]);
+
+        expect(
+          yield* client.deleteCvProfileType({
+            id: "  software-engineering  ",
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        ).toEqual([]);
+
+        const duplicateReplaceExit = yield* Effect.exit(
+          client.replaceGlobalInterviewTags({
+            entries: [
+              { id: " follow-up ", label: "Follow Up" },
+              { id: "follow-up", label: "Duplicate Follow Up" },
+            ],
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        );
+
+        const duplicateSeedExit = yield* Effect.exit(
+          client.seedControlledVocabularies({
+            cvProfileTypes: [
+              { id: "backend", label: "Backend" },
+              { id: " backend ", label: "Duplicate Backend" },
+            ],
+            globalInterviewTags: [
+              { id: "hire", label: "Hire" },
+            ],
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        );
+
+        expect(duplicateReplaceExit._tag).toBe("Failure");
+        expect(duplicateSeedExit._tag).toBe("Failure");
+      }),
+  );
 });

@@ -29,37 +29,6 @@ const requireAdminActor = (actor: AuthenticatedActor) =>
     return actor;
   });
 
-const normalizeValue = (value: string) =>
-  Effect.gen(function*() {
-    const normalized = value.trim();
-
-    if (normalized.length === 0) {
-      yield* new HttpApiError.BadRequest({});
-    }
-
-    return normalized;
-  });
-
-const normalizeSeedEntries = (entries: ReadonlyArray<SeedVocabularyEntry>) =>
-  Effect.gen(function*() {
-    const seenIds = new Set<string>();
-    const normalizedEntries: Array<SeedVocabularyEntry> = [];
-
-    for (const entry of entries) {
-      const id = yield* normalizeValue(entry.id);
-      const label = yield* normalizeValue(entry.label);
-
-      if (seenIds.has(id)) {
-        yield* new HttpApiError.BadRequest({});
-      }
-
-      seenIds.add(id);
-      normalizedEntries.push({ id, label });
-    }
-
-    return normalizedEntries;
-  });
-
 const ensureEntryAbsent = (
   id: string,
   entries: ReadonlyArray<VocabularyEntryWithId>,
@@ -180,65 +149,53 @@ export class VocabularyService extends ServiceMap.Service<
           Effect.gen(function*() {
             yield* requireAdminActor(actor);
 
-            const normalizedEntry = yield* normalizeSeedEntries([entry]).pipe(
-              Effect.map((entries) => entries[0]!),
-            );
             const existing = yield* vocabularyRepository.listCvProfileTypes();
 
-            yield* ensureEntryAbsent(normalizedEntry.id, existing);
+            yield* ensureEntryAbsent(entry.id, existing);
 
-            return yield* vocabularyRepository.addCvProfileType(normalizedEntry);
+            return yield* vocabularyRepository.addCvProfileType(entry);
           }),
         deleteCvProfileType: ({ actor, id }) =>
           Effect.gen(function*() {
             yield* requireAdminActor(actor);
 
-            const normalizedId = yield* normalizeValue(id);
             const existing = yield* vocabularyRepository.listCvProfileTypes();
 
-            yield* ensureEntryPresent(normalizedId, existing);
+            yield* ensureEntryPresent(id, existing);
 
-            return yield* vocabularyRepository.deleteCvProfileType(normalizedId);
+            return yield* vocabularyRepository.deleteCvProfileType(id);
           }),
         replaceCvProfileTypes: ({ actor, entries }) =>
           Effect.gen(function*() {
             yield* requireAdminActor(actor);
 
-            return yield* vocabularyRepository.replaceCvProfileTypes(
-              yield* normalizeSeedEntries(entries),
-            );
+            return yield* vocabularyRepository.replaceCvProfileTypes(entries);
           }),
         addGlobalInterviewTag: ({ actor, entry }) =>
           Effect.gen(function*() {
             yield* requireAdminActor(actor);
 
-            const normalizedEntry = yield* normalizeSeedEntries([entry]).pipe(
-              Effect.map((entries) => entries[0]!),
-            );
             const existing = yield* vocabularyRepository.listGlobalInterviewTags();
 
-            yield* ensureEntryAbsent(normalizedEntry.id, existing);
+            yield* ensureEntryAbsent(entry.id, existing);
 
-            return yield* vocabularyRepository.addGlobalInterviewTag(normalizedEntry);
+            return yield* vocabularyRepository.addGlobalInterviewTag(entry);
           }),
         deleteGlobalInterviewTag: ({ actor, id }) =>
           Effect.gen(function*() {
             yield* requireAdminActor(actor);
 
-            const normalizedId = yield* normalizeValue(id);
             const existing = yield* vocabularyRepository.listGlobalInterviewTags();
 
-            yield* ensureEntryPresent(normalizedId, existing);
+            yield* ensureEntryPresent(id, existing);
 
-            return yield* vocabularyRepository.deleteGlobalInterviewTag(normalizedId);
+            return yield* vocabularyRepository.deleteGlobalInterviewTag(id);
           }),
         replaceGlobalInterviewTags: ({ actor, entries }) =>
           Effect.gen(function*() {
             yield* requireAdminActor(actor);
 
-            return yield* vocabularyRepository.replaceGlobalInterviewTags(
-              yield* normalizeSeedEntries(entries),
-            );
+            return yield* vocabularyRepository.replaceGlobalInterviewTags(entries);
           }),
         seedControlledVocabularies: ({
           actor,
@@ -249,8 +206,8 @@ export class VocabularyService extends ServiceMap.Service<
             yield* requireAdminActor(actor);
 
             return yield* vocabularyRepository.seedControlledVocabularies({
-              cvProfileTypes: yield* normalizeSeedEntries(cvProfileTypes),
-              globalInterviewTags: yield* normalizeSeedEntries(globalInterviewTags),
+              cvProfileTypes,
+              globalInterviewTags,
             });
           }),
       });
