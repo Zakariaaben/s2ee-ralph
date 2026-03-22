@@ -66,6 +66,72 @@ describeWithStorage("cv profile rpc", () => {
   });
 
   it.effect(
+    "cv profile creation normalizes metadata while blank values and malformed base64 stay rejected",
+    () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const studentHeaders = yield* provisionSessionHeaders("student");
+        const cvProfileClient = yield* makeCvProfileClient;
+        const studentClient = yield* makeStudentClient;
+        const vocabularyClient = yield* makeVocabularyClient;
+
+        yield* vocabularyClient.seedControlledVocabularies({
+          cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
+          globalInterviewTags: [],
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        yield* studentClient.upsertStudentOnboarding({
+          firstName: "Ada",
+          lastName: "Lovelace",
+          course: "Computer Science",
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+
+        const blankMetadataExit = yield* Effect.exit(
+          cvProfileClient.createStudentCvProfile({
+            profileTypeId: "   ",
+            fileName: "ada-software.pdf",
+            contentType: "application/pdf",
+            contentsBase64: Buffer.from("software-cv-v1", "utf8").toString("base64"),
+          }).pipe(RpcClient.withHeaders(studentHeaders)),
+        );
+
+        expect(blankMetadataExit._tag).toBe("Failure");
+        expect(
+          yield* cvProfileClient.listCurrentStudentCvProfiles().pipe(
+            RpcClient.withHeaders(studentHeaders),
+          ),
+        ).toEqual([]);
+
+        const malformedContentsExit = yield* Effect.exit(
+          cvProfileClient.createStudentCvProfile({
+            profileTypeId: "software-engineering",
+            fileName: "ada-software.pdf",
+            contentType: "application/pdf",
+            contentsBase64: "not-base64",
+          }).pipe(RpcClient.withHeaders(studentHeaders)),
+        );
+
+        expect(malformedContentsExit._tag).toBe("Failure");
+        expect(
+          yield* cvProfileClient.listCurrentStudentCvProfiles().pipe(
+            RpcClient.withHeaders(studentHeaders),
+          ),
+        ).toEqual([]);
+
+        const createdCv = yield* cvProfileClient.createStudentCvProfile({
+          profileTypeId: "  software-engineering  ",
+          fileName: "  ada-software.pdf  ",
+          contentType: "  application/pdf  ",
+          contentsBase64: `  ${Buffer.from("software-cv-v1", "utf8").toString("base64")}  `,
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+
+        expect(createdCv.profileType.id).toBe("software-engineering");
+        expect(createdCv.fileName).toBe("ada-software.pdf");
+        expect(createdCv.contentType).toBe("application/pdf");
+      }),
+  );
+
+  it.effect(
     "student actors can create controlled CV profiles, download stored files, and company actors can list them after QR resolution",
     () =>
       Effect.gen(function*() {

@@ -28,28 +28,8 @@ const requireCompanyActor = (actor: AuthenticatedActor) =>
     return actor;
   });
 
-const normalizeValue = (value: string) =>
-  Effect.gen(function*() {
-    const normalized = value.trim();
-
-    if (normalized.length === 0) {
-      yield* new HttpApiError.BadRequest({});
-    }
-
-    return normalized;
-  });
-
 const decodeBase64Contents = (contentsBase64: string) =>
-  Effect.gen(function*() {
-    const normalized = yield* normalizeValue(contentsBase64);
-    const contents = Uint8Array.from(Buffer.from(normalized, "base64"));
-
-    if (contents.byteLength === 0) {
-      yield* new HttpApiError.BadRequest({});
-    }
-
-    return contents;
-  });
+  Uint8Array.from(Buffer.from(contentsBase64, "base64"));
 
 export class CvProfileService extends ServiceMap.Service<
   CvProfileService,
@@ -136,10 +116,10 @@ export class CvProfileService extends ServiceMap.Service<
 
             const createdCvProfile = yield* cvProfileRepository.createForStudent({
               studentId: student.id,
-              profileTypeId: yield* normalizeValue(profileTypeId),
-              fileName: yield* normalizeValue(fileName),
-              contentType: yield* normalizeValue(contentType),
-              contents: yield* decodeBase64Contents(contentsBase64),
+              profileTypeId,
+              fileName,
+              contentType,
+              contents: decodeBase64Contents(contentsBase64),
             });
 
             if (!createdCvProfile) {

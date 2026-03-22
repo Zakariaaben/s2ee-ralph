@@ -22,6 +22,22 @@ export const VocabularyEntryId = RequiredText;
 
 export const VocabularyEntryLabel = RequiredText;
 
+const base64ContentsPattern =
+  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+const invalidBase64ContentsMessage = "Expected non-empty base64-encoded file contents";
+
+const validBase64Contents = Schema.makeFilter<string>((value) => {
+  if (!base64ContentsPattern.test(value)) {
+    return invalidBase64ContentsMessage;
+  }
+
+  return Buffer.from(value, "base64").byteLength > 0 || invalidBase64ContentsMessage;
+});
+
+export const Base64FileContents = RequiredText.pipe(
+  Schema.check(validBase64Contents),
+);
+
 const uniqueIds = Schema.makeFilter<ReadonlyArray<{ readonly id: string }>>(
   (entries) => {
     const seenIds = new Set<string>();

@@ -4,6 +4,7 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
+import { Base64FileContents, RequiredText } from "../request-schemas";
 
 export class ListStudentCvProfilesInput extends Schema.Class<ListStudentCvProfilesInput>(
   "ListStudentCvProfilesInput",
@@ -14,10 +15,10 @@ export class ListStudentCvProfilesInput extends Schema.Class<ListStudentCvProfil
 export class CreateStudentCvProfileInput extends Schema.Class<CreateStudentCvProfileInput>(
   "CreateStudentCvProfileInput",
 )({
-  profileTypeId: Schema.String,
-  fileName: Schema.String,
-  contentType: Schema.String,
-  contentsBase64: Schema.String,
+  profileTypeId: RequiredText,
+  fileName: RequiredText,
+  contentType: RequiredText,
+  contentsBase64: Base64FileContents,
 }) {}
 
 export class DownloadStudentCvProfileFileInput extends Schema.Class<DownloadStudentCvProfileFileInput>(
