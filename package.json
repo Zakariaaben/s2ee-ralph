@@ -32,6 +32,8 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "test": "turbo run test",
+    "test:vitest": "turbo run test:vitest",
+    "test:bun": "turbo run test:bun",
     "typecheck": "turbo run typecheck",
     "check-types": "turbo run check-types",
     "dev:web": "turbo run dev -F web",

@@ -4,11 +4,12 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+
   test: {
-    environment: "node",
+    exclude: ["src/server/rpc/handlers/**/*.test.ts"],
     fileParallelism: false,
     hookTimeout: 60_000,
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     setupFiles: ["./vitest.setup.ts"],
     testTimeout: 60_000,
   },

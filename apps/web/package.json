@@ -6,7 +6,9 @@
     "build": "vite build",
     "serve": "vite preview",
     "dev": "vite dev",
-    "test": "vitest run --config vitest.config.ts",
+    "test": "bun run test:vitest && bun run test:bun",
+    "test:vitest": "vitest run --config vitest.config.ts",
+    "test:bun": "bun run ./scripts/run-bun-tests.ts",
     "typecheck": "tsgo --noEmit",
     "check-types": "tsgo --noEmit"
   },

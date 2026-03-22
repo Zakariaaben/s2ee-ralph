@@ -14,6 +14,14 @@
       "dependsOn": ["^test"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"]
     },
+    "test:vitest": {
+      "dependsOn": ["^test:vitest"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"]
+    },
+    "test:bun": {
+      "dependsOn": ["^test:bun"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"]
+    },
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },
