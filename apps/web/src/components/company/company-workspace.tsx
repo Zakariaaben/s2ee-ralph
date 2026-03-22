@@ -326,18 +326,12 @@ export function CompanyWorkspace(): React.ReactElement {
   };
 
   return (
-    <main
-      className="min-h-screen bg-background px-5 py-6 text-foreground sm:px-8 sm:py-8"
-      style={{
-        ["--font-heading" as string]: '"Fraunces", "Times New Roman", serif',
-        ["--font-sans" as string]: '"Manrope", "Segoe UI", sans-serif',
-      }}
-    >
+    <main className="min-h-screen bg-background px-5 py-6 text-foreground sm:px-8 sm:py-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card/92 p-6 shadow-xs/5 sm:p-8">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.18),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(249,115,22,0.12),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.08),transparent_60%)]"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_hsl(var(--warning)/0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_hsl(var(--primary)/0.12),_transparent_28%),linear-gradient(135deg,_hsl(var(--card)),_transparent_60%)]"
           />
 
           <div className="relative flex flex-col gap-6">

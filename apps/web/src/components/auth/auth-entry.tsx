@@ -166,17 +166,11 @@ export function AuthEntry(): React.ReactElement {
   }
 
   return (
-    <main
-      className="min-h-screen overflow-hidden bg-background px-6 py-8 text-foreground sm:px-8"
-      style={{
-        ["--font-heading" as string]: '"Fraunces", "Times New Roman", serif',
-        ["--font-sans" as string]: '"Manrope", "Segoe UI", sans-serif',
-      }}
-    >
+    <main className="min-h-screen overflow-hidden bg-background px-6 py-8 text-foreground sm:px-8">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.18),transparent_60%)]" />
-        <div className="absolute right-[-8rem] top-32 size-64 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="absolute left-[-6rem] top-96 size-72 rounded-full bg-amber-500/10 blur-3xl" />
+        <div className="absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,_hsl(var(--warning)/0.18),_transparent_60%)]" />
+        <div className="absolute right-[-8rem] top-32 size-64 rounded-full bg-success/10 blur-3xl" />
+        <div className="absolute left-[-6rem] top-96 size-72 rounded-full bg-info/10 blur-3xl" />
       </div>
 
       <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl gap-6 lg:grid-cols-[1.15fr_0.85fr]">

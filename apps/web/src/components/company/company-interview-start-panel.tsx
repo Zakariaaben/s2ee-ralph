@@ -618,8 +618,8 @@ function SelectionCard(props: {
     <button
       className={`rounded-[1.25rem] border p-3 text-left transition-colors ${
         props.selected
-          ? "border-amber-500/70 bg-amber-500/10"
-          : "border-border/70 bg-card/72 hover:border-amber-500/40 hover:bg-amber-500/6"
+          ? "border-warning/60 bg-warning/10"
+          : "border-border/70 bg-card/72 hover:border-warning/40 hover:bg-warning/6"
       }`}
       onClick={props.onClick}
       type="button"

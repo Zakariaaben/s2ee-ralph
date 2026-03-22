@@ -371,8 +371,8 @@ export function CompanyInterviewExecutionPanel(props: {
                         <button
                           className={`rounded-full border px-4 py-2 text-sm transition-colors ${
                             selectedScore === score
-                              ? "border-emerald-500/70 bg-emerald-500/12 text-foreground"
-                              : "border-border/70 bg-card/72 hover:border-emerald-500/40 hover:bg-emerald-500/6"
+                              ? "border-success/60 bg-success/12 text-foreground"
+                              : "border-border/70 bg-card/72 hover:border-success/40 hover:bg-success/6"
                           }`}
                           key={score}
                           onClick={() => setSelectedScore(score)}
@@ -400,8 +400,8 @@ export function CompanyInterviewExecutionPanel(props: {
                             <button
                               className={`rounded-full border px-4 py-2 text-sm transition-colors ${
                                 selected
-                                  ? "border-sky-500/70 bg-sky-500/12 text-foreground"
-                                  : "border-border/70 bg-card/72 hover:border-sky-500/40 hover:bg-sky-500/6"
+                                  ? "border-info/60 bg-info/12 text-foreground"
+                                  : "border-border/70 bg-card/72 hover:border-info/40 hover:bg-info/6"
                               }`}
                               key={tag.id}
                               onClick={() =>
@@ -442,7 +442,7 @@ export function CompanyInterviewExecutionPanel(props: {
                       <div className="flex flex-wrap gap-2">
                         {suggestedCompanyTags.map((label) => (
                           <button
-                            className="rounded-full border border-border/70 bg-card/72 px-4 py-2 text-sm transition-colors hover:border-amber-500/40 hover:bg-amber-500/6"
+                            className="rounded-full border border-border/70 bg-card/72 px-4 py-2 text-sm transition-colors hover:border-warning/40 hover:bg-warning/6"
                             key={label}
                             onClick={() => {
                               const existing = normalizeCompanyTagLabels(companyTagInput);

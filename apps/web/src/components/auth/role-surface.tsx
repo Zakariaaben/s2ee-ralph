@@ -89,16 +89,10 @@ export function RoleSurface({
   const chip = roleChips[expectedRole];
 
   return (
-    <main
-      className="min-h-screen bg-background px-6 py-8 text-foreground sm:px-8"
-      style={{
-        ["--font-heading" as string]: '"Fraunces", "Times New Roman", serif',
-        ["--font-sans" as string]: '"Manrope", "Segoe UI", sans-serif',
-      }}
-    >
+    <main className="min-h-screen bg-background px-6 py-8 text-foreground sm:px-8">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl items-center">
         <Card className="w-full overflow-hidden border-border/60 bg-card/90 shadow-sm">
-          <CardHeader className="gap-6 border-b border-border/60 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.12),transparent_45%),linear-gradient(180deg,rgba(255,255,255,0.36),transparent)]">
+          <CardHeader className="gap-6 border-b border-border/60 bg-[radial-gradient(circle_at_top_left,_hsl(var(--warning)/0.12),_transparent_45%),linear-gradient(180deg,_hsl(var(--card)),_transparent)]">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-4">
                 <Badge variant="outline" size="lg" className="rounded-full px-4">

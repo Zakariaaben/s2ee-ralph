@@ -65,17 +65,11 @@ export function PublicVenueMap(): React.ReactElement {
     : null;
 
   return (
-    <main
-      className="min-h-screen overflow-hidden bg-background px-6 py-8 text-foreground sm:px-8"
-      style={{
-        ["--font-heading" as string]: '"Fraunces", "Times New Roman", serif',
-        ["--font-sans" as string]: '"Manrope", "Segoe UI", sans-serif',
-      }}
-    >
+    <main className="min-h-screen overflow-hidden bg-background px-6 py-8 text-foreground sm:px-8">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.2),transparent_58%)]" />
-        <div className="absolute left-[-6rem] top-40 size-72 rounded-full bg-cyan-500/10 blur-3xl" />
-        <div className="absolute right-[-8rem] top-72 size-80 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,_hsl(var(--warning)/0.2),_transparent_58%)]" />
+        <div className="absolute left-[-6rem] top-40 size-72 rounded-full bg-info/10 blur-3xl" />
+        <div className="absolute right-[-8rem] top-72 size-80 rounded-full bg-success/10 blur-3xl" />
       </div>
 
       <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col gap-6">
@@ -190,7 +184,7 @@ export function PublicVenueMap(): React.ReactElement {
               </div>
 
               <Card className="overflow-hidden border-border/60 bg-card/85 shadow-sm">
-                <CardHeader className="gap-2 border-b border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),transparent)]">
+                <CardHeader className="gap-2 border-b border-border/60 bg-[linear-gradient(180deg,_hsl(var(--card)),_transparent)]">
                   <CardTitle className="flex items-center gap-2 text-xl">
                     <CompassIcon className="size-5" />
                     Interactive floor plan

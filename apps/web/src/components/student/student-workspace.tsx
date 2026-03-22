@@ -367,16 +367,10 @@ export function StudentWorkspace(): React.ReactElement {
   );
 
   return (
-    <main
-      className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.14),transparent_42%),linear-gradient(180deg,hsl(var(--background)),hsl(var(--muted)/0.42))] px-4 py-6 text-foreground sm:px-6 sm:py-8"
-      style={{
-        ["--font-heading" as string]: '"Fraunces", "Times New Roman", serif',
-        ["--font-sans" as string]: '"Manrope", "Segoe UI", sans-serif',
-      }}
-    >
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--info)/0.14),_transparent_42%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--muted)/0.42))] px-4 py-6 text-foreground sm:px-6 sm:py-8">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <Card className="overflow-hidden border-border/60 bg-card/92 shadow-sm">
-          <CardHeader className="gap-6 border-b border-border/60 bg-[linear-gradient(135deg,rgba(59,130,246,0.1),transparent_40%),radial-gradient(circle_at_top_right,rgba(245,158,11,0.18),transparent_35%)]">
+          <CardHeader className="gap-6 border-b border-border/60 bg-[linear-gradient(135deg,_hsl(var(--info)/0.1),_transparent_40%),radial-gradient(circle_at_top_right,_hsl(var(--warning)/0.18),_transparent_35%)]">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-4">
                 <div className="flex flex-wrap gap-3">
