@@ -1,4 +1,5 @@
 import { DB } from "@project/db";
+import { user } from "@project/db/schema/auth";
 import { company, recruiter } from "@project/db/schema/company";
 import { cvProfile } from "@project/db/schema/cv-profile";
 import {
@@ -9,6 +10,7 @@ import {
 import { student } from "@project/db/schema/student";
 import { room } from "@project/db/schema/venue";
 import {
+  AdminAccessLedgerEntry,
   AdminCompanyLedgerEntry,
   AdminInterviewLedgerCompany,
   AdminInterviewLedgerEntry,
@@ -21,9 +23,11 @@ import {
   Recruiter,
   Room,
   Student,
+  User,
+  type UserRoleValue,
 } from "@project/domain";
 import { asc, eq, inArray } from "drizzle-orm";
-import { Effect, Layer, ServiceMap } from "effect";
+import { DateTime, Effect, Layer, ServiceMap } from "effect";
 
 const toRoom = (roomRow: typeof room.$inferSelect) =>
   new Room({
@@ -55,6 +59,18 @@ const toStudent = (studentRow: typeof student.$inferSelect) =>
     course: studentRow.course,
   });
 
+const toUser = (userRow: typeof user.$inferSelect) =>
+  new User({
+    id: userRow.id as User["id"],
+    name: userRow.name,
+    email: userRow.email,
+    role: userRow.role,
+    emailVerified: userRow.emailVerified,
+    image: userRow.image,
+    createdAt: DateTime.make(userRow.createdAt)!,
+    updatedAt: DateTime.make(userRow.updatedAt)!,
+  });
+
 const toCvProfile = (cvProfileRow: typeof cvProfile.$inferSelect) =>
   new CvProfile({
     id: cvProfileRow.id as CvProfile["id"],
@@ -71,6 +87,13 @@ const toCvProfile = (cvProfileRow: typeof cvProfile.$inferSelect) =>
 export class AdminRepository extends ServiceMap.Service<
   AdminRepository,
   {
+    readonly listAccessLedger: () => Effect.Effect<
+      ReadonlyArray<AdminAccessLedgerEntry>
+    >;
+    readonly changeUserRole: (input: {
+      readonly userId: string;
+      readonly role: UserRoleValue;
+    }) => Effect.Effect<AdminAccessLedgerEntry | null>;
     readonly listCompanyLedger: () => Effect.Effect<
       ReadonlyArray<AdminCompanyLedgerEntry>
     >;
@@ -84,7 +107,125 @@ export class AdminRepository extends ServiceMap.Service<
     Effect.gen(function*() {
       const db = yield* DB;
 
+      const getRecruitersByCompanyIds = (companyIds: ReadonlyArray<string>) =>
+        Effect.gen(function*() {
+          if (companyIds.length === 0) {
+            return new Map<string, Array<typeof recruiter.$inferSelect>>();
+          }
+
+          const recruiterRows = yield* Effect.promise(() =>
+            db
+              .select()
+              .from(recruiter)
+              .where(inArray(recruiter.companyId, companyIds))
+              .orderBy(asc(recruiter.companyId), asc(recruiter.createdAt), asc(recruiter.id)),
+          );
+          const recruitersByCompanyId = new Map<
+            string,
+            Array<typeof recruiter.$inferSelect>
+          >();
+
+          for (const recruiterRow of recruiterRows) {
+            const current = recruitersByCompanyId.get(recruiterRow.companyId) ?? [];
+
+            current.push(recruiterRow);
+            recruitersByCompanyId.set(recruiterRow.companyId, current);
+          }
+
+          return recruitersByCompanyId;
+        });
+
+      const loadAccessEntryByUserId = (userId: string) =>
+        Effect.gen(function*() {
+          const accessRows = yield* Effect.promise(() =>
+            db
+              .select({
+                userRow: user,
+                studentRow: student,
+                companyRow: company,
+              })
+              .from(user)
+              .leftJoin(student, eq(student.ownerUserId, user.id))
+              .leftJoin(company, eq(company.ownerUserId, user.id))
+              .where(eq(user.id, userId))
+              .limit(1),
+          );
+          const accessRow = accessRows[0];
+
+          if (!accessRow) {
+            return null;
+          }
+
+          const recruitersByCompanyId = yield* getRecruitersByCompanyIds(
+            accessRow.companyRow ? [accessRow.companyRow.id] : [],
+          );
+
+          return new AdminAccessLedgerEntry({
+            user: toUser(accessRow.userRow),
+            student: accessRow.studentRow ? toStudent(accessRow.studentRow) : null,
+            company: accessRow.companyRow
+              ? toCompany(
+                accessRow.companyRow,
+                recruitersByCompanyId.get(accessRow.companyRow.id) ?? [],
+              )
+              : null,
+          });
+        });
+
       return AdminRepository.of({
+        listAccessLedger: () =>
+          Effect.gen(function*() {
+            const accessRows = yield* Effect.promise(() =>
+              db
+                .select({
+                  userRow: user,
+                  studentRow: student,
+                  companyRow: company,
+                })
+                .from(user)
+                .leftJoin(student, eq(student.ownerUserId, user.id))
+                .leftJoin(company, eq(company.ownerUserId, user.id))
+                .orderBy(asc(user.createdAt), asc(user.id)),
+            );
+
+            if (accessRows.length === 0) {
+              return [];
+            }
+
+            const recruitersByCompanyId = yield* getRecruitersByCompanyIds(
+              accessRows.flatMap(({ companyRow }) => (companyRow ? [companyRow.id] : [])),
+            );
+
+            return accessRows.map(
+              ({ userRow, studentRow, companyRow }) =>
+                new AdminAccessLedgerEntry({
+                  user: toUser(userRow),
+                  student: studentRow ? toStudent(studentRow) : null,
+                  company: companyRow
+                    ? toCompany(companyRow, recruitersByCompanyId.get(companyRow.id) ?? [])
+                    : null,
+                }),
+            );
+          }),
+        changeUserRole: ({ userId, role }) =>
+          Effect.gen(function*() {
+            const updatedUsers = yield* Effect.promise(() =>
+              db
+                .update(user)
+                .set({
+                  role,
+                  updatedAt: new Date(),
+                })
+                .where(eq(user.id, userId))
+                .returning({ id: user.id }),
+            );
+
+            if (updatedUsers.length === 0) {
+              return null;
+            }
+
+            return yield* loadAccessEntryByUserId(userId);
+          }),
         listCompanyLedger: () =>
           Effect.gen(function*() {
             const companyRows = yield* Effect.promise(() =>
@@ -102,29 +243,9 @@ export class AdminRepository extends ServiceMap.Service<
               return [];
             }
 
-            const recruiterRows = yield* Effect.promise(() =>
-              db
-                .select()
-                .from(recruiter)
-                .where(
-                  inArray(
-                    recruiter.companyId,
-                    companyRows.map(({ companyRow }) => companyRow.id),
-                  ),
-                )
-                .orderBy(asc(recruiter.companyId), asc(recruiter.createdAt), asc(recruiter.id)),
+            const recruitersByCompanyId = yield* getRecruitersByCompanyIds(
+              companyRows.map(({ companyRow }) => companyRow.id),
             );
-            const recruitersByCompanyId = new Map<
-              string,
-              Array<typeof recruiter.$inferSelect>
-            >();
-
-            for (const recruiterRow of recruiterRows) {
-              const current = recruitersByCompanyId.get(recruiterRow.companyId) ?? [];
-
-              current.push(recruiterRow);
-              recruitersByCompanyId.set(recruiterRow.companyId, current);
-            }
 
             return companyRows.map(
               ({ companyRow, roomRow }) =>

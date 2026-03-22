@@ -14,6 +14,7 @@ import { cvProfileType, globalInterviewTag } from "@project/db/schema/vocabulary
 import { type GlobalInterviewTag as GlobalInterviewTagModel } from "@project/domain";
 import {
   AdminRpcGroup,
+  ActorRpcGroup,
   CompanyRpcGroup,
   CvProfileRpcGroup,
   InterviewRpcGroup,
@@ -27,6 +28,7 @@ import { RpcTest } from "effect/unstable/rpc";
 
 import {
   AdminRpcLive,
+  ActorRpcLive,
   AppRpcMiddlewareLive,
   CompanyRpcLive,
   CvProfileRpcLive,
@@ -47,6 +49,7 @@ import {
 
 const AdminTestLive = makeRpcTestLive(
   AdminRpcLive,
+  ActorRpcLive,
   CompanyRpcLive,
   CvProfileRpcLive,
   InterviewRpcLive,
@@ -57,6 +60,8 @@ const AdminTestLive = makeRpcTestLive(
 );
 
 const makeAdminClient = RpcTest.makeClient(AdminRpcGroup);
+
+const makeActorClient = RpcTest.makeClient(ActorRpcGroup);
 
 const makeCompanyClient = RpcTest.makeClient(CompanyRpcGroup);
 
@@ -270,16 +275,129 @@ describeWithStorage("admin rpc", () => {
     ),
   );
 
-  it("non-admin actors cannot read the admin oversight ledgers", runLayerEffect(
-    AdminTestLive,
-    () => Effect.gen(function*() {
-      const companyHeaders = yield* provisionSessionHeaders("company");
-      const client = yield* makeAdminClient;
-      const exit = yield* Effect.exit(
-        client.listAdminCompanyLedger().pipe(RpcClient.withHeaders(companyHeaders)),
-      );
+  it(
+    "admin actors can list user access entries and persist role changes without dropping linked profile context",
+    runLayerEffect(AdminTestLive, () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const studentHeaders = yield* provisionSessionHeaders("student");
+        const companyHeaders = yield* provisionSessionHeaders("company");
+        const adminClient = yield* makeAdminClient;
+        const companyClient = yield* makeCompanyClient;
+        const studentClient = yield* makeStudentClient;
 
-      expect(exit._tag).toBe("Failure");
-    }),
-  ));
+        const studentProfile = yield* studentClient.upsertStudentOnboarding({
+          firstName: "Ada",
+          lastName: "Lovelace",
+          course: "Computer Science",
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+        const companyProfile = yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
+          RpcClient.withHeaders(companyHeaders),
+        );
+
+        const initialAccessLedger = yield* adminClient.listAdminAccessLedger().pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
+        const studentEntry = initialAccessLedger.find(
+          (entry) => entry.student?.id === studentProfile.id,
+        );
+        const companyEntry = initialAccessLedger.find(
+          (entry) => entry.company?.id === companyProfile.id,
+        );
+
+        expect(studentEntry).toMatchObject({
+          user: {
+            role: "student",
+          },
+          student: studentProfile,
+          company: null,
+        });
+        expect(companyEntry).toMatchObject({
+          user: {
+            role: "company",
+          },
+          student: null,
+          company: companyProfile,
+        });
+
+        const updatedEntry = yield* adminClient.changeAdminUserRole({
+          userId: companyEntry!.user.id,
+          role: "check-in",
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        expect(updatedEntry).toMatchObject({
+          user: {
+            id: companyEntry!.user.id,
+            role: "check-in",
+          },
+          student: null,
+          company: companyProfile,
+        });
+
+        expect(
+          yield* adminClient.listAdminAccessLedger().pipe(
+            RpcClient.withHeaders(adminHeaders),
+          ),
+        ).toContainEqual(updatedEntry);
+      }),
+    ),
+  );
+
+  it(
+    "non-admin actors cannot manage access and changed sessions immediately observe their new role",
+    runLayerEffect(AdminTestLive, () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const companyHeaders = yield* provisionSessionHeaders("company");
+        const adminClient = yield* makeAdminClient;
+        const actorClient = yield* makeActorClient;
+        const companyActor = yield* actorClient.currentActor().pipe(
+          RpcClient.withHeaders(companyHeaders),
+        );
+
+        const deniedListExit = yield* Effect.exit(
+          adminClient.listAdminAccessLedger().pipe(RpcClient.withHeaders(companyHeaders)),
+        );
+        const deniedChangeExit = yield* Effect.exit(
+          adminClient.changeAdminUserRole({
+            userId: companyActor.id,
+            role: "check-in",
+          }).pipe(RpcClient.withHeaders(companyHeaders)),
+        );
+
+        expect(deniedListExit._tag).toBe("Failure");
+        expect(deniedChangeExit._tag).toBe("Failure");
+
+        yield* adminClient.changeAdminUserRole({
+          userId: companyActor.id,
+          role: "check-in",
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        expect(
+          yield* actorClient.currentActor().pipe(
+            RpcClient.withHeaders(companyHeaders),
+          ),
+        ).toMatchObject({
+          id: companyActor.id,
+          role: "check-in",
+        });
+
+        const companyAccessExit = yield* Effect.exit(
+          actorClient.requireCompanyAccess().pipe(
+            RpcClient.withHeaders(companyHeaders),
+          ),
+        );
+
+        expect(companyAccessExit._tag).toBe("Failure");
+        expect(
+          yield* actorClient.requireCheckInAccess().pipe(
+            RpcClient.withHeaders(companyHeaders),
+          ),
+        ).toMatchObject({
+          id: companyActor.id,
+          role: "check-in",
+        });
+      }),
+    ),
+  );
 });

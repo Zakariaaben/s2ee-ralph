@@ -1,7 +1,9 @@
 import {
+  type AdminAccessLedgerEntry,
   type AdminCompanyLedgerEntry,
   type AdminInterviewLedgerEntry,
   type AuthenticatedActor,
+  type UserRoleValue,
 } from "@project/domain";
 import { Effect, Layer, ServiceMap } from "effect";
 import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
@@ -20,6 +22,14 @@ const requireAdminActor = (actor: AuthenticatedActor) =>
 export class AdminService extends ServiceMap.Service<
   AdminService,
   {
+    readonly listAdminAccessLedger: (
+      actor: AuthenticatedActor,
+    ) => Effect.Effect<ReadonlyArray<AdminAccessLedgerEntry>, HttpApiError.Forbidden>;
+    readonly changeAdminUserRole: (input: {
+      readonly actor: AuthenticatedActor;
+      readonly userId: string;
+      readonly role: UserRoleValue;
+    }) => Effect.Effect<AdminAccessLedgerEntry, HttpApiError.Forbidden | HttpApiError.NotFound>;
     readonly listAdminCompanyLedger: (
       actor: AuthenticatedActor,
     ) => Effect.Effect<ReadonlyArray<AdminCompanyLedgerEntry>, HttpApiError.Forbidden>;
@@ -34,6 +44,27 @@ export class AdminService extends ServiceMap.Service<
       const adminRepository = yield* AdminRepository;
 
       return AdminService.of({
+        listAdminAccessLedger: (actor) =>
+          Effect.gen(function*() {
+            yield* requireAdminActor(actor);
+
+            return yield* adminRepository.listAccessLedger();
+          }),
+        changeAdminUserRole: ({ actor, userId, role }) =>
+          Effect.gen(function*() {
+            yield* requireAdminActor(actor);
+
+            const updatedEntry = yield* adminRepository.changeUserRole({
+              userId,
+              role,
+            });
+
+            if (!updatedEntry) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            return updatedEntry;
+          }),
         listAdminCompanyLedger: (actor) =>
           Effect.gen(function*() {
             yield* requireAdminActor(actor);

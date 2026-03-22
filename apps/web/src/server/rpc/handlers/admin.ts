@@ -19,5 +19,21 @@ export const makeAdminRpcHandlers = Effect.gen(function*() {
 
         return yield* adminService.listAdminInterviewLedger(actor);
       }),
+    listAdminAccessLedger: () =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* adminService.listAdminAccessLedger(actor);
+      }),
+    changeAdminUserRole: ({ userId, role }) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* adminService.changeAdminUserRole({
+          actor,
+          userId,
+          role,
+        });
+      }),
   });
 });
