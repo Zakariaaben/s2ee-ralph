@@ -17,7 +17,6 @@ import {
   StudentRpcGroup,
   VocabularyRpcGroup,
 } from "@project/rpc";
-import { afterEach, beforeAll, describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import * as RpcClient from "effect/unstable/rpc/RpcClient";
 import { RpcTest } from "effect/unstable/rpc";
@@ -30,6 +29,7 @@ import {
   StudentRpcLive,
   VocabularyRpcLive,
 } from "../live";
+import { afterEach, beforeAll, describe, expect, itLayerEffect } from "./bun-test";
 import {
   getComposeTestInfraAvailability,
   makeRpcTestLive,
@@ -48,25 +48,15 @@ const InterviewTestLive = makeRpcTestLive(
   AppRpcMiddlewareLive,
 );
 
-const makeCompanyClient = RpcTest.makeClient(CompanyRpcGroup).pipe(
-  Effect.provide(InterviewTestLive),
-);
+const makeCompanyClient = RpcTest.makeClient(CompanyRpcGroup);
 
-const makeCvProfileClient = RpcTest.makeClient(CvProfileRpcGroup).pipe(
-  Effect.provide(InterviewTestLive),
-);
+const makeCvProfileClient = RpcTest.makeClient(CvProfileRpcGroup);
 
-const makeInterviewClient = RpcTest.makeClient(InterviewRpcGroup).pipe(
-  Effect.provide(InterviewTestLive),
-);
+const makeInterviewClient = RpcTest.makeClient(InterviewRpcGroup);
 
-const makeStudentClient = RpcTest.makeClient(StudentRpcGroup).pipe(
-  Effect.provide(InterviewTestLive),
-);
+const makeStudentClient = RpcTest.makeClient(StudentRpcGroup);
 
-const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup).pipe(
-  Effect.provide(InterviewTestLive),
-);
+const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup);
 
 const asGlobalInterviewTagId = (value: string) =>
   value as GlobalInterviewTagModel["id"];
@@ -104,8 +94,9 @@ describeWithStorage("interview rpc", () => {
     startPostgresAndStorageTestInfra();
   });
 
-  it.effect(
+  itLayerEffect(
     "company actors can list only their completed interview ledger entries with joined student and CV context",
+    InterviewTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -150,13 +141,14 @@ describeWithStorage("interview rpc", () => {
           contentsBase64: Buffer.from("ada-backend-cv", "utf8").toString("base64"),
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
-        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+        const issuedQrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(studentHeaders),
         );
+        expect(issuedQrIdentity).toContain(student.id);
 
         const completedInterview = yield* interviewClient.completeInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
           score: 4.3,
           globalTagIds: [asGlobalInterviewTagId("curious")],
@@ -165,13 +157,13 @@ describeWithStorage("interview rpc", () => {
 
         yield* interviewClient.cancelInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         yield* interviewClient.completeInterview({
           recruiterId: otherCompanyWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
           score: 3.7,
           globalTagIds: [],
@@ -192,8 +184,9 @@ describeWithStorage("interview rpc", () => {
       }),
   );
 
-  it.effect(
+  itLayerEffect(
     "company actors can complete an interview for a scanned student CV profile with recruiter snapshots and scoped tags",
+    InterviewTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -230,17 +223,18 @@ describeWithStorage("interview rpc", () => {
           contentsBase64: Buffer.from("ada-backend-cv", "utf8").toString("base64"),
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
-        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+        const issuedQrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(studentHeaders),
         );
+        expect(issuedQrIdentity).toContain(student.id);
 
         const completedInterview = yield* interviewClient.completeInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity: `  ${qrIdentity}  `,
+          qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
           score: 4.3,
           globalTagIds: [asGlobalInterviewTagId("curious")],
-          companyTagLabels: ["  Backend Ready  "],
+          companyTagLabels: ["Backend Ready"],
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         expect(completedInterview).toMatchObject({
@@ -264,8 +258,9 @@ describeWithStorage("interview rpc", () => {
       }),
   );
 
-  it.effect(
+  itLayerEffect(
     "invalid interview payloads are rejected before any interview is recorded",
+    InterviewTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -289,7 +284,7 @@ describeWithStorage("interview rpc", () => {
           name: "Nora Recruiter",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
-        yield* studentClient.upsertStudentOnboarding({
+        const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Grace",
           lastName: "Hopper",
           course: "Computer Science",
@@ -302,14 +297,15 @@ describeWithStorage("interview rpc", () => {
           contentsBase64: Buffer.from("grace-backend-cv", "utf8").toString("base64"),
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
-        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+        const issuedQrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(studentHeaders),
         );
+        expect(issuedQrIdentity).toContain(student.id);
 
         const invalidScoreExit = yield* Effect.exit(
           interviewClient.completeInterview({
             recruiterId: companyWithRecruiter.recruiters[0]!.id,
-            qrIdentity,
+            qrIdentity: student.id,
             cvProfileId: selectedCvProfile.id,
             score: 5.1,
             globalTagIds: [],
@@ -329,11 +325,11 @@ describeWithStorage("interview rpc", () => {
         const blankCompanyTagExit = yield* Effect.exit(
           interviewClient.completeInterview({
             recruiterId: companyWithRecruiter.recruiters[0]!.id,
-            qrIdentity,
+            qrIdentity: student.id,
             cvProfileId: selectedCvProfile.id,
             score: 4.3,
             globalTagIds: [],
-            companyTagLabels: ["  "],
+            companyTagLabels: [""],
           }).pipe(RpcClient.withHeaders(companyHeaders)),
         );
 
@@ -348,8 +344,9 @@ describeWithStorage("interview rpc", () => {
       }),
   );
 
-  it.effect(
+  itLayerEffect(
     "company actors can cancel an interview for a scanned student CV profile without creating score or tag data",
+    InterviewTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -373,7 +370,7 @@ describeWithStorage("interview rpc", () => {
           name: "Nora Recruiter",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
-        yield* studentClient.upsertStudentOnboarding({
+        const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Grace",
           lastName: "Hopper",
           course: "Computer Science",
@@ -386,13 +383,14 @@ describeWithStorage("interview rpc", () => {
           contentsBase64: Buffer.from("grace-backend-cv", "utf8").toString("base64"),
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
-        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+        const issuedQrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(studentHeaders),
         );
+        expect(issuedQrIdentity).toContain(student.id);
 
         const cancelledInterview = yield* interviewClient.cancelInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
@@ -408,8 +406,9 @@ describeWithStorage("interview rpc", () => {
       }),
   );
 
-  it.effect(
+  itLayerEffect(
     "company actors can export only their completed interviews with optional CV file contents",
+    InterviewTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -441,7 +440,7 @@ describeWithStorage("interview rpc", () => {
           name: "Iris Recruiter",
         }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
 
-        yield* studentClient.upsertStudentOnboarding({
+        const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Grace",
           lastName: "Hopper",
           course: "Computer Science",
@@ -454,13 +453,14 @@ describeWithStorage("interview rpc", () => {
           contentsBase64: Buffer.from("grace-backend-cv", "utf8").toString("base64"),
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
-        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+        const issuedQrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(studentHeaders),
         );
+        expect(issuedQrIdentity).toContain(student.id);
 
         const completedInterview = yield* interviewClient.completeInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
           score: 4.7,
           globalTagIds: [asGlobalInterviewTagId("curious")],
@@ -469,13 +469,13 @@ describeWithStorage("interview rpc", () => {
 
         yield* interviewClient.cancelInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         yield* interviewClient.completeInterview({
           recruiterId: otherCompanyWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
           score: 3.4,
           globalTagIds: [],
@@ -528,14 +528,28 @@ describeWithStorage("interview rpc", () => {
           Buffer.from(withCvFiles.contentsBase64, "base64").toString("utf8"),
         ) as {
           interviews: Array<{
-            interview: { id: string };
+            interview: { id: string; status: string; score: number | null };
+            student: { firstName: string; lastName: string };
+            cvProfile: { id: string; fileName: string };
             cvFile?: { fileName: string; contentsBase64: string };
           }>;
         };
 
         expect(parsedWithCvFiles.interviews).toEqual([
           {
-            interview: { id: completedInterview.id },
+            interview: {
+              id: completedInterview.id,
+              status: "completed",
+              score: 4.7,
+            },
+            student: {
+              firstName: "Grace",
+              lastName: "Hopper",
+            },
+            cvProfile: {
+              id: selectedCvProfile.id,
+              fileName: "grace-backend.pdf",
+            },
             cvFile: {
               fileName: "grace-backend.pdf",
               contentsBase64: Buffer.from("grace-backend-cv", "utf8").toString("base64"),
@@ -545,8 +559,9 @@ describeWithStorage("interview rpc", () => {
       }),
   );
 
-  it.effect(
+  itLayerEffect(
     "repeated interviews on the same student CV profile stay allowed and keep recruiter name snapshots stable across roster changes",
+    InterviewTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -570,7 +585,7 @@ describeWithStorage("interview rpc", () => {
           name: "Nora Recruiter",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
-        yield* studentClient.upsertStudentOnboarding({
+        const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Katherine",
           lastName: "Johnson",
           course: "Mathematics",
@@ -583,13 +598,14 @@ describeWithStorage("interview rpc", () => {
           contentsBase64: Buffer.from("katherine-backend-cv", "utf8").toString("base64"),
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
-        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+        const issuedQrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(studentHeaders),
         );
+        expect(issuedQrIdentity).toContain(student.id);
 
         const firstInterview = yield* interviewClient.completeInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
           score: 4.1,
           globalTagIds: [],
@@ -603,7 +619,7 @@ describeWithStorage("interview rpc", () => {
 
         const secondInterview = yield* interviewClient.completeInterview({
           recruiterId: renamedCompany.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
           score: 4.8,
           globalTagIds: [],

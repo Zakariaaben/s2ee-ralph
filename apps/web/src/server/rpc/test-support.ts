@@ -49,9 +49,13 @@ export const TestServerEnvLive = Layer.succeed(
   }),
 );
 
-export const DatabaseTestLive = DBLive.pipe(Layer.provide(TestServerEnvLive));
+export const DatabaseTestLive = Layer.fresh(
+  DBLive.pipe(Layer.provide(TestServerEnvLive)),
+);
 
-const AuthTestLive = Layer.mergeAll(TestServerEnvLive, DatabaseTestLive);
+const AuthTestLive = Layer.fresh(
+  Layer.mergeAll(TestServerEnvLive, DatabaseTestLive),
+);
 
 export const makeRpcTestLive = (
   ...layers: [
@@ -59,9 +63,9 @@ export const makeRpcTestLive = (
     ...Array<Layer.Layer<any, any, any>>,
   ]
 ) =>
-  Layer.mergeAll(...layers).pipe(
-  Layer.provideMerge(DatabaseTestLive),
-  Layer.provideMerge(TestServerEnvLive),
+  Layer.fresh(Layer.mergeAll(...layers)).pipe(
+    Layer.provideMerge(DatabaseTestLive),
+    Layer.provideMerge(TestServerEnvLive),
   );
 
 const runDockerInfo = () => {

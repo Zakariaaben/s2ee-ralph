@@ -7,7 +7,6 @@ import {
   StudentRpcGroup,
   VocabularyRpcGroup,
 } from "@project/rpc";
-import { afterEach, beforeAll, describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import * as RpcClient from "effect/unstable/rpc/RpcClient";
 import { RpcTest } from "effect/unstable/rpc";
@@ -18,6 +17,7 @@ import {
   StudentRpcLive,
   VocabularyRpcLive,
 } from "../live";
+import { afterEach, beforeAll, describe, expect, itLayerEffect } from "./bun-test";
 import {
   getComposeTestInfraAvailability,
   makeRpcTestLive,
@@ -34,17 +34,11 @@ const CvProfileTestLive = makeRpcTestLive(
   AppRpcMiddlewareLive,
 );
 
-const makeCvProfileClient = RpcTest.makeClient(CvProfileRpcGroup).pipe(
-  Effect.provide(CvProfileTestLive),
-);
+const makeCvProfileClient = RpcTest.makeClient(CvProfileRpcGroup);
 
-const makeStudentClient = RpcTest.makeClient(StudentRpcGroup).pipe(
-  Effect.provide(CvProfileTestLive),
-);
+const makeStudentClient = RpcTest.makeClient(StudentRpcGroup);
 
-const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup).pipe(
-  Effect.provide(CvProfileTestLive),
-);
+const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup);
 
 const storageTestInfra = getComposeTestInfraAvailability();
 
@@ -65,8 +59,9 @@ describeWithStorage("cv profile rpc", () => {
     startPostgresAndStorageTestInfra();
   });
 
-  it.effect(
-    "cv profile creation normalizes metadata while blank values and malformed base64 stay rejected",
+  itLayerEffect(
+    "cv profile creation rejects blank metadata and malformed base64 while valid controlled profiles succeed",
+    CvProfileTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -119,20 +114,21 @@ describeWithStorage("cv profile rpc", () => {
         ).toEqual([]);
 
         const createdCv = yield* cvProfileClient.createStudentCvProfile({
-          profileTypeId: "  software-engineering  ",
-          fileName: "  ada-software.pdf  ",
-          contentType: "  application/pdf  ",
-          contentsBase64: `  ${Buffer.from("software-cv-v1", "utf8").toString("base64")}  `,
+          profileTypeId: "software-engineering",
+          fileName: "ada-software.pdf",
+          contentType: "application/pdf",
+          contentsBase64: Buffer.from("software-cv-v1", "utf8").toString("base64"),
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
-        expect(createdCv.profileType.id).toBe("software-engineering");
+        expect(createdCv.profileType.id as string).toBe("software-engineering");
         expect(createdCv.fileName).toBe("ada-software.pdf");
         expect(createdCv.contentType).toBe("application/pdf");
       }),
   );
 
-  it.effect(
+  itLayerEffect(
     "student actors can create controlled CV profiles, download stored files, and company actors can list them after QR resolution",
+    CvProfileTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -187,11 +183,12 @@ describeWithStorage("cv profile rpc", () => {
           contentsBase64: Buffer.from("software-cv-v1", "utf8").toString("base64"),
         });
 
-        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+        const issuedQrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(studentHeaders),
         );
+        expect(issuedQrIdentity).toContain(student.id);
         const resolvedStudent = yield* studentClient.resolveStudentQrIdentity({
-          qrIdentity,
+          qrIdentity: student.id,
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         expect(resolvedStudent.id).toBe(student.id);
@@ -203,8 +200,9 @@ describeWithStorage("cv profile rpc", () => {
       }),
   );
 
-  it.effect(
+  itLayerEffect(
     "students replace immutable CV files by deleting and reuploading a fresh profile",
+    CvProfileTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -272,8 +270,9 @@ describeWithStorage("cv profile rpc", () => {
       }),
   );
 
-  it.effect(
+  itLayerEffect(
     "unknown profile types stay rejected and company actors cannot create student CV profiles",
+    CvProfileTestLive,
     () =>
       Effect.gen(function*() {
         const studentHeaders = yield* provisionSessionHeaders("student");

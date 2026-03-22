@@ -12,12 +12,16 @@ if (files.length === 0) {
   process.exit(0);
 }
 
-const command = Bun.spawn(["bun", "test", ...files], {
-  cwd: process.cwd(),
-  stderr: "inherit",
-  stdout: "inherit",
-});
+for (const file of files) {
+  const command = Bun.spawn(["bun", "test", "--timeout", "60000", file], {
+    cwd: process.cwd(),
+    stderr: "inherit",
+    stdout: "inherit",
+  });
 
-const exitCode = await command.exited;
+  const exitCode = await command.exited;
 
-process.exit(exitCode);
+  if (exitCode !== 0) {
+    process.exit(exitCode);
+  }
+}

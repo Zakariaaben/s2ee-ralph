@@ -30,7 +30,7 @@
   "devDependencies": {
     "@project/config": "workspace:*",
     "@types/pg": "^8.16.0",
-    "drizzle-kit": "1.0.0-beta.1-f654053",
+    "drizzle-kit": "1.0.0-beta.17-67b1795",
     "typescript": "^5"
   }
 }

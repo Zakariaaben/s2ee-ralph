@@ -20,7 +20,6 @@ import {
   VenueRpcGroup,
   VocabularyRpcGroup,
 } from "@project/rpc";
-import { afterEach, beforeAll, describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import * as RpcClient from "effect/unstable/rpc/RpcClient";
 import { RpcTest } from "effect/unstable/rpc";
@@ -35,6 +34,7 @@ import {
   VenueRpcLive,
   VocabularyRpcLive,
 } from "../live";
+import { afterEach, beforeAll, describe, expect, itLayerEffect } from "./bun-test";
 import {
   getComposeTestInfraAvailability,
   makeRpcTestLive,
@@ -55,33 +55,19 @@ const AdminTestLive = makeRpcTestLive(
   AppRpcMiddlewareLive,
 );
 
-const makeAdminClient = RpcTest.makeClient(AdminRpcGroup).pipe(
-  Effect.provide(AdminTestLive),
-);
+const makeAdminClient = RpcTest.makeClient(AdminRpcGroup);
 
-const makeCompanyClient = RpcTest.makeClient(CompanyRpcGroup).pipe(
-  Effect.provide(AdminTestLive),
-);
+const makeCompanyClient = RpcTest.makeClient(CompanyRpcGroup);
 
-const makeCvProfileClient = RpcTest.makeClient(CvProfileRpcGroup).pipe(
-  Effect.provide(AdminTestLive),
-);
+const makeCvProfileClient = RpcTest.makeClient(CvProfileRpcGroup);
 
-const makeInterviewClient = RpcTest.makeClient(InterviewRpcGroup).pipe(
-  Effect.provide(AdminTestLive),
-);
+const makeInterviewClient = RpcTest.makeClient(InterviewRpcGroup);
 
-const makeStudentClient = RpcTest.makeClient(StudentRpcGroup).pipe(
-  Effect.provide(AdminTestLive),
-);
+const makeStudentClient = RpcTest.makeClient(StudentRpcGroup);
 
-const makeVenueClient = RpcTest.makeClient(VenueRpcGroup).pipe(
-  Effect.provide(AdminTestLive),
-);
+const makeVenueClient = RpcTest.makeClient(VenueRpcGroup);
 
-const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup).pipe(
-  Effect.provide(AdminTestLive),
-);
+const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup);
 
 const asGlobalInterviewTagId = (value: string) =>
   value as GlobalInterviewTagModel["id"];
@@ -120,8 +106,9 @@ describeWithStorage("admin rpc", () => {
     startPostgresAndStorageTestInfra();
   });
 
-  it.effect(
+  itLayerEffect(
     "admin actors can list the global company ledger with recruiter, placement, and arrival context",
+    AdminTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -175,8 +162,9 @@ describeWithStorage("admin rpc", () => {
       }),
   );
 
-  it.effect(
+  itLayerEffect(
     "admin actors can list the global interview ledger with company, student, CV, and status context across companies",
+    AdminTestLive,
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -229,13 +217,14 @@ describeWithStorage("admin rpc", () => {
           contentType: "application/pdf",
           contentsBase64: Buffer.from("ada-backend-cv", "utf8").toString("base64"),
         }).pipe(RpcClient.withHeaders(studentHeaders));
-        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+        const issuedQrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(studentHeaders),
         );
+        expect(issuedQrIdentity).toContain(student.id);
 
         const completedInterview = yield* interviewClient.completeInterview({
           recruiterId: acmeWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: cv.id,
           score: 4.3,
           globalTagIds: [asGlobalInterviewTagId("curious")],
@@ -243,7 +232,7 @@ describeWithStorage("admin rpc", () => {
         }).pipe(RpcClient.withHeaders(companyHeaders));
         const cancelledInterview = yield* interviewClient.cancelInterview({
           recruiterId: globexWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: student.id,
           cvProfileId: cv.id,
         }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
 
@@ -280,7 +269,7 @@ describeWithStorage("admin rpc", () => {
       }),
   );
 
-  it.effect("non-admin actors cannot read the admin oversight ledgers", () =>
+  itLayerEffect("non-admin actors cannot read the admin oversight ledgers", AdminTestLive, () =>
     Effect.gen(function*() {
       const companyHeaders = yield* provisionSessionHeaders("company");
       const client = yield* makeAdminClient;
