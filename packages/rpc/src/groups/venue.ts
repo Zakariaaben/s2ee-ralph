@@ -20,6 +20,25 @@ export class AssignCompanyPlacementInput extends Schema.Class<AssignCompanyPlace
   standNumber: PositiveInteger,
 }) {}
 
+export class UpdateRoomInput extends Schema.Class<UpdateRoomInput>(
+  "UpdateRoomInput",
+)({
+  roomId: RoomId,
+  code: RoomCode,
+}) {}
+
+export class DeleteRoomInput extends Schema.Class<DeleteRoomInput>(
+  "DeleteRoomInput",
+)({
+  roomId: RoomId,
+}) {}
+
+export class ClearCompanyPlacementInput extends Schema.Class<ClearCompanyPlacementInput>(
+  "ClearCompanyPlacementInput",
+)({
+  companyId: Schema.String,
+}) {}
+
 export class MarkCompanyArrivedInput extends Schema.Class<MarkCompanyArrivedInput>(
   "MarkCompanyArrivedInput",
 )({
@@ -47,10 +66,25 @@ export const VenueRpcGroup = RpcGroup.make(
     error: Schema.Union([VenueRpcAccessError, HttpApiError.BadRequest]),
     payload: CreateRoomInput,
   }),
+  Rpc.make("updateRoom", {
+    success: Room,
+    error: VenueRpcMutationError,
+    payload: UpdateRoomInput,
+  }),
+  Rpc.make("deleteRoom", {
+    success: Room,
+    error: Schema.Union([VenueRpcAccessError, HttpApiError.NotFound]),
+    payload: DeleteRoomInput,
+  }),
   Rpc.make("assignCompanyPlacement", {
     success: VenueCompany,
     error: VenueRpcMutationError,
     payload: AssignCompanyPlacementInput,
+  }),
+  Rpc.make("clearCompanyPlacement", {
+    success: Schema.Void,
+    error: Schema.Union([VenueRpcAccessError, HttpApiError.NotFound]),
+    payload: ClearCompanyPlacementInput,
   }),
   Rpc.make("markCompanyArrived", {
     success: VenueCompany,

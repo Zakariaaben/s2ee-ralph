@@ -1,4 +1,8 @@
-import { AssignCompanyPlacementInput, CreateRoomInput } from "@project/rpc";
+import {
+  AssignCompanyPlacementInput,
+  CreateRoomInput,
+  UpdateRoomInput,
+} from "@project/rpc";
 import { describe, expect, it } from "@effect/vitest";
 import { Schema } from "effect";
 
@@ -45,5 +49,17 @@ describe("venue rpc input schemas", () => {
         standNumber: 1.5,
       })
     ).toThrow();
+  });
+
+  it("normalizes update-room payloads with the same room-code rules", () => {
+    expect(
+      Schema.decodeUnknownSync(UpdateRoomInput)({
+        roomId: "room-1",
+        code: "  s27  ",
+      }),
+    ).toEqual({
+      roomId: "room-1",
+      code: "S27",
+    });
   });
 });

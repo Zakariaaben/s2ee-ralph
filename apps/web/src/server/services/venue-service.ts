@@ -34,6 +34,25 @@ export class VenueService extends ServiceMap.Service<
         readonly code: string;
       },
     ) => Effect.Effect<Room, HttpApiError.Forbidden>;
+    readonly updateRoom: (
+      input: {
+        readonly actor: AuthenticatedActor;
+        readonly roomId: string;
+        readonly code: string;
+      },
+    ) => Effect.Effect<
+      Room,
+      HttpApiError.Forbidden | HttpApiError.NotFound
+    >;
+    readonly deleteRoom: (
+      input: {
+        readonly actor: AuthenticatedActor;
+        readonly roomId: string;
+      },
+    ) => Effect.Effect<
+      Room,
+      HttpApiError.Forbidden | HttpApiError.NotFound
+    >;
     readonly assignCompanyPlacement: (
       input: {
         readonly actor: AuthenticatedActor;
@@ -45,6 +64,12 @@ export class VenueService extends ServiceMap.Service<
       VenueCompany,
       HttpApiError.Forbidden | HttpApiError.NotFound
     >;
+    readonly clearCompanyPlacement: (
+      input: {
+        readonly actor: AuthenticatedActor;
+        readonly companyId: string;
+      },
+    ) => Effect.Effect<void, HttpApiError.Forbidden | HttpApiError.NotFound>;
     readonly markCompanyArrived: (
       input: {
         readonly actor: AuthenticatedActor;
@@ -73,6 +98,35 @@ export class VenueService extends ServiceMap.Service<
               code,
             });
           }),
+        updateRoom: ({ actor, roomId, code }) =>
+          Effect.gen(function*() {
+            yield* requireAdminActor(actor);
+
+            const updatedRoom = yield* venueRepository.updateRoom({
+              roomId,
+              code,
+            });
+
+            if (!updatedRoom) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            return updatedRoom;
+          }),
+        deleteRoom: ({ actor, roomId }) =>
+          Effect.gen(function*() {
+            yield* requireAdminActor(actor);
+
+            const deletedRoom = yield* venueRepository.deleteRoom({
+              roomId,
+            });
+
+            if (!deletedRoom) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            return deletedRoom;
+          }),
         assignCompanyPlacement: ({ actor, companyId, roomId, standNumber }) =>
           Effect.gen(function*() {
             yield* requireAdminActor(actor);
@@ -87,6 +141,18 @@ export class VenueService extends ServiceMap.Service<
             }
 
             return placedCompany;
+          }),
+        clearCompanyPlacement: ({ actor, companyId }) =>
+          Effect.gen(function*() {
+            yield* requireAdminActor(actor);
+
+            const cleared = yield* venueRepository.clearCompanyPlacement({
+              companyId,
+            });
+
+            if (!cleared) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
           }),
         markCompanyArrived: ({ actor, companyId }) =>
           Effect.gen(function*() {

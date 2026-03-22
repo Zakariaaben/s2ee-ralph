@@ -22,6 +22,17 @@ export class VenueRepository extends ServiceMap.Service<
         readonly code: string;
       },
     ) => Effect.Effect<Room>;
+    readonly updateRoom: (
+      input: {
+        readonly roomId: string;
+        readonly code: string;
+      },
+    ) => Effect.Effect<Room | null>;
+    readonly deleteRoom: (
+      input: {
+        readonly roomId: string;
+      },
+    ) => Effect.Effect<Room | null>;
     readonly assignCompanyPlacement: (
       input: {
         readonly companyId: string;
@@ -29,6 +40,11 @@ export class VenueRepository extends ServiceMap.Service<
         readonly standNumber: number;
       },
     ) => Effect.Effect<VenueCompany | null>;
+    readonly clearCompanyPlacement: (
+      input: {
+        readonly companyId: string;
+      },
+    ) => Effect.Effect<boolean>;
     readonly markCompanyArrived: (
       input: {
         readonly companyId: string;
@@ -154,6 +170,65 @@ export class VenueRepository extends ServiceMap.Service<
 
             return toRoom(savedRoom);
           }),
+        updateRoom: ({ roomId, code }) =>
+          Effect.gen(function*() {
+            const updatedRooms = yield* Effect.promise(() =>
+              db
+                .update(room)
+                .set({
+                  code,
+                  updatedAt: new Date(),
+                })
+                .where(eq(room.id, roomId))
+                .returning(),
+            );
+            const savedRoom = updatedRooms[0];
+
+            if (!savedRoom) {
+              return null;
+            }
+
+            return toRoom(savedRoom);
+          }),
+        deleteRoom: ({ roomId }) =>
+          Effect.gen(function*() {
+            const deletedRoom = yield* Effect.promise(() =>
+              db.transaction(async (tx) => {
+                const roomRows = await tx
+                  .select()
+                  .from(room)
+                  .where(eq(room.id, roomId))
+                  .limit(1);
+                const savedRoom = roomRows[0];
+
+                if (!savedRoom) {
+                  return null;
+                }
+
+                await tx
+                  .update(company)
+                  .set({
+                    roomId: null,
+                    standNumber: null,
+                    arrivalStatus: "not-arrived",
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(company.roomId, roomId));
+
+                await tx
+                  .delete(room)
+                  .where(eq(room.id, roomId));
+
+                return savedRoom;
+              }),
+            );
+
+            if (!deletedRoom) {
+              return null;
+            }
+
+            return toRoom(deletedRoom);
+          }),
         assignCompanyPlacement: ({ companyId, roomId, standNumber }) =>
           Effect.gen(function*() {
             const updatedCompanies = yield* Effect.promise(() =>
@@ -174,6 +249,23 @@ export class VenueRepository extends ServiceMap.Service<
             }
 
             return yield* loadPlacedCompanyById(companyId);
+          }),
+        clearCompanyPlacement: ({ companyId }) =>
+          Effect.gen(function*() {
+            const updatedCompanies = yield* Effect.promise(() =>
+              db
+                .update(company)
+                .set({
+                  roomId: null,
+                  standNumber: null,
+                  arrivalStatus: "not-arrived",
+                  updatedAt: new Date(),
+                })
+                .where(eq(company.id, companyId))
+                .returning({ id: company.id }),
+            );
+
+            return updatedCompanies.length > 0;
           }),
         markCompanyArrived: ({ companyId }) =>
           Effect.gen(function*() {

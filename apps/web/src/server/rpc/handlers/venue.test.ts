@@ -1,13 +1,13 @@
 import { account, session, user } from "@project/db/schema/auth";
 import { company } from "@project/db/schema/company";
 import { room } from "@project/db/schema/venue";
-import { CompanyRpcGroup, VenueRpcGroup } from "@project/rpc";
+import { AdminRpcGroup, CompanyRpcGroup, VenueRpcGroup } from "@project/rpc";
 import { afterEach, beforeAll, describe, expect, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import * as RpcClient from "effect/unstable/rpc/RpcClient";
 import { RpcTest } from "effect/unstable/rpc";
 
-import { AppRpcMiddlewareLive, CompanyRpcLive, VenueRpcLive } from "../live";
+import { AdminRpcLive, AppRpcMiddlewareLive, CompanyRpcLive, VenueRpcLive } from "../live";
 import {
   getComposeTestInfraAvailability,
   makeRpcTestLive,
@@ -18,10 +18,13 @@ import {
 } from "../test-support";
 
 const VenueTestLive = makeRpcTestLive(
+  AdminRpcLive,
   CompanyRpcLive,
   VenueRpcLive,
   AppRpcMiddlewareLive,
 );
+
+const makeAdminClient = RpcTest.makeClient(AdminRpcGroup);
 
 const makeCompanyClient = RpcTest.makeClient(CompanyRpcGroup);
 
@@ -184,4 +187,148 @@ describeWithPostgres("venue rpc", () => {
         },
       ]);
     }).pipe(Effect.provide(Layer.fresh(VenueTestLive))));
+
+  it.effect(
+    "admin actors can rename rooms, clear placements, and delete rooms while venue and admin ledgers stay coherent",
+    () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const companyHeaders = yield* provisionSessionHeaders("company");
+        const companyHeadersTwo = yield* provisionSessionHeaders("company");
+        const venueClient = yield* makeVenueClient;
+        const companyClient = yield* makeCompanyClient;
+        const adminClient = yield* makeAdminClient;
+        const roomToKeep = yield* venueClient.createRoom({ code: "CP3" }).pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
+        const roomToDelete = yield* venueClient.createRoom({ code: "S27" }).pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
+        const acme = yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
+          RpcClient.withHeaders(companyHeaders),
+        );
+        const globex = yield* companyClient.upsertCompanyProfile({ name: "Globex" }).pipe(
+          RpcClient.withHeaders(companyHeadersTwo),
+        );
+
+        yield* venueClient.assignCompanyPlacement({
+          companyId: acme.id,
+          roomId: roomToKeep.id,
+          standNumber: 12,
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+        yield* venueClient.assignCompanyPlacement({
+          companyId: globex.id,
+          roomId: roomToDelete.id,
+          standNumber: 7,
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        const renamedRoom = yield* venueClient.updateRoom({
+          roomId: roomToKeep.id,
+          code: "CP4",
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        yield* venueClient.clearCompanyPlacement({
+          companyId: acme.id,
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+        yield* venueClient.deleteRoom({
+          roomId: roomToDelete.id,
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        expect(renamedRoom).toEqual({
+          id: roomToKeep.id,
+          code: "CP4",
+        });
+        expect(
+          yield* venueClient.listVenueRooms().pipe(
+            RpcClient.withHeaders(adminHeaders),
+          ),
+        ).toEqual([
+          {
+            id: roomToKeep.id,
+            code: "CP4",
+            companies: [],
+          },
+        ]);
+        expect(
+          yield* adminClient.listAdminCompanyLedger().pipe(
+            RpcClient.withHeaders(adminHeaders),
+          ),
+        ).toEqual([
+          {
+            company: acme,
+            room: null,
+            standNumber: null,
+            arrivalStatus: "not-arrived",
+          },
+          {
+            company: globex,
+            room: null,
+            standNumber: null,
+            arrivalStatus: "not-arrived",
+          },
+        ]);
+      }).pipe(Effect.provide(Layer.fresh(VenueTestLive))),
+  );
+
+  it.effect(
+    "non-admin actors cannot rename rooms, clear placements, or delete rooms",
+    () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const companyHeaders = yield* provisionSessionHeaders("company");
+        const venueClient = yield* makeVenueClient;
+        const companyClient = yield* makeCompanyClient;
+        const createdRoom = yield* venueClient.createRoom({ code: "A1" }).pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
+        const companyProfile = yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
+          RpcClient.withHeaders(companyHeaders),
+        );
+
+        yield* venueClient.assignCompanyPlacement({
+          companyId: companyProfile.id,
+          roomId: createdRoom.id,
+          standNumber: 3,
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        const renameExit = yield* Effect.exit(
+          venueClient.updateRoom({
+            roomId: createdRoom.id,
+            code: "A2",
+          }).pipe(RpcClient.withHeaders(companyHeaders)),
+        );
+        const clearExit = yield* Effect.exit(
+          venueClient.clearCompanyPlacement({
+            companyId: companyProfile.id,
+          }).pipe(RpcClient.withHeaders(companyHeaders)),
+        );
+        const deleteExit = yield* Effect.exit(
+          venueClient.deleteRoom({
+            roomId: createdRoom.id,
+          }).pipe(RpcClient.withHeaders(companyHeaders)),
+        );
+
+        expect(renameExit._tag).toBe("Failure");
+        expect(clearExit._tag).toBe("Failure");
+        expect(deleteExit._tag).toBe("Failure");
+        expect(
+          yield* venueClient.listVenueRooms().pipe(
+            RpcClient.withHeaders(adminHeaders),
+          ),
+        ).toEqual([
+          {
+            id: createdRoom.id,
+            code: "A1",
+            companies: [
+              {
+                companyId: companyProfile.id,
+                companyName: "Acme Systems",
+                standNumber: 3,
+                arrivalStatus: "not-arrived",
+              },
+            ],
+          },
+        ]);
+      }).pipe(Effect.provide(Layer.fresh(VenueTestLive))),
+  );
 });

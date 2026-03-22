@@ -22,6 +22,25 @@ export const makeVenueRpcHandlers = Effect.gen(function*() {
           code: input.code,
         });
       }),
+    updateRoom: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* venueService.updateRoom({
+          actor,
+          roomId: input.roomId,
+          code: input.code,
+        });
+      }),
+    deleteRoom: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* venueService.deleteRoom({
+          actor,
+          roomId: input.roomId,
+        });
+      }),
     assignCompanyPlacement: (input) =>
       Effect.gen(function*() {
         const actor = yield* CurrentActor;
@@ -31,6 +50,15 @@ export const makeVenueRpcHandlers = Effect.gen(function*() {
           companyId: input.companyId,
           roomId: input.roomId,
           standNumber: input.standNumber,
+        });
+      }),
+    clearCompanyPlacement: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* venueService.clearCompanyPlacement({
+          actor,
+          companyId: input.companyId,
         });
       }),
     markCompanyArrived: (input) =>
