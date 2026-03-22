@@ -14,6 +14,7 @@ import {
   EmptyTitle,
 } from "@project/ui/components/empty";
 import { Input } from "@project/ui/components/input";
+import { Label } from "@project/ui/components/label";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import type {
   AdminAccessLedgerEntry,
   AdminCompanyLedgerEntry,
   AdminInterviewLedgerEntry,
+  Room,
   UserRoleValue,
 } from "@project/domain";
 import {
@@ -44,11 +46,15 @@ import {
   Building2Icon,
   CircleAlertIcon,
   ClipboardListIcon,
+  DoorOpenIcon,
   LogOutIcon,
+  MapPinnedIcon,
+  PencilLineIcon,
   RefreshCwIcon,
   SearchIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  Trash2Icon,
   UsersRoundIcon,
 } from "lucide-react";
 import type React from "react";
@@ -63,6 +69,11 @@ import {
 import { authClient } from "@/lib/auth-client";
 import { getRoleHomePath } from "@/lib/auth-routing";
 import { adminWorkspaceAtoms, adminWorkspaceReactivity } from "@/lib/admin-atoms";
+import {
+  describeVenueRoomOccupancy,
+  filterPlacementManagementCompanies,
+  filterVenueRoomSummaries,
+} from "@/lib/admin-venue";
 import {
   describeAdminAccessSubject,
   describeAdminPlacement,
@@ -206,11 +217,15 @@ export function AdminWorkspace(): React.ReactElement {
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [pendingVenueActionId, setPendingVenueActionId] = useState<string | null>(null);
   const [companyQuery, setCompanyQuery] = useState("");
   const [companyArrivalFilter, setCompanyArrivalFilter] =
     useState<(typeof companyArrivalOptions)[number]["value"]>("pending");
   const [companyPlacementFilter, setCompanyPlacementFilter] =
     useState<(typeof companyPlacementOptions)[number]["value"]>("all");
+  const [venueQuery, setVenueQuery] = useState("");
+  const [placementQuery, setPlacementQuery] = useState("");
+  const [newRoomCode, setNewRoomCode] = useState("");
   const [accessQuery, setAccessQuery] = useState("");
   const [accessRoleFilter, setAccessRoleFilter] =
     useState<(typeof accessRoleFilterOptions)[number]["value"]>("all");
@@ -218,20 +233,42 @@ export function AdminWorkspace(): React.ReactElement {
   const [interviewStatusFilter, setInterviewStatusFilter] =
     useState<(typeof interviewStatusOptions)[number]["value"]>("all");
   const [roleDrafts, setRoleDrafts] = useState<Record<string, UserRoleValue>>({});
+  const [roomCodeDrafts, setRoomCodeDrafts] = useState<Record<string, string>>({});
+  const [placementRoomDrafts, setPlacementRoomDrafts] = useState<Record<string, string>>({});
+  const [placementStandDrafts, setPlacementStandDrafts] = useState<Record<string, string>>({});
 
   const deferredCompanyQuery = useDeferredValue(companyQuery);
+  const deferredVenueQuery = useDeferredValue(venueQuery);
+  const deferredPlacementQuery = useDeferredValue(placementQuery);
   const deferredAccessQuery = useDeferredValue(accessQuery);
   const deferredInterviewQuery = useDeferredValue(interviewQuery);
 
   const companyLedgerResult = useAtomValue(adminWorkspaceAtoms.companyLedger);
   const accessLedgerResult = useAtomValue(adminWorkspaceAtoms.accessLedger);
   const interviewLedgerResult = useAtomValue(adminWorkspaceAtoms.interviewLedger);
+  const venueRoomsResult = useAtomValue(adminWorkspaceAtoms.venueRooms);
 
   const refreshCompanyLedger = useAtomRefresh(adminWorkspaceAtoms.companyLedger);
   const refreshAccessLedger = useAtomRefresh(adminWorkspaceAtoms.accessLedger);
   const refreshInterviewLedger = useAtomRefresh(adminWorkspaceAtoms.interviewLedger);
+  const refreshVenueRooms = useAtomRefresh(adminWorkspaceAtoms.venueRooms);
 
   const changeUserRole = useAtomSet(adminWorkspaceAtoms.changeUserRole, {
+    mode: "promise",
+  });
+  const createRoom = useAtomSet(adminWorkspaceAtoms.createRoom, {
+    mode: "promise",
+  });
+  const updateRoom = useAtomSet(adminWorkspaceAtoms.updateRoom, {
+    mode: "promise",
+  });
+  const deleteRoom = useAtomSet(adminWorkspaceAtoms.deleteRoom, {
+    mode: "promise",
+  });
+  const assignCompanyPlacement = useAtomSet(adminWorkspaceAtoms.assignCompanyPlacement, {
+    mode: "promise",
+  });
+  const clearCompanyPlacement = useAtomSet(adminWorkspaceAtoms.clearCompanyPlacement, {
     mode: "promise",
   });
 
@@ -279,10 +316,15 @@ export function AdminWorkspace(): React.ReactElement {
     interviewLedgerResult,
     "The interview ledger could not be loaded from the admin contract.",
   );
+  const venueRoomsState = toAsyncPanelState(
+    venueRoomsResult,
+    "Venue rooms could not be loaded from the venue contract.",
+  );
 
   const companyLedger = companyLedgerState.kind === "success" ? companyLedgerState.value : [];
   const accessLedger = accessLedgerState.kind === "success" ? accessLedgerState.value : [];
   const interviewLedger = interviewLedgerState.kind === "success" ? interviewLedgerState.value : [];
+  const venueRooms = venueRoomsState.kind === "success" ? venueRoomsState.value : [];
 
   useEffect(() => {
     if (accessLedgerState.kind !== "success") {
@@ -293,6 +335,36 @@ export function AdminWorkspace(): React.ReactElement {
       Object.fromEntries(accessLedgerState.value.map((entry) => [entry.user.id, entry.user.role])),
     );
   }, [accessLedgerState]);
+
+  useEffect(() => {
+    if (venueRoomsState.kind !== "success") {
+      return;
+    }
+
+    setRoomCodeDrafts(
+      Object.fromEntries(venueRoomsState.value.map((room) => [room.id, room.code])),
+    );
+  }, [venueRoomsState]);
+
+  useEffect(() => {
+    if (companyLedgerState.kind !== "success") {
+      return;
+    }
+
+    setPlacementRoomDrafts(
+      Object.fromEntries(
+        companyLedgerState.value.map((entry) => [entry.company.id, entry.room?.id ?? "unplaced"]),
+      ),
+    );
+    setPlacementStandDrafts(
+      Object.fromEntries(
+        companyLedgerState.value.map((entry) => [
+          entry.company.id,
+          entry.standNumber == null ? "" : String(entry.standNumber),
+        ]),
+      ),
+    );
+  }, [companyLedgerState]);
 
   const summary = summarizeAdminWorkspace({
     companyLedger,
@@ -309,6 +381,11 @@ export function AdminWorkspace(): React.ReactElement {
     query: deferredAccessQuery,
     role: accessRoleFilter,
   });
+  const visibleVenueRooms = filterVenueRoomSummaries(venueRooms, deferredVenueQuery);
+  const manageableCompanies = filterPlacementManagementCompanies(
+    companyLedger,
+    deferredPlacementQuery,
+  );
   const visibleInterviews = filterAdminInterviewLedger(interviewLedger, {
     query: deferredInterviewQuery,
     status: interviewStatusFilter,
@@ -319,6 +396,7 @@ export function AdminWorkspace(): React.ReactElement {
     refreshCompanyLedger();
     refreshAccessLedger();
     refreshInterviewLedger();
+    refreshVenueRooms();
   };
 
   const applyRoleChange = async (entry: AdminAccessLedgerEntry) => {
@@ -347,6 +425,162 @@ export function AdminWorkspace(): React.ReactElement {
       setWorkspaceError(formatMutationError(error));
     } finally {
       setPendingUserId(null);
+    }
+  };
+
+  const submitNewRoom = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const code = newRoomCode.trim();
+
+    if (code.length === 0) {
+      setWorkspaceError("Room code cannot be blank.");
+      return;
+    }
+
+    setPendingVenueActionId("room:create");
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      await createRoom({
+        payload: { code },
+        reactivityKeys: {
+          venueRooms: adminWorkspaceReactivity.venueRooms,
+        },
+      });
+      startTransition(() => {
+        setNewRoomCode("");
+        setWorkspaceMessage(`Room ${code} created.`);
+      });
+    } catch (error) {
+      setWorkspaceError(formatMutationError(error));
+    } finally {
+      setPendingVenueActionId(null);
+    }
+  };
+
+  const saveRoomCode = async (roomId: Room["id"], currentCode: string) => {
+    const nextCode = (roomCodeDrafts[roomId] ?? "").trim();
+
+    if (nextCode.length === 0) {
+      setWorkspaceError("Room code cannot be blank.");
+      return;
+    }
+
+    if (nextCode === currentCode) {
+      return;
+    }
+
+    setPendingVenueActionId(`room:update:${roomId}`);
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      await updateRoom({
+        payload: { roomId, code: nextCode },
+        reactivityKeys: {
+          venueRooms: adminWorkspaceReactivity.venueRooms,
+          companyLedger: adminWorkspaceReactivity.companyLedger,
+        },
+      });
+      startTransition(() => {
+        setWorkspaceMessage(`Room ${currentCode} renamed to ${nextCode}.`);
+      });
+    } catch (error) {
+      setWorkspaceError(formatMutationError(error));
+    } finally {
+      setPendingVenueActionId(null);
+    }
+  };
+
+  const removeRoom = async (roomId: Room["id"], roomCode: string) => {
+    setPendingVenueActionId(`room:delete:${roomId}`);
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      await deleteRoom({
+        payload: { roomId },
+        reactivityKeys: {
+          venueRooms: adminWorkspaceReactivity.venueRooms,
+          companyLedger: adminWorkspaceReactivity.companyLedger,
+        },
+      });
+      startTransition(() => {
+        setWorkspaceMessage(`Room ${roomCode} deleted and linked placements cleared.`);
+      });
+    } catch (error) {
+      setWorkspaceError(formatMutationError(error));
+    } finally {
+      setPendingVenueActionId(null);
+    }
+  };
+
+  const savePlacement = async (entry: AdminCompanyLedgerEntry) => {
+    const selectedRoomId = placementRoomDrafts[entry.company.id] ?? "unplaced";
+    const standValue = (placementStandDrafts[entry.company.id] ?? "").trim();
+
+    if (selectedRoomId === "unplaced") {
+      setWorkspaceError("Choose a room before saving a placement.");
+      return;
+    }
+
+    const roomId = selectedRoomId as Room["id"];
+
+    const standNumber = Number(standValue);
+
+    if (!Number.isInteger(standNumber) || standNumber <= 0) {
+      setWorkspaceError("Stand number must be a positive whole number.");
+      return;
+    }
+
+    setPendingVenueActionId(`placement:save:${entry.company.id}`);
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      await assignCompanyPlacement({
+        payload: {
+          companyId: entry.company.id,
+          roomId,
+          standNumber,
+        },
+        reactivityKeys: {
+          venueRooms: adminWorkspaceReactivity.venueRooms,
+          companyLedger: adminWorkspaceReactivity.companyLedger,
+        },
+      });
+      startTransition(() => {
+        setWorkspaceMessage(`Placement saved for ${entry.company.name}.`);
+      });
+    } catch (error) {
+      setWorkspaceError(formatMutationError(error));
+    } finally {
+      setPendingVenueActionId(null);
+    }
+  };
+
+  const removePlacement = async (entry: AdminCompanyLedgerEntry) => {
+    setPendingVenueActionId(`placement:clear:${entry.company.id}`);
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      await clearCompanyPlacement({
+        payload: { companyId: entry.company.id },
+        reactivityKeys: {
+          venueRooms: adminWorkspaceReactivity.venueRooms,
+          companyLedger: adminWorkspaceReactivity.companyLedger,
+        },
+      });
+      startTransition(() => {
+        setWorkspaceMessage(`Placement cleared for ${entry.company.name}.`);
+      });
+    } catch (error) {
+      setWorkspaceError(formatMutationError(error));
+    } finally {
+      setPendingVenueActionId(null);
     }
   };
 
@@ -456,6 +690,7 @@ export function AdminWorkspace(): React.ReactElement {
           <Tabs className="gap-4" defaultValue="companies">
             <TabsList className="w-full justify-start overflow-x-auto rounded-2xl bg-card p-1">
               <TabsTrigger value="companies">Company oversight</TabsTrigger>
+              <TabsTrigger value="venue">Venue management</TabsTrigger>
               <TabsTrigger value="access">Access ledger</TabsTrigger>
               <TabsTrigger value="interviews">Interview ledger</TabsTrigger>
             </TabsList>
@@ -632,6 +867,325 @@ export function AdminWorkspace(): React.ReactElement {
                   </CardContent>
                 </Card>
               ) : null}
+            </TabsContent>
+
+            <TabsContent value="venue">
+              <div className="grid gap-6 xl:grid-cols-[minmax(300px,0.9fr)_minmax(0,1.3fr)]">
+                <Card>
+                  <CardHeader className="gap-4">
+                    <div className="space-y-1">
+                      <CardTitle>Room registry</CardTitle>
+                      <CardDescription>
+                        Create, rename, and retire rooms while keeping the placement ledger in sync.
+                      </CardDescription>
+                    </div>
+                    <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={(event) => {
+                      void submitNewRoom(event);
+                    }}>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-room-code">New room code</Label>
+                        <Input
+                          id="new-room-code"
+                          onChange={(event) => {
+                            setNewRoomCode(event.target.value);
+                          }}
+                          placeholder="A1"
+                          value={newRoomCode}
+                        />
+                      </div>
+                      <Button
+                        className="sm:self-end"
+                        disabled={pendingVenueActionId === "room:create"}
+                        type="submit"
+                      >
+                        <DoorOpenIcon className="size-4" />
+                        {pendingVenueActionId === "room:create" ? "Creating..." : "Add room"}
+                      </Button>
+                    </form>
+                    <div className="relative">
+                      <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        className="pl-9"
+                        onChange={(event) => {
+                          setVenueQuery(event.target.value);
+                        }}
+                        placeholder="Search room, company, or stand"
+                        value={venueQuery}
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {venueRoomsState.kind === "loading" ? (
+                      <>
+                        <Skeleton className="h-24 w-full rounded-2xl" />
+                        <Skeleton className="h-24 w-full rounded-2xl" />
+                      </>
+                    ) : null}
+                    {venueRoomsState.kind === "failure" ? (
+                      <FailureCard
+                        description={venueRoomsState.message}
+                        title="Venue registry unavailable"
+                      />
+                    ) : null}
+                    {venueRoomsState.kind === "success" && visibleVenueRooms.length === 0 ? (
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <MapPinnedIcon className="size-5" />
+                          </EmptyMedia>
+                          <EmptyTitle>No rooms match these filters</EmptyTitle>
+                          <EmptyDescription>
+                            Adjust the room query or create the first room for placement work.
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    ) : null}
+                    {venueRoomsState.kind === "success" && visibleVenueRooms.length > 0 ? (
+                      <div className="grid gap-3">
+                        {visibleVenueRooms.map((summary) => {
+                          const pendingRename = pendingVenueActionId === `room:update:${summary.room.id}`;
+                          const pendingDelete = pendingVenueActionId === `room:delete:${summary.room.id}`;
+                          const roomCodeDraft = roomCodeDrafts[summary.room.id] ?? summary.room.code;
+
+                          return (
+                            <Card key={summary.room.id} className="border-dashed shadow-none">
+                              <CardContent className="space-y-4 pt-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="space-y-1">
+                                    <p className="font-medium text-foreground">{summary.room.code}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {describeVenueRoomOccupancy(summary)}
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Badge variant={summary.pendingCount === 0 ? "success" : "outline"}>
+                                      {summary.companyCount === 1
+                                        ? "1 company"
+                                        : `${summary.companyCount} companies`}
+                                    </Badge>
+                                    <Badge variant="outline">{summary.arrivedCount} arrived</Badge>
+                                  </div>
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+                                  <div className="space-y-2">
+                                    <Label htmlFor={`room-code-${summary.room.id}`}>Room code</Label>
+                                    <Input
+                                      id={`room-code-${summary.room.id}`}
+                                      onChange={(event) => {
+                                        setRoomCodeDrafts((current) => ({
+                                          ...current,
+                                          [summary.room.id]: event.target.value,
+                                        }));
+                                      }}
+                                      value={roomCodeDraft}
+                                    />
+                                  </div>
+                                  <Button
+                                    disabled={pendingRename || roomCodeDraft.trim() === summary.room.code}
+                                    onClick={() => {
+                                      void saveRoomCode(summary.room.id, summary.room.code);
+                                    }}
+                                    type="button"
+                                    variant="outline"
+                                  >
+                                    <PencilLineIcon className="size-4" />
+                                    {pendingRename ? "Saving..." : "Rename"}
+                                  </Button>
+                                  <Button
+                                    disabled={pendingDelete}
+                                    onClick={() => {
+                                      void removeRoom(summary.room.id, summary.room.code);
+                                    }}
+                                    type="button"
+                                    variant="ghost"
+                                  >
+                                    <Trash2Icon className="size-4" />
+                                    {pendingDelete ? "Deleting..." : "Delete"}
+                                  </Button>
+                                </div>
+                                {summary.room.companies.length > 0 ? (
+                                  <div className="flex flex-wrap gap-2">
+                                    {summary.room.companies.map((company) => (
+                                      <Badge key={company.companyId} variant="outline">
+                                        {company.companyName} · Stand {company.standNumber}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="gap-4">
+                    <div className="space-y-1">
+                      <CardTitle>Placement console</CardTitle>
+                      <CardDescription>
+                        Assign companies to rooms and stands from the same admin surface that shows
+                        operational arrival state.
+                      </CardDescription>
+                    </div>
+                    <div className="relative">
+                      <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        className="pl-9"
+                        onChange={(event) => {
+                          setPlacementQuery(event.target.value);
+                        }}
+                        placeholder="Search company, recruiter, room, or stand"
+                        value={placementQuery}
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {companyLedgerState.kind === "loading" || venueRoomsState.kind === "loading" ? (
+                      <>
+                        <Skeleton className="h-28 w-full rounded-2xl" />
+                        <Skeleton className="h-28 w-full rounded-2xl" />
+                      </>
+                    ) : null}
+                    {companyLedgerState.kind === "failure" ? (
+                      <FailureCard
+                        description={companyLedgerState.message}
+                        title="Company placement ledger unavailable"
+                      />
+                    ) : null}
+                    {venueRoomsState.kind === "failure" ? (
+                      <FailureCard
+                        description={venueRoomsState.message}
+                        title="Venue room list unavailable"
+                      />
+                    ) : null}
+                    {companyLedgerState.kind === "success" &&
+                    venueRoomsState.kind === "success" &&
+                    manageableCompanies.length === 0 ? (
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <Building2Icon className="size-5" />
+                          </EmptyMedia>
+                          <EmptyTitle>No companies match these filters</EmptyTitle>
+                          <EmptyDescription>
+                            Broaden the search query to continue venue placement work.
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    ) : null}
+                    {companyLedgerState.kind === "success" &&
+                    venueRoomsState.kind === "success" &&
+                    manageableCompanies.length > 0 ? (
+                      <div className="grid gap-3">
+                        {manageableCompanies.map((entry) => {
+                          const roomDraft = placementRoomDrafts[entry.company.id] ?? "unplaced";
+                          const standDraft = placementStandDrafts[entry.company.id] ?? "";
+                          const pendingSave =
+                            pendingVenueActionId === `placement:save:${entry.company.id}`;
+                          const pendingClear =
+                            pendingVenueActionId === `placement:clear:${entry.company.id}`;
+
+                          return (
+                            <Card key={entry.company.id} className="border-dashed shadow-none">
+                              <CardContent className="space-y-4 pt-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="space-y-1">
+                                    <p className="font-medium text-foreground">{entry.company.name}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {describeAdminPlacement(entry)}
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <Badge variant={arrivalBadgeVariant(entry.arrivalStatus)}>
+                                      {entry.arrivalStatus === "arrived" ? "Arrived" : "Pending"}
+                                    </Badge>
+                                    <Badge variant="outline">
+                                      {entry.company.recruiters.length} recruiter
+                                      {entry.company.recruiters.length === 1 ? "" : "s"}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_140px_auto_auto] xl:items-end">
+                                  <div className="space-y-2">
+                                    <Label htmlFor={`placement-room-${entry.company.id}`}>Room</Label>
+                                    <Select
+                                      onValueChange={(value) => {
+                                        setPlacementRoomDrafts((current) => ({
+                                          ...current,
+                                          [entry.company.id]: value ?? "unplaced",
+                                        }));
+                                      }}
+                                      value={roomDraft}
+                                    >
+                                      <SelectTrigger id={`placement-room-${entry.company.id}`}>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="unplaced">No room selected</SelectItem>
+                                        {venueRooms.map((room) => (
+                                          <SelectItem key={room.id} value={room.id as string}>
+                                            {room.code}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor={`placement-stand-${entry.company.id}`}>Stand</Label>
+                                    <Input
+                                      id={`placement-stand-${entry.company.id}`}
+                                      inputMode="numeric"
+                                      onChange={(event) => {
+                                        setPlacementStandDrafts((current) => ({
+                                          ...current,
+                                          [entry.company.id]: event.target.value,
+                                        }));
+                                      }}
+                                      placeholder="12"
+                                      value={standDraft}
+                                    />
+                                  </div>
+                                  <Button
+                                    disabled={pendingSave || venueRooms.length === 0}
+                                    onClick={() => {
+                                      void savePlacement(entry);
+                                    }}
+                                    type="button"
+                                  >
+                                    {pendingSave ? "Saving..." : "Save placement"}
+                                  </Button>
+                                  <Button
+                                    disabled={pendingClear || entry.room == null}
+                                    onClick={() => {
+                                      void removePlacement(entry);
+                                    }}
+                                    type="button"
+                                    variant="ghost"
+                                  >
+                                    {pendingClear ? "Clearing..." : "Clear"}
+                                  </Button>
+                                </div>
+                                {entry.company.recruiters.length > 0 ? (
+                                  <div className="flex flex-wrap gap-2">
+                                    {entry.company.recruiters.map((recruiter) => (
+                                      <Badge key={recruiter.id} variant="outline">
+                                        {recruiter.name}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             <TabsContent value="access">
