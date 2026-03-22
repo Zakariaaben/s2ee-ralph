@@ -340,6 +340,7 @@ export class AdminRepository extends ServiceMap.Service<
                     recruiterName: interviewRow.recruiterName,
                     status: interviewRow.status,
                     score: interviewRow.score ?? null,
+                    notes: interviewRow.notes,
                     globalTags: (globalTagsByInterviewId.get(interviewRow.id) ?? []).map(
                       (row) =>
                         new GlobalInterviewTag({

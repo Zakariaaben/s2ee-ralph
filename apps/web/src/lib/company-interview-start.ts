@@ -1,5 +1,7 @@
 import type { CvProfile, Recruiter } from "@project/domain";
 
+export type { CompanyInterviewDraft } from "./company-interview-execution";
+
 export const companyPreferredRecruiterStorageKey =
   "company-workspace:preferred-recruiter-id";
 

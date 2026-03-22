@@ -6,6 +6,7 @@ export const companyWorkspaceReactivity = {
   currentCompany: ["company", "current-company"] as const,
   activeInterviews: ["company", "active-interviews"] as const,
   completedInterviews: ["company", "completed-interviews"] as const,
+  globalInterviewTags: ["company", "global-interview-tags"] as const,
 } as const;
 
 export const companyWorkspaceAtoms = {
@@ -21,6 +22,10 @@ export const companyWorkspaceAtoms = {
     reactivityKeys: companyWorkspaceReactivity.completedInterviews,
     timeToLive: "30 seconds",
   }),
+  globalInterviewTags: AppRpcClient.query("listGlobalInterviewTags", undefined, {
+    reactivityKeys: companyWorkspaceReactivity.globalInterviewTags,
+    timeToLive: "5 minutes",
+  }),
   resolveStudentQrIdentity: (qrIdentity: string) =>
     AppRpcClient.query("resolveStudentQrIdentity", { qrIdentity }, {
       timeToLive: "30 seconds",
@@ -32,4 +37,7 @@ export const companyWorkspaceAtoms = {
   upsertCompanyProfile: AppRpcClient.mutation("upsertCompanyProfile"),
   addRecruiter: AppRpcClient.mutation("addRecruiter"),
   renameRecruiter: AppRpcClient.mutation("renameRecruiter"),
+  completeInterview: AppRpcClient.mutation("completeInterview"),
+  cancelInterview: AppRpcClient.mutation("cancelInterview"),
+  exportCompletedInterviews: AppRpcClient.mutation("exportCurrentCompanyCompletedInterviews"),
 } as const;

@@ -153,12 +153,14 @@ describeWithStorage("interview rpc", () => {
           score: 4.3,
           globalTagIds: [asGlobalInterviewTagId("curious")],
           companyTagLabels: ["Backend Ready"],
+          notes: "Strong systems instincts.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         yield* interviewClient.cancelInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
           qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
+          notes: "Student had to leave early.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         yield* interviewClient.completeInterview({
@@ -168,6 +170,7 @@ describeWithStorage("interview rpc", () => {
           score: 3.7,
           globalTagIds: [],
           companyTagLabels: [],
+          notes: "",
         }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
 
         expect(
@@ -235,6 +238,7 @@ describeWithStorage("interview rpc", () => {
           score: 4.3,
           globalTagIds: [asGlobalInterviewTagId("curious")],
           companyTagLabels: ["Backend Ready"],
+          notes: "Strong backend depth.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         expect(completedInterview).toMatchObject({
@@ -244,6 +248,7 @@ describeWithStorage("interview rpc", () => {
           recruiterName: "Nora Recruiter",
           status: "completed",
           score: 4.3,
+          notes: "Strong backend depth.",
           globalTags: [{ id: "curious", label: "Curious" }],
           companyTags: [{ label: "Backend Ready" }],
         });
@@ -310,6 +315,7 @@ describeWithStorage("interview rpc", () => {
             score: 5.1,
             globalTagIds: [],
             companyTagLabels: [],
+            notes: "",
           }).pipe(RpcClient.withHeaders(companyHeaders)),
         );
         const invalidQrExit = yield* Effect.exit(
@@ -320,6 +326,7 @@ describeWithStorage("interview rpc", () => {
             score: 4.3,
             globalTagIds: [],
             companyTagLabels: [],
+            notes: "",
           }).pipe(RpcClient.withHeaders(companyHeaders)),
         );
         const blankCompanyTagExit = yield* Effect.exit(
@@ -330,6 +337,7 @@ describeWithStorage("interview rpc", () => {
             score: 4.3,
             globalTagIds: [],
             companyTagLabels: [""],
+            notes: "",
           }).pipe(RpcClient.withHeaders(companyHeaders)),
         );
 
@@ -392,6 +400,7 @@ describeWithStorage("interview rpc", () => {
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
           qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
+          notes: "Candidate left for another booth.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         expect(cancelledInterview).toMatchObject({
@@ -400,6 +409,7 @@ describeWithStorage("interview rpc", () => {
           recruiterName: "Nora Recruiter",
           status: "cancelled",
           score: null,
+          notes: "Candidate left for another booth.",
           globalTags: [],
           companyTags: [],
         });
@@ -465,12 +475,14 @@ describeWithStorage("interview rpc", () => {
           score: 4.7,
           globalTagIds: [asGlobalInterviewTagId("curious")],
           companyTagLabels: ["Backend Ready"],
+          notes: "Recommend final-round follow-up.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         yield* interviewClient.cancelInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
           qrIdentity: student.id,
           cvProfileId: selectedCvProfile.id,
+          notes: "Duplicate scan from booth device.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         yield* interviewClient.completeInterview({
@@ -480,6 +492,7 @@ describeWithStorage("interview rpc", () => {
           score: 3.4,
           globalTagIds: [],
           companyTagLabels: [],
+          notes: "",
         }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
 
         const withoutCvFiles = yield* interviewClient.exportCurrentCompanyCompletedInterviews({
@@ -491,7 +504,7 @@ describeWithStorage("interview rpc", () => {
           companyId: string;
           companyName: string;
           interviews: Array<{
-            interview: { id: string; status: string; score: number | null };
+            interview: { id: string; status: string; score: number | null; notes: string };
             student: { firstName: string; lastName: string };
             cvProfile: { id: string; fileName: string };
             cvFile?: unknown;
@@ -508,6 +521,7 @@ describeWithStorage("interview rpc", () => {
                 id: completedInterview.id,
                 status: "completed",
                 score: 4.7,
+                notes: "Recommend final-round follow-up.",
               },
               student: {
                 firstName: "Grace",
@@ -528,7 +542,7 @@ describeWithStorage("interview rpc", () => {
           Buffer.from(withCvFiles.contentsBase64, "base64").toString("utf8"),
         ) as {
           interviews: Array<{
-            interview: { id: string; status: string; score: number | null };
+            interview: { id: string; status: string; score: number | null; notes: string };
             student: { firstName: string; lastName: string };
             cvProfile: { id: string; fileName: string };
             cvFile?: { fileName: string; contentsBase64: string };
@@ -541,6 +555,7 @@ describeWithStorage("interview rpc", () => {
               id: completedInterview.id,
               status: "completed",
               score: 4.7,
+              notes: "Recommend final-round follow-up.",
             },
             student: {
               firstName: "Grace",
@@ -610,6 +625,7 @@ describeWithStorage("interview rpc", () => {
           score: 4.1,
           globalTagIds: [],
           companyTagLabels: [],
+          notes: "",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         const renamedCompany = yield* companyClient.renameRecruiter({
@@ -624,6 +640,7 @@ describeWithStorage("interview rpc", () => {
           score: 4.8,
           globalTagIds: [],
           companyTagLabels: [],
+          notes: "",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
         expect(firstInterview.recruiterName).toBe("Nora Recruiter");

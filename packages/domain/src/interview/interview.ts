@@ -16,6 +16,7 @@ export class Interview extends Schema.Class<Interview>("Interview")({
   recruiterName: Schema.String,
   status: InterviewStatus,
   score: Schema.NullOr(Schema.Number),
+  notes: Schema.String,
   globalTags: Schema.Array(GlobalInterviewTag),
   companyTags: Schema.Array(CompanyInterviewTag),
 }) {}

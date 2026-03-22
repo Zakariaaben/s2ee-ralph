@@ -71,6 +71,7 @@ export class InterviewService extends ServiceMap.Service<
       readonly score: number;
       readonly globalTagIds: ReadonlyArray<string>;
       readonly companyTagLabels: ReadonlyArray<string>;
+      readonly notes: string;
     }) => Effect.Effect<
       Interview,
       HttpApiError.Forbidden | HttpApiError.BadRequest | HttpApiError.NotFound
@@ -80,6 +81,7 @@ export class InterviewService extends ServiceMap.Service<
       readonly recruiterId: string;
       readonly studentId: string;
       readonly cvProfileId: string;
+      readonly notes: string;
     }) => Effect.Effect<
       Interview,
       HttpApiError.Forbidden | HttpApiError.NotFound
@@ -192,6 +194,7 @@ export class InterviewService extends ServiceMap.Service<
                     id: entry.interview.id,
                     status: entry.interview.status,
                     score: entry.interview.score,
+                    notes: entry.interview.notes,
                   },
                   student: {
                     firstName: entry.student.firstName,
@@ -236,6 +239,7 @@ export class InterviewService extends ServiceMap.Service<
           score,
           globalTagIds,
           companyTagLabels,
+          notes,
         }) =>
           Effect.gen(function*() {
             const { company, recruiter, student, selectedCvProfile } =
@@ -254,6 +258,7 @@ export class InterviewService extends ServiceMap.Service<
               score,
               globalTagIds: uniqueValues(globalTagIds),
               companyTagLabels: uniqueValues(companyTagLabels),
+              notes,
             });
 
             if (!completedInterview) {
@@ -262,7 +267,7 @@ export class InterviewService extends ServiceMap.Service<
 
             return completedInterview;
           }),
-        cancelInterview: ({ actor, recruiterId, studentId, cvProfileId }) =>
+        cancelInterview: ({ actor, recruiterId, studentId, cvProfileId, notes }) =>
           Effect.gen(function*() {
             const { company, recruiter, student, selectedCvProfile } =
               yield* resolveInterviewContext({
@@ -277,6 +282,7 @@ export class InterviewService extends ServiceMap.Service<
               studentId: student.id,
               cvProfileId: selectedCvProfile.id,
               recruiterName: recruiter.name,
+              notes,
             });
           }),
       });

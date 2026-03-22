@@ -40,6 +40,7 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
           score: input.score,
           globalTagIds: input.globalTagIds,
           companyTagLabels: input.companyTagLabels,
+          notes: input.notes,
         });
       }),
     cancelInterview: (input) =>
@@ -51,6 +52,7 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
           recruiterId: input.recruiterId,
           studentId: input.qrIdentity,
           cvProfileId: input.cvProfileId,
+          notes: input.notes,
         });
       }),
   });

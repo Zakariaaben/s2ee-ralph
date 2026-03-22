@@ -36,6 +36,7 @@ const toInterview = (input: {
     recruiterName: input.row.recruiterName,
     status: input.row.status,
     score: input.row.score ?? null,
+    notes: input.row.notes,
     globalTags: input.globalTags.map(
       (row) =>
         new GlobalInterviewTag({
@@ -90,12 +91,14 @@ export class InterviewRepository extends ServiceMap.Service<
       readonly score: number;
       readonly globalTagIds: ReadonlyArray<string>;
       readonly companyTagLabels: ReadonlyArray<string>;
+      readonly notes: string;
     }) => Effect.Effect<Interview | null>;
     readonly createCancelled: (input: {
       readonly companyId: string;
       readonly studentId: string;
       readonly cvProfileId: string;
       readonly recruiterName: string;
+      readonly notes: string;
     }) => Effect.Effect<Interview>;
   }
 >()("@project/web/InterviewRepository") {
@@ -273,6 +276,7 @@ export class InterviewRepository extends ServiceMap.Service<
           score,
           globalTagIds,
           companyTagLabels,
+          notes,
         }) =>
           Effect.gen(function*() {
             const createdInterviewId = yield* Effect.promise(() =>
@@ -340,6 +344,7 @@ export class InterviewRepository extends ServiceMap.Service<
                   recruiterName,
                   status: "completed",
                   score,
+                  notes,
                 });
 
                 if (orderedGlobalTags.length > 0) {
@@ -383,7 +388,7 @@ export class InterviewRepository extends ServiceMap.Service<
 
             return savedInterview;
           }),
-        createCancelled: ({ companyId, studentId, cvProfileId, recruiterName }) =>
+        createCancelled: ({ companyId, studentId, cvProfileId, recruiterName, notes }) =>
           Effect.gen(function*() {
             const interviewId = makeInterviewId();
 
@@ -396,6 +401,7 @@ export class InterviewRepository extends ServiceMap.Service<
                 recruiterName,
                 status: "cancelled",
                 score: null,
+                notes,
               }),
             );
 

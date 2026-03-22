@@ -13,6 +13,7 @@ import { Rpc, RpcGroup } from "effect/unstable/rpc";
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
 import {
   InterviewCompanyTagLabel,
+  InterviewNotes,
   InterviewScore,
   StudentQrIdentity,
 } from "../request-schemas";
@@ -26,6 +27,7 @@ export class CompleteInterviewInput extends Schema.Class<CompleteInterviewInput>
   score: InterviewScore,
   globalTagIds: Schema.Array(GlobalInterviewTagId),
   companyTagLabels: Schema.Array(InterviewCompanyTagLabel),
+  notes: InterviewNotes,
 }) {}
 
 export class CancelInterviewInput extends Schema.Class<CancelInterviewInput>(
@@ -34,6 +36,7 @@ export class CancelInterviewInput extends Schema.Class<CancelInterviewInput>(
   recruiterId: RecruiterId,
   qrIdentity: StudentQrIdentity,
   cvProfileId: CvProfileId,
+  notes: InterviewNotes,
 }) {}
 
 export class ExportCurrentCompanyCompletedInterviewsInput extends Schema.Class<ExportCurrentCompanyCompletedInterviewsInput>(

@@ -45,6 +45,11 @@ import {
   companyWorkspaceReactivity,
 } from "@/lib/company-atoms";
 import { CompanyInterviewStartPanel } from "@/components/company/company-interview-start-panel";
+import { CompanyInterviewExecutionPanel } from "@/components/company/company-interview-execution-panel";
+import {
+  describeInterviewNotes,
+  type CompanyInterviewDraft,
+} from "@/lib/company-interview-execution";
 import {
   selectRecentCompletedInterviews,
   summarizeCompanyWorkspace,
@@ -64,16 +69,44 @@ const averageScoreLabel = (value: number | null): string =>
 
 const describeInterview = (interview: Interview): string => {
   const tags = interview.globalTags.length + interview.companyTags.length;
+  const hasNotes = interview.notes.trim().length > 0;
 
   if (interview.status === "cancelled") {
-    return tags === 0 ? "Cancelled before scoring" : `Cancelled with ${tags} tags captured`;
+    if (tags === 0 && !hasNotes) {
+      return "Cancelled before scoring";
+    }
+
+    const details = [
+      tags === 0 ? null : `${tags} tags captured`,
+      hasNotes ? "notes captured" : null,
+    ].filter((value) => value != null);
+
+    return `Cancelled with ${details.join(" and ")}`;
   }
 
   if (interview.score == null) {
-    return tags === 0 ? "Awaiting scoring" : `${tags} tags captured`;
+    if (tags === 0 && !hasNotes) {
+      return "Awaiting scoring";
+    }
+
+    const details = [
+      tags === 0 ? null : `${tags} tags captured`,
+      hasNotes ? "notes captured" : null,
+    ].filter((value) => value != null);
+
+    return details.join(" and ");
   }
 
-  return tags === 0 ? `Scored ${interview.score} / 5` : `${interview.score} / 5 with ${tags} tags`;
+  if (tags === 0 && !hasNotes) {
+    return `Scored ${interview.score} / 5`;
+  }
+
+  const details = [
+    tags === 0 ? null : `${tags} tags`,
+    hasNotes ? "notes captured" : null,
+  ].filter((value) => value != null);
+
+  return `${interview.score} / 5 with ${details.join(" and ")}`;
 };
 
 type AsyncPanelState<Value> =
@@ -110,6 +143,7 @@ export function CompanyWorkspace(): React.ReactElement {
   const [editingRecruiterName, setEditingRecruiterName] = useState("");
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [stagedInterview, setStagedInterview] = useState<CompanyInterviewDraft | null>(null);
 
   const currentCompanyResult = useAtomValue(companyWorkspaceAtoms.currentCompany);
   const activeInterviewsResult = useAtomValue(companyWorkspaceAtoms.activeInterviews);
@@ -395,6 +429,15 @@ export function CompanyWorkspace(): React.ReactElement {
                 ? "failure"
                 : "ready"
           }
+          onInterviewDraftChange={setStagedInterview}
+          startedInterview={stagedInterview}
+        />
+
+        <CompanyInterviewExecutionPanel
+          activeInterviews={activeInterviews}
+          completedInterviews={completedInterviews}
+          draft={stagedInterview}
+          onClearDraft={() => setStagedInterview(null)}
         />
 
         <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -669,6 +712,8 @@ function WorkspaceMetricCard(props: {
 }
 
 function InterviewCard({ interview }: { readonly interview: Interview }): React.ReactElement {
+  const notes = describeInterviewNotes(interview.notes);
+
   return (
     <Card className="border-border/60 bg-background/72">
       <CardContent className="grid gap-3 p-4">
@@ -682,6 +727,7 @@ function InterviewCard({ interview }: { readonly interview: Interview }): React.
           </Badge>
         </div>
         <p className="text-muted-foreground text-sm">{describeInterview(interview)}</p>
+        {notes != null && <p className="text-sm leading-6">{notes}</p>}
       </CardContent>
     </Card>
   );
@@ -693,6 +739,7 @@ function CompletedInterviewCard({
   readonly entry: CompanyCompletedInterviewLedgerEntry;
 }): React.ReactElement {
   const score = entry.interview.score;
+  const notes = describeInterviewNotes(entry.interview.notes);
 
   return (
     <Card className="border-border/60 bg-background/72">
@@ -718,6 +765,7 @@ function CompletedInterviewCard({
           </div>
         </div>
         <p className="text-muted-foreground text-sm">{describeInterview(entry.interview)}</p>
+        {notes != null && <p className="text-sm leading-6">{notes}</p>}
       </CardContent>
     </Card>
   );

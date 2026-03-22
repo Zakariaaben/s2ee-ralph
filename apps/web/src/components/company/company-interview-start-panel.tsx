@@ -42,6 +42,7 @@ import {
   resolveInterviewStartRecruiterId,
   resolvePreferredRecruiter,
   summarizeInterviewStartChecklist,
+  type CompanyInterviewDraft,
 } from "@/lib/company-interview-start";
 
 type AsyncPanelState<Value> =
@@ -70,28 +71,24 @@ const toAsyncPanelState = <Value,>(
   };
 };
 
-type StartedInterviewDraft = {
-  readonly student: Student;
-  readonly recruiter: Recruiter;
-  readonly cvProfile: CvProfile;
-  readonly qrIdentity: string;
-};
-
 export function CompanyInterviewStartPanel({
   company,
   companyErrorMessage,
   companyStatus,
+  onInterviewDraftChange,
+  startedInterview,
 }: {
   readonly company: Company | null;
   readonly companyErrorMessage: string | null;
   readonly companyStatus: "loading" | "failure" | "ready";
+  readonly onInterviewDraftChange: (draft: CompanyInterviewDraft | null) => void;
+  readonly startedInterview: CompanyInterviewDraft | null;
 }): React.ReactElement {
   const [qrIdentityDraft, setQrIdentityDraft] = useState("");
   const [submittedQrIdentity, setSubmittedQrIdentity] = useState<string | null>(null);
   const [preferredRecruiterId, setPreferredRecruiterId] = useState<Recruiter["id"] | null>(null);
   const [selectedRecruiterId, setSelectedRecruiterId] = useState<Recruiter["id"] | null>(null);
   const [selectedCvProfileId, setSelectedCvProfileId] = useState<CvProfile["id"] | null>(null);
-  const [startedInterview, setStartedInterview] = useState<StartedInterviewDraft | null>(null);
   const [panelError, setPanelError] = useState<string | null>(null);
 
   const recruiters = company?.recruiters ?? [];
@@ -125,8 +122,8 @@ export function CompanyInterviewStartPanel({
       setSelectedRecruiterId(recruiterId);
       setPreferredRecruiterId(recruiterId);
       setPanelError(null);
-      setStartedInterview(null);
     });
+    onInterviewDraftChange(null);
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem(companyPreferredRecruiterStorageKey, recruiterId);
@@ -138,9 +135,9 @@ export function CompanyInterviewStartPanel({
       setQrIdentityDraft("");
       setSubmittedQrIdentity(null);
       setSelectedCvProfileId(null);
-      setStartedInterview(null);
       setPanelError(null);
     });
+    onInterviewDraftChange(null);
   };
 
   const submitQrIdentity = (event: React.FormEvent<HTMLFormElement>) => {
@@ -157,8 +154,8 @@ export function CompanyInterviewStartPanel({
       setPanelError(null);
       setSubmittedQrIdentity(normalizedQrIdentity);
       setSelectedCvProfileId(null);
-      setStartedInterview(null);
     });
+    onInterviewDraftChange(null);
   };
 
   return (
@@ -305,16 +302,16 @@ export function CompanyInterviewStartPanel({
             company={company}
             onConfirmStart={(draft) => {
               startTransition(() => {
-                setStartedInterview(draft);
                 setPanelError(null);
               });
+              onInterviewDraftChange(draft);
             }}
             onReset={resetInterviewStart}
             onSelectCvProfileId={(cvProfileId) => {
               startTransition(() => {
                 setSelectedCvProfileId(cvProfileId);
-                setStartedInterview(null);
               });
+              onInterviewDraftChange(null);
             }}
             onSelectRecruiterId={rememberRecruiter}
             qrIdentity={submittedQrIdentity}
@@ -330,14 +327,14 @@ export function CompanyInterviewStartPanel({
 
 function ResolvedStudentInterviewPanel(props: {
   readonly company: Company;
-  readonly onConfirmStart: (draft: StartedInterviewDraft) => void;
+  readonly onConfirmStart: (draft: CompanyInterviewDraft) => void;
   readonly onReset: () => void;
   readonly onSelectCvProfileId: (cvProfileId: CvProfile["id"] | null) => void;
   readonly onSelectRecruiterId: (recruiterId: Recruiter["id"]) => void;
   readonly qrIdentity: string;
   readonly selectedCvProfileId: CvProfile["id"] | null;
   readonly selectedRecruiterId: Recruiter["id"] | null;
-  readonly startedInterview: StartedInterviewDraft | null;
+  readonly startedInterview: CompanyInterviewDraft | null;
 }): React.ReactElement {
   const studentAtom = useMemo(
     () => companyWorkspaceAtoms.resolveStudentQrIdentity(props.qrIdentity),
@@ -380,14 +377,14 @@ function ResolvedStudentInterviewPanel(props: {
 
 function ResolvedStudentCvPanel(props: {
   readonly company: Company;
-  readonly onConfirmStart: (draft: StartedInterviewDraft) => void;
+  readonly onConfirmStart: (draft: CompanyInterviewDraft) => void;
   readonly onReset: () => void;
   readonly onSelectCvProfileId: (cvProfileId: CvProfile["id"] | null) => void;
   readonly onSelectRecruiterId: (recruiterId: Recruiter["id"]) => void;
   readonly qrIdentity: string;
   readonly selectedCvProfileId: CvProfile["id"] | null;
   readonly selectedRecruiterId: Recruiter["id"] | null;
-  readonly startedInterview: StartedInterviewDraft | null;
+  readonly startedInterview: CompanyInterviewDraft | null;
   readonly student: Student;
 }): React.ReactElement {
   const cvProfilesAtom = useMemo(
@@ -433,14 +430,14 @@ function ResolvedStudentCvPanel(props: {
 function ResolvedStudentCvSuccessPanel(props: {
   readonly company: Company;
   readonly cvProfiles: ReadonlyArray<CvProfile>;
-  readonly onConfirmStart: (draft: StartedInterviewDraft) => void;
+  readonly onConfirmStart: (draft: CompanyInterviewDraft) => void;
   readonly onReset: () => void;
   readonly onSelectCvProfileId: (cvProfileId: CvProfile["id"] | null) => void;
   readonly onSelectRecruiterId: (recruiterId: Recruiter["id"]) => void;
   readonly qrIdentity: string;
   readonly selectedCvProfileId: CvProfile["id"] | null;
   readonly selectedRecruiterId: Recruiter["id"] | null;
-  readonly startedInterview: StartedInterviewDraft | null;
+  readonly startedInterview: CompanyInterviewDraft | null;
   readonly student: Student;
 }): React.ReactElement {
   const cvProfiles = props.cvProfiles;

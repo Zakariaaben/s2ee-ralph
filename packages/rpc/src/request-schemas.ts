@@ -36,6 +36,8 @@ export const VocabularyEntryLabel = RequiredText;
 
 export const InterviewCompanyTagLabel = RequiredText;
 
+export const InterviewNotes = Schema.Trim;
+
 const base64ContentsPattern =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const invalidBase64ContentsMessage = "Expected non-empty base64-encoded file contents";

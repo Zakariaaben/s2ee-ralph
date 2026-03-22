@@ -12,6 +12,7 @@ describe("interview rpc input schemas", () => {
         score: 4.3,
         globalTagIds: ["curious"],
         companyTagLabels: ["  Backend Ready  ", "  Follow Up  "],
+        notes: "  Strong backend fundamentals.  ",
       }),
     ).toEqual({
       recruiterId: "recruiter-1",
@@ -20,6 +21,7 @@ describe("interview rpc input schemas", () => {
       score: 4.3,
       globalTagIds: ["curious"],
       companyTagLabels: ["Backend Ready", "Follow Up"],
+      notes: "Strong backend fundamentals.",
     });
 
     expect(
@@ -27,11 +29,13 @@ describe("interview rpc input schemas", () => {
         recruiterId: "recruiter-1",
         qrIdentity: "\n student:v1:student-123 \t",
         cvProfileId: "cv-profile-1",
+        notes: "  Could not complete badge verification. ",
       }),
     ).toEqual({
       recruiterId: "recruiter-1",
       qrIdentity: "student-123",
       cvProfileId: "cv-profile-1",
+      notes: "Could not complete badge verification.",
     });
   });
 
@@ -44,6 +48,7 @@ describe("interview rpc input schemas", () => {
         score: 4.3,
         globalTagIds: [],
         companyTagLabels: [],
+        notes: "",
       })
     ).toThrow();
 
@@ -52,6 +57,7 @@ describe("interview rpc input schemas", () => {
         recruiterId: "recruiter-1",
         qrIdentity: "student:v1:   ",
         cvProfileId: "cv-profile-1",
+        notes: "",
       })
     ).toThrow();
   });
@@ -65,6 +71,7 @@ describe("interview rpc input schemas", () => {
         score: 0.9,
         globalTagIds: [],
         companyTagLabels: [],
+        notes: "",
       })
     ).toThrow();
 
@@ -76,6 +83,7 @@ describe("interview rpc input schemas", () => {
         score: 5.1,
         globalTagIds: [],
         companyTagLabels: [],
+        notes: "",
       })
     ).toThrow();
   });
@@ -89,6 +97,7 @@ describe("interview rpc input schemas", () => {
         score: 4.3,
         globalTagIds: [],
         companyTagLabels: ["  Backend Ready  ", "\n\t  "],
+        notes: "",
       })
     ).toThrow();
   });

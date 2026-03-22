@@ -234,11 +234,13 @@ describeWithStorage("admin rpc", () => {
           score: 4.3,
           globalTagIds: [asGlobalInterviewTagId("curious")],
           companyTagLabels: ["Backend Ready"],
+          notes: "Strong backend fit.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
         const cancelledInterview = yield* interviewClient.cancelInterview({
           recruiterId: globexWithRecruiter.recruiters[0]!.id,
           qrIdentity: student.id,
           cvProfileId: cv.id,
+          notes: "Candidate no-show at booth.",
         }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
 
         expect(

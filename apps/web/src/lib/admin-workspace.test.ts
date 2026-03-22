@@ -113,6 +113,7 @@ const makeInterviewLedgerEntry = (input: {
       recruiterName: input.recruiterName,
       status: input.status,
       score: input.score,
+      notes: "",
       globalTags: [],
       companyTags: [],
     }),

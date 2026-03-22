@@ -56,6 +56,7 @@ export const interview = pgTable(
     recruiterName: text("recruiter_name").notNull(),
     status: interviewStatus("status").notNull(),
     score: doublePrecision("score"),
+    notes: text("notes").notNull().default(""),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [

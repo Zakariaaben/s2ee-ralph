@@ -31,6 +31,7 @@ const makeInterview = (input: {
     recruiterName: "Nora Lane",
     status: input.score == null ? "cancelled" : "completed",
     score: input.score,
+    notes: "",
     globalTags: (input.globalTagIds ?? []).map(
       (tagId) =>
         new GlobalInterviewTag({
