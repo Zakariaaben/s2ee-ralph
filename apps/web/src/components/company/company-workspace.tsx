@@ -44,6 +44,7 @@ import {
   companyWorkspaceAtoms,
   companyWorkspaceReactivity,
 } from "@/lib/company-atoms";
+import { CompanyInterviewStartPanel } from "@/components/company/company-interview-start-panel";
 import {
   selectRecentCompletedInterviews,
   summarizeCompanyWorkspace,
@@ -384,6 +385,18 @@ export function CompanyWorkspace(): React.ReactElement {
           </div>
         </section>
 
+        <CompanyInterviewStartPanel
+          company={company}
+          companyErrorMessage={companyState.kind === "failure" ? companyState.message : null}
+          companyStatus={
+            companyState.kind === "loading"
+              ? "loading"
+              : companyState.kind === "failure"
+                ? "failure"
+                : "ready"
+          }
+        />
+
         <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <Card className="overflow-hidden border-border/70">
             <CardHeader className="gap-3 border-b border-border/60 bg-muted/36">
@@ -578,7 +591,7 @@ export function CompanyWorkspace(): React.ReactElement {
                       </EmptyMedia>
                       <EmptyTitle>No active interviews</EmptyTitle>
                       <EmptyDescription>
-                        The queue is clear. This panel will fill from the same Atom query pattern once interview execution arrives in issue #24.
+                        The queue is clear. Persisted interview activity will appear here as soon as interview execution moves beyond start confirmation.
                       </EmptyDescription>
                     </EmptyHeader>
                   </Empty>

@@ -1,3 +1,5 @@
+import type { Student } from "@project/domain";
+
 import { AppRpcClient } from "@/lib/rpc-client";
 
 export const companyWorkspaceReactivity = {
@@ -19,6 +21,14 @@ export const companyWorkspaceAtoms = {
     reactivityKeys: companyWorkspaceReactivity.completedInterviews,
     timeToLive: "30 seconds",
   }),
+  resolveStudentQrIdentity: (qrIdentity: string) =>
+    AppRpcClient.query("resolveStudentQrIdentity", { qrIdentity }, {
+      timeToLive: "30 seconds",
+    }),
+  listStudentCvProfiles: (studentId: Student["id"]) =>
+    AppRpcClient.query("listStudentCvProfiles", { studentId }, {
+      timeToLive: "30 seconds",
+    }),
   upsertCompanyProfile: AppRpcClient.mutation("upsertCompanyProfile"),
   addRecruiter: AppRpcClient.mutation("addRecruiter"),
   renameRecruiter: AppRpcClient.mutation("renameRecruiter"),
