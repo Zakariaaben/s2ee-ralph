@@ -12,8 +12,6 @@ import { CvProfileRepository } from "../repositories/cv-profile-repository";
 import { InterviewRepository } from "../repositories/interview-repository";
 import { StudentRepository } from "../repositories/student-repository";
 
-const studentQrIdentityPrefix = "student:v1:";
-
 const requireCompanyActor = (actor: AuthenticatedActor) =>
   Effect.gen(function*() {
     if (actor.role !== "company") {
@@ -21,41 +19,6 @@ const requireCompanyActor = (actor: AuthenticatedActor) =>
     }
 
     return actor;
-  });
-
-const normalizeValue = (value: string) =>
-  Effect.gen(function*() {
-    const normalized = value.trim();
-
-    if (normalized.length === 0) {
-      yield* new HttpApiError.BadRequest({});
-    }
-
-    return normalized;
-  });
-
-const decodeStudentQrIdentity = (qrIdentity: string) =>
-  Effect.gen(function*() {
-    if (!qrIdentity.startsWith(studentQrIdentityPrefix)) {
-      yield* new HttpApiError.BadRequest({});
-    }
-
-    const studentId = qrIdentity.slice(studentQrIdentityPrefix.length).trim();
-
-    if (studentId.length === 0) {
-      yield* new HttpApiError.BadRequest({});
-    }
-
-    return studentId;
-  });
-
-const normalizeScore = (score: number) =>
-  Effect.gen(function*() {
-    if (!Number.isFinite(score) || score < 1 || score > 5) {
-      yield* new HttpApiError.BadRequest({});
-    }
-
-    return score;
   });
 
 const uniqueValues = <Value>(values: ReadonlyArray<Value>) => {
@@ -103,7 +66,7 @@ export class InterviewService extends ServiceMap.Service<
     readonly completeInterview: (input: {
       readonly actor: AuthenticatedActor;
       readonly recruiterId: string;
-      readonly qrIdentity: string;
+      readonly studentId: string;
       readonly cvProfileId: string;
       readonly score: number;
       readonly globalTagIds: ReadonlyArray<string>;
@@ -115,11 +78,11 @@ export class InterviewService extends ServiceMap.Service<
     readonly cancelInterview: (input: {
       readonly actor: AuthenticatedActor;
       readonly recruiterId: string;
-      readonly qrIdentity: string;
+      readonly studentId: string;
       readonly cvProfileId: string;
     }) => Effect.Effect<
       Interview,
-      HttpApiError.Forbidden | HttpApiError.BadRequest | HttpApiError.NotFound
+      HttpApiError.Forbidden | HttpApiError.NotFound
     >;
   }
 >()("@project/web/InterviewService") {
@@ -134,7 +97,7 @@ export class InterviewService extends ServiceMap.Service<
       const resolveInterviewContext = (input: {
         readonly actor: AuthenticatedActor;
         readonly recruiterId: string;
-        readonly qrIdentity: string;
+        readonly studentId: string;
         readonly cvProfileId: string;
       }) =>
         Effect.gen(function*() {
@@ -153,8 +116,7 @@ export class InterviewService extends ServiceMap.Service<
             return yield* Effect.fail(new HttpApiError.NotFound({}));
           }
 
-          const studentId = yield* decodeStudentQrIdentity(input.qrIdentity);
-          const student = yield* studentRepository.getById(studentId);
+          const student = yield* studentRepository.getById(input.studentId);
 
           if (!student) {
             return yield* Effect.fail(new HttpApiError.NotFound({}));
@@ -269,7 +231,7 @@ export class InterviewService extends ServiceMap.Service<
         completeInterview: ({
           actor,
           recruiterId,
-          qrIdentity,
+          studentId,
           cvProfileId,
           score,
           globalTagIds,
@@ -280,7 +242,7 @@ export class InterviewService extends ServiceMap.Service<
               yield* resolveInterviewContext({
                 actor,
                 recruiterId,
-                qrIdentity,
+                studentId,
                 cvProfileId,
               });
 
@@ -289,11 +251,9 @@ export class InterviewService extends ServiceMap.Service<
               studentId: student.id,
               cvProfileId: selectedCvProfile.id,
               recruiterName: recruiter.name,
-              score: yield* normalizeScore(score),
+              score,
               globalTagIds: uniqueValues(globalTagIds),
-              companyTagLabels: uniqueValues(
-                yield* Effect.forEach(companyTagLabels, normalizeValue),
-              ),
+              companyTagLabels: uniqueValues(companyTagLabels),
             });
 
             if (!completedInterview) {
@@ -302,13 +262,13 @@ export class InterviewService extends ServiceMap.Service<
 
             return completedInterview;
           }),
-        cancelInterview: ({ actor, recruiterId, qrIdentity, cvProfileId }) =>
+        cancelInterview: ({ actor, recruiterId, studentId, cvProfileId }) =>
           Effect.gen(function*() {
             const { company, recruiter, student, selectedCvProfile } =
               yield* resolveInterviewContext({
                 actor,
                 recruiterId,
-                qrIdentity,
+                studentId,
                 cvProfileId,
               });
 

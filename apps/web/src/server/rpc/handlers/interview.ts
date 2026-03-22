@@ -35,7 +35,7 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
         return yield* interviewService.completeInterview({
           actor,
           recruiterId: input.recruiterId,
-          qrIdentity: input.qrIdentity,
+          studentId: input.qrIdentity,
           cvProfileId: input.cvProfileId,
           score: input.score,
           globalTagIds: input.globalTagIds,
@@ -49,7 +49,7 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
         return yield* interviewService.cancelInterview({
           actor,
           recruiterId: input.recruiterId,
-          qrIdentity: input.qrIdentity,
+          studentId: input.qrIdentity,
           cvProfileId: input.cvProfileId,
         });
       }),

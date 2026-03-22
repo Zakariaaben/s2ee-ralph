@@ -11,23 +11,28 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
+import {
+  InterviewCompanyTagLabel,
+  InterviewScore,
+  StudentQrIdentity,
+} from "../request-schemas";
 
 export class CompleteInterviewInput extends Schema.Class<CompleteInterviewInput>(
   "CompleteInterviewInput",
 )({
   recruiterId: RecruiterId,
-  qrIdentity: Schema.String,
+  qrIdentity: StudentQrIdentity,
   cvProfileId: CvProfileId,
-  score: Schema.Number,
+  score: InterviewScore,
   globalTagIds: Schema.Array(GlobalInterviewTagId),
-  companyTagLabels: Schema.Array(Schema.String),
+  companyTagLabels: Schema.Array(InterviewCompanyTagLabel),
 }) {}
 
 export class CancelInterviewInput extends Schema.Class<CancelInterviewInput>(
   "CancelInterviewInput",
 )({
   recruiterId: RecruiterId,
-  qrIdentity: Schema.String,
+  qrIdentity: StudentQrIdentity,
   cvProfileId: CvProfileId,
 }) {}
 

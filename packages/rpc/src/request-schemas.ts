@@ -18,9 +18,23 @@ export const PositiveInteger = Schema.Number.check(Schema.isInt()).pipe(
   Schema.check(Schema.isGreaterThan(0)),
 );
 
+const validInterviewScore = Schema.makeFilter<number>((value) => {
+  if (!Number.isFinite(value) || value < 1 || value > 5) {
+    return "Expected an interview score between 1 and 5";
+  }
+
+  return true;
+});
+
+export const InterviewScore = Schema.Number.pipe(
+  Schema.check(validInterviewScore),
+);
+
 export const VocabularyEntryId = RequiredText;
 
 export const VocabularyEntryLabel = RequiredText;
+
+export const InterviewCompanyTagLabel = RequiredText;
 
 const base64ContentsPattern =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;

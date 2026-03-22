@@ -236,7 +236,7 @@ describeWithStorage("interview rpc", () => {
 
         const completedInterview = yield* interviewClient.completeInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity,
+          qrIdentity: `  ${qrIdentity}  `,
           cvProfileId: selectedCvProfile.id,
           score: 4.3,
           globalTagIds: [asGlobalInterviewTagId("curious")],
@@ -261,6 +261,90 @@ describeWithStorage("interview rpc", () => {
             RpcClient.withHeaders(companyHeaders),
           ),
         ).toEqual([completedInterview]);
+      }),
+  );
+
+  it.effect(
+    "invalid interview payloads are rejected before any interview is recorded",
+    () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const companyHeaders = yield* provisionSessionHeaders("company");
+        const studentHeaders = yield* provisionSessionHeaders("student");
+        const companyClient = yield* makeCompanyClient;
+        const cvProfileClient = yield* makeCvProfileClient;
+        const interviewClient = yield* makeInterviewClient;
+        const studentClient = yield* makeStudentClient;
+        const vocabularyClient = yield* makeVocabularyClient;
+
+        yield* vocabularyClient.seedControlledVocabularies({
+          cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
+          globalInterviewTags: [{ id: "curious", label: "Curious" }],
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
+          RpcClient.withHeaders(companyHeaders),
+        );
+        const companyWithRecruiter = yield* companyClient.addRecruiter({
+          name: "Nora Recruiter",
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+
+        yield* studentClient.upsertStudentOnboarding({
+          firstName: "Grace",
+          lastName: "Hopper",
+          course: "Computer Science",
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+
+        const selectedCvProfile = yield* cvProfileClient.createStudentCvProfile({
+          profileTypeId: "software-engineering",
+          fileName: "grace-backend.pdf",
+          contentType: "application/pdf",
+          contentsBase64: Buffer.from("grace-backend-cv", "utf8").toString("base64"),
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+
+        const qrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+          RpcClient.withHeaders(studentHeaders),
+        );
+
+        const invalidScoreExit = yield* Effect.exit(
+          interviewClient.completeInterview({
+            recruiterId: companyWithRecruiter.recruiters[0]!.id,
+            qrIdentity,
+            cvProfileId: selectedCvProfile.id,
+            score: 5.1,
+            globalTagIds: [],
+            companyTagLabels: [],
+          }).pipe(RpcClient.withHeaders(companyHeaders)),
+        );
+        const invalidQrExit = yield* Effect.exit(
+          interviewClient.completeInterview({
+            recruiterId: companyWithRecruiter.recruiters[0]!.id,
+            qrIdentity: "not-a-student-qr",
+            cvProfileId: selectedCvProfile.id,
+            score: 4.3,
+            globalTagIds: [],
+            companyTagLabels: [],
+          }).pipe(RpcClient.withHeaders(companyHeaders)),
+        );
+        const blankCompanyTagExit = yield* Effect.exit(
+          interviewClient.completeInterview({
+            recruiterId: companyWithRecruiter.recruiters[0]!.id,
+            qrIdentity,
+            cvProfileId: selectedCvProfile.id,
+            score: 4.3,
+            globalTagIds: [],
+            companyTagLabels: ["  "],
+          }).pipe(RpcClient.withHeaders(companyHeaders)),
+        );
+
+        expect(invalidScoreExit._tag).toBe("Failure");
+        expect(invalidQrExit._tag).toBe("Failure");
+        expect(blankCompanyTagExit._tag).toBe("Failure");
+        expect(
+          yield* interviewClient.listCurrentCompanyInterviews().pipe(
+            RpcClient.withHeaders(companyHeaders),
+          ),
+        ).toEqual([]);
       }),
   );
 
