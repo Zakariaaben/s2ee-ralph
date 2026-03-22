@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StudentRouteImport } from './routes/student'
+import { Route as MapRouteImport } from './routes/map'
 import { Route as CompanyRouteImport } from './routes/company'
 import { Route as CheckInRouteImport } from './routes/check-in'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -20,6 +21,11 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 const StudentRoute = StudentRouteImport.update({
   id: '/student',
   path: '/student',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapRoute = MapRouteImport.update({
+  id: '/map',
+  path: '/map',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompanyRoute = CompanyRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/check-in': typeof CheckInRoute
   '/company': typeof CompanyRoute
+  '/map': typeof MapRoute
   '/student': typeof StudentRoute
   '/api/rpc': typeof ApiRpcRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/check-in': typeof CheckInRoute
   '/company': typeof CompanyRoute
+  '/map': typeof MapRoute
   '/student': typeof StudentRoute
   '/api/rpc': typeof ApiRpcRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/check-in': typeof CheckInRoute
   '/company': typeof CompanyRoute
+  '/map': typeof MapRoute
   '/student': typeof StudentRoute
   '/api/rpc': typeof ApiRpcRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/check-in'
     | '/company'
+    | '/map'
     | '/student'
     | '/api/rpc'
     | '/api/auth/$'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/check-in'
     | '/company'
+    | '/map'
     | '/student'
     | '/api/rpc'
     | '/api/auth/$'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/check-in'
     | '/company'
+    | '/map'
     | '/student'
     | '/api/rpc'
     | '/api/auth/$'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CheckInRoute: typeof CheckInRoute
   CompanyRoute: typeof CompanyRoute
+  MapRoute: typeof MapRoute
   StudentRoute: typeof StudentRoute
   ApiRpcRoute: typeof ApiRpcRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/student'
       fullPath: '/student'
       preLoaderRoute: typeof StudentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map': {
+      id: '/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof MapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/company': {
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CheckInRoute: CheckInRoute,
   CompanyRoute: CompanyRoute,
+  MapRoute: MapRoute,
   StudentRoute: StudentRoute,
   ApiRpcRoute: ApiRpcRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
