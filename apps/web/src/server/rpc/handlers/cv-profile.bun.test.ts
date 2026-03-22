@@ -1,3 +1,4 @@
+import { afterEach, beforeAll, describe, expect, it } from "bun:test";
 import { account, session, user } from "@project/db/schema/auth";
 import { cvProfile } from "@project/db/schema/cv-profile";
 import { student as studentTable } from "@project/db/schema/student";
@@ -17,12 +18,12 @@ import {
   StudentRpcLive,
   VocabularyRpcLive,
 } from "../live";
-import { afterEach, beforeAll, describe, expect, itLayerEffect } from "./bun-test";
 import {
   getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
+  runLayerEffect,
   startPostgresAndStorageTestInfra,
   warnComposeTestInfraUnavailable,
 } from "../test-support";
@@ -59,10 +60,9 @@ describeWithStorage("cv profile rpc", () => {
     startPostgresAndStorageTestInfra();
   });
 
-  itLayerEffect(
+  it(
     "cv profile creation rejects blank metadata and malformed base64 while valid controlled profiles succeed",
-    CvProfileTestLive,
-    () =>
+    runLayerEffect(CvProfileTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const studentHeaders = yield* provisionSessionHeaders("student");
@@ -124,12 +124,12 @@ describeWithStorage("cv profile rpc", () => {
         expect(createdCv.fileName).toBe("ada-software.pdf");
         expect(createdCv.contentType).toBe("application/pdf");
       }),
+    ),
   );
 
-  itLayerEffect(
+  it(
     "student actors can create controlled CV profiles, download stored files, and company actors can list them after QR resolution",
-    CvProfileTestLive,
-    () =>
+    runLayerEffect(CvProfileTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const studentHeaders = yield* provisionSessionHeaders("student");
@@ -198,12 +198,12 @@ describeWithStorage("cv profile rpc", () => {
           }).pipe(RpcClient.withHeaders(companyHeaders)),
         ).toEqual([softwareCv, dataCv]);
       }),
+    ),
   );
 
-  itLayerEffect(
+  it(
     "students replace immutable CV files by deleting and reuploading a fresh profile",
-    CvProfileTestLive,
-    () =>
+    runLayerEffect(CvProfileTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const studentHeaders = yield* provisionSessionHeaders("student");
@@ -268,12 +268,12 @@ describeWithStorage("cv profile rpc", () => {
           contentsBase64: Buffer.from("grace-cv-v2", "utf8").toString("base64"),
         });
       }),
+    ),
   );
 
-  itLayerEffect(
+  it(
     "unknown profile types stay rejected and company actors cannot create student CV profiles",
-    CvProfileTestLive,
-    () =>
+    runLayerEffect(CvProfileTestLive, () =>
       Effect.gen(function*() {
         const studentHeaders = yield* provisionSessionHeaders("student");
         const companyHeaders = yield* provisionSessionHeaders("company");
@@ -308,5 +308,6 @@ describeWithStorage("cv profile rpc", () => {
 
         expect(wrongRoleExit._tag).toBe("Failure");
       }),
+    ),
   );
 });

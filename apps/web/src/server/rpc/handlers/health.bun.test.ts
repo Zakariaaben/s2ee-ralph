@@ -1,15 +1,16 @@
-import { Effect, Layer } from "effect";
+import { beforeAll, describe, expect, it } from "bun:test";
 import { HealthRpcGroup } from "@project/rpc";
+import { Effect, Layer } from "effect";
 import { RpcTest } from "effect/unstable/rpc";
 import { connect } from "node:net";
 
 import { HealthRpcLive } from "../live";
-import { beforeAll, describe, expect, itEffect } from "./bun-test";
 import {
   DatabaseTestLive,
   TestServerEnvLive,
   getComposeTestInfraAvailability,
   runCompose,
+  runTestEffect,
   warnComposeTestInfraUnavailable,
 } from "../test-support";
 
@@ -74,7 +75,7 @@ describeWithStorage("health rpc", () => {
     await waitForInfra(30_000);
   });
 
-  itEffect("reports postgres and object storage readiness", () =>
+  it("reports postgres and object storage readiness", runTestEffect(
     Effect.scoped(invokeHealth()).pipe(
       Effect.tap((health) =>
         Effect.sync(() => {
@@ -85,5 +86,6 @@ describeWithStorage("health rpc", () => {
           });
         }),
       ),
-    ));
+    ),
+  ));
 });

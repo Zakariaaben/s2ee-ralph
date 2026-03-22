@@ -46,6 +46,11 @@ Use this pattern when request context must be available inside handlers:
 - If a handler needs DB-backed reads, inspect `repositories` before adding logic directly to the handler.
 - If runtime or missing layer issues appear, inspect `runtime.ts`, `rpc/live.ts`, and `rpc/handler.ts` together.
 
+## Test Placement
+- Portable tests stay on Vitest with `.test.ts` or `.test.tsx`.
+- Tests that depend on Bun-only runtime APIs, or on live layers that transitively depend on Bun-only APIs, belong on `bun:test` and use the `.bun.test.ts` suffix.
+- Runner choice follows runtime dependency, not suite size or perceived importance.
+
 ## Things To Avoid
 - skipping the service layer and putting orchestration directly in handlers
 - leaking raw request objects deep into services when only headers or a derived context is needed

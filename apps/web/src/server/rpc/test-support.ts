@@ -53,9 +53,8 @@ export const DatabaseTestLive = Layer.fresh(
   DBLive.pipe(Layer.provide(TestServerEnvLive)),
 );
 
-const AuthTestLive = Layer.fresh(
-  Layer.mergeAll(TestServerEnvLive, DatabaseTestLive),
-);
+const makeAuthTestLive = () =>
+  Layer.fresh(Layer.mergeAll(TestServerEnvLive, DatabaseTestLive));
 
 export const makeRpcTestLive = (
   ...layers: [
@@ -64,9 +63,24 @@ export const makeRpcTestLive = (
   ]
 ) =>
   Layer.fresh(Layer.mergeAll(...layers)).pipe(
-    Layer.provideMerge(DatabaseTestLive),
-    Layer.provideMerge(TestServerEnvLive),
+  Layer.provideMerge(DatabaseTestLive),
+  Layer.provideMerge(TestServerEnvLive),
   );
+
+export const runTestEffect = <A, E>(effect: Effect.Effect<A, E, never>) => async () => {
+  await Effect.runPromise(effect);
+};
+
+export const runLayerEffect = <A, E, R>(
+  layer: Layer.Layer<R, any, any>,
+  run: () => Effect.Effect<A, E, R>,
+) => async () => {
+  await Effect.runPromise(
+    Effect.scoped(
+      run().pipe(Effect.provide(Layer.fresh(layer))) as Effect.Effect<A, E, never>,
+    ),
+  );
+};
 
 const runDockerInfo = () => {
   execFileSync("docker", ["info"], {
@@ -210,4 +224,4 @@ export const provisionSessionHeaders = (role: UserRoleValue) =>
     });
 
     return headers;
-  }).pipe(Effect.provide(AuthTestLive));
+  }).pipe(Effect.provide(makeAuthTestLive()));

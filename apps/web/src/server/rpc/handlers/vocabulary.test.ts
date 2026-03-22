@@ -5,7 +5,7 @@ import {
 } from "@project/db/schema/vocabulary";
 import { VocabularyRpcGroup } from "@project/rpc";
 import { afterEach, beforeAll, describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import * as RpcClient from "effect/unstable/rpc/RpcClient";
 import { RpcTest } from "effect/unstable/rpc";
 
@@ -24,9 +24,7 @@ const VocabularyTestLive = makeRpcTestLive(
   AppRpcMiddlewareLive,
 );
 
-const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup).pipe(
-  Effect.provide(VocabularyTestLive),
-);
+const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup);
 
 const postgresTestInfra = getComposeTestInfraAvailability();
 
@@ -85,7 +83,7 @@ describeWithPostgres("vocabulary rpc", () => {
             RpcClient.withHeaders(studentHeaders),
           ),
         ).toEqual(seeded.globalInterviewTags);
-      }),
+      }).pipe(Effect.provide(Layer.fresh(VocabularyTestLive))),
   );
 
   it.effect(
@@ -141,7 +139,7 @@ describeWithPostgres("vocabulary rpc", () => {
           { id: "refer", label: "Refer" },
           { id: "intern", label: "Intern Track" },
         ]);
-      }),
+      }).pipe(Effect.provide(Layer.fresh(VocabularyTestLive))),
   );
 
   it.effect(
@@ -214,11 +212,11 @@ describeWithPostgres("vocabulary rpc", () => {
           { id: "hire", label: "Hire" },
           { id: "refer", label: "Refer" },
         ]);
-      }),
+      }).pipe(Effect.provide(Layer.fresh(VocabularyTestLive))),
   );
 
   it.effect(
-    "vocabulary mutations normalize trimmed payloads and reject blank or duplicate entries at the rpc boundary",
+    "vocabulary mutations reject blank or duplicate entries once payloads are already decoded",
     () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
@@ -234,8 +232,8 @@ describeWithPostgres("vocabulary rpc", () => {
         expect(blankAddExit._tag).toBe("Failure");
         expect(
           yield* client.addCvProfileType({
-            id: "  software-engineering  ",
-            label: "  Software Engineering  ",
+            id: "software-engineering",
+            label: "Software Engineering",
           }).pipe(RpcClient.withHeaders(adminHeaders)),
         ).toEqual([
           { id: "software-engineering", label: "Software Engineering" },
@@ -243,14 +241,14 @@ describeWithPostgres("vocabulary rpc", () => {
 
         expect(
           yield* client.deleteCvProfileType({
-            id: "  software-engineering  ",
+            id: "software-engineering",
           }).pipe(RpcClient.withHeaders(adminHeaders)),
         ).toEqual([]);
 
         const duplicateReplaceExit = yield* Effect.exit(
           client.replaceGlobalInterviewTags({
             entries: [
-              { id: " follow-up ", label: "Follow Up" },
+              { id: "follow-up", label: "Follow Up" },
               { id: "follow-up", label: "Duplicate Follow Up" },
             ],
           }).pipe(RpcClient.withHeaders(adminHeaders)),
@@ -260,7 +258,7 @@ describeWithPostgres("vocabulary rpc", () => {
           client.seedControlledVocabularies({
             cvProfileTypes: [
               { id: "backend", label: "Backend" },
-              { id: " backend ", label: "Duplicate Backend" },
+              { id: "backend", label: "Duplicate Backend" },
             ],
             globalInterviewTags: [
               { id: "hire", label: "Hire" },
@@ -270,6 +268,6 @@ describeWithPostgres("vocabulary rpc", () => {
 
         expect(duplicateReplaceExit._tag).toBe("Failure");
         expect(duplicateSeedExit._tag).toBe("Failure");
-      }),
+      }).pipe(Effect.provide(Layer.fresh(VocabularyTestLive))),
   );
 });

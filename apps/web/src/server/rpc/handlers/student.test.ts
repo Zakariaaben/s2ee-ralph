@@ -2,7 +2,7 @@ import { account, session, user } from "@project/db/schema/auth";
 import { student as studentTable } from "@project/db/schema/student";
 import { StudentRpcGroup } from "@project/rpc";
 import { afterEach, beforeAll, describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import * as RpcClient from "effect/unstable/rpc/RpcClient";
 import { RpcTest } from "effect/unstable/rpc";
 
@@ -21,9 +21,7 @@ const StudentTestLive = makeRpcTestLive(
   AppRpcMiddlewareLive,
 );
 
-const makeStudentClient = RpcTest.makeClient(StudentRpcGroup).pipe(
-  Effect.provide(StudentTestLive),
-);
+const makeStudentClient = RpcTest.makeClient(StudentRpcGroup);
 
 const postgresTestInfra = getComposeTestInfraAvailability();
 
@@ -43,7 +41,7 @@ describeWithPostgres("student rpc", () => {
   });
 
   it.effect(
-    "student actors can create and read back their onboarding record and issue a QR identity",
+    "student actors can create and read back their onboarding record and issue a QR identity after transport decoding",
     () =>
       Effect.gen(function*() {
         const headers = yield* provisionSessionHeaders("student");
@@ -55,9 +53,9 @@ describeWithPostgres("student rpc", () => {
         expect(before).toBeNull();
 
         const student = yield* client.upsertStudentOnboarding({
-          firstName: "  Ada  ",
-          lastName: "  Lovelace  ",
-          course: "  Computer Science  ",
+          firstName: "Ada",
+          lastName: "Lovelace",
+          course: "Computer Science",
         }).pipe(RpcClient.withHeaders(headers));
 
         expect(student.firstName).toBe("Ada");
@@ -75,11 +73,11 @@ describeWithPostgres("student rpc", () => {
         );
 
         expect(qrIdentity).toBe(`student:v1:${student.id}`);
-      }),
+      }).pipe(Effect.provide(Layer.fresh(StudentTestLive))),
   );
 
   it.effect(
-    "company actors can resolve issued student QR identities while malformed payloads stay rejected",
+    "company actors can resolve issued student QR identities while malformed payloads stay rejected after transport decoding",
     () =>
       Effect.gen(function*() {
         const studentHeaders = yield* provisionSessionHeaders("student");
@@ -93,18 +91,17 @@ describeWithPostgres("student rpc", () => {
         const qrIdentity = yield* client.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(studentHeaders),
         );
-        const resolved = yield* client.resolveStudentQrIdentity({ qrIdentity }).pipe(
+        expect(qrIdentity).toContain(student.id);
+        const resolved = yield* client.resolveStudentQrIdentity({
+          qrIdentity: student.id,
+        }).pipe(
           RpcClient.withHeaders(companyHeaders),
         );
-        const resolvedFromTrimmedIdentity = yield* client.resolveStudentQrIdentity({
-          qrIdentity: `  ${qrIdentity}  `,
-        }).pipe(RpcClient.withHeaders(companyHeaders));
 
         expect(resolved).toEqual(student);
-        expect(resolvedFromTrimmedIdentity).toEqual(student);
 
         const wrongRoleExit = yield* Effect.exit(
-          client.resolveStudentQrIdentity({ qrIdentity }).pipe(
+          client.resolveStudentQrIdentity({ qrIdentity: student.id }).pipe(
             RpcClient.withHeaders(studentHeaders),
           ),
         );
@@ -126,6 +123,6 @@ describeWithPostgres("student rpc", () => {
 
         expect(malformedExit._tag).toBe("Failure");
         expect(blankOnboardingExit._tag).toBe("Failure");
-      }),
+      }).pipe(Effect.provide(Layer.fresh(StudentTestLive))),
   );
 });

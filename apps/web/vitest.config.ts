@@ -1,12 +1,14 @@
 import { defineConfig } from "vitest/config";
 
+import { bunOnlyTestGlob } from "./src/server/rpc/test-placement";
+
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
 
   test: {
-    exclude: ["src/server/rpc/handlers/**/*.test.ts"],
+    exclude: [bunOnlyTestGlob],
     fileParallelism: false,
     hookTimeout: 60_000,
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],

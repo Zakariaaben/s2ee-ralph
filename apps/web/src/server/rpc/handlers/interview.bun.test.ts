@@ -1,3 +1,4 @@
+import { afterEach, beforeAll, describe, expect, it } from "bun:test";
 import { account, session, user } from "@project/db/schema/auth";
 import { company, recruiter } from "@project/db/schema/company";
 import { cvProfile } from "@project/db/schema/cv-profile";
@@ -29,12 +30,12 @@ import {
   StudentRpcLive,
   VocabularyRpcLive,
 } from "../live";
-import { afterEach, beforeAll, describe, expect, itLayerEffect } from "./bun-test";
 import {
   getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
+  runLayerEffect,
   startPostgresAndStorageTestInfra,
   warnComposeTestInfraUnavailable,
 } from "../test-support";
@@ -94,10 +95,9 @@ describeWithStorage("interview rpc", () => {
     startPostgresAndStorageTestInfra();
   });
 
-  itLayerEffect(
+  it(
     "company actors can list only their completed interview ledger entries with joined student and CV context",
-    InterviewTestLive,
-    () =>
+    runLayerEffect(InterviewTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
@@ -182,12 +182,12 @@ describeWithStorage("interview rpc", () => {
           },
         ]);
       }),
+    ),
   );
 
-  itLayerEffect(
+  it(
     "company actors can complete an interview for a scanned student CV profile with recruiter snapshots and scoped tags",
-    InterviewTestLive,
-    () =>
+    runLayerEffect(InterviewTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
@@ -256,12 +256,12 @@ describeWithStorage("interview rpc", () => {
           ),
         ).toEqual([completedInterview]);
       }),
+    ),
   );
 
-  itLayerEffect(
+  it(
     "invalid interview payloads are rejected before any interview is recorded",
-    InterviewTestLive,
-    () =>
+    runLayerEffect(InterviewTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
@@ -342,12 +342,12 @@ describeWithStorage("interview rpc", () => {
           ),
         ).toEqual([]);
       }),
+    ),
   );
 
-  itLayerEffect(
+  it(
     "company actors can cancel an interview for a scanned student CV profile without creating score or tag data",
-    InterviewTestLive,
-    () =>
+    runLayerEffect(InterviewTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
@@ -404,12 +404,12 @@ describeWithStorage("interview rpc", () => {
           companyTags: [],
         });
       }),
+    ),
   );
 
-  itLayerEffect(
+  it(
     "company actors can export only their completed interviews with optional CV file contents",
-    InterviewTestLive,
-    () =>
+    runLayerEffect(InterviewTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
@@ -557,12 +557,12 @@ describeWithStorage("interview rpc", () => {
           },
         ]);
       }),
+    ),
   );
 
-  itLayerEffect(
+  it(
     "repeated interviews on the same student CV profile stay allowed and keep recruiter name snapshots stable across roster changes",
-    InterviewTestLive,
-    () =>
+    runLayerEffect(InterviewTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
@@ -637,5 +637,6 @@ describeWithStorage("interview rpc", () => {
           ),
         ).toEqual([firstInterview, secondInterview]);
       }),
+    ),
   );
 });

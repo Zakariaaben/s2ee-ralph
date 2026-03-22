@@ -2,7 +2,7 @@ import { account, session, user } from "@project/db/schema/auth";
 import { UserRoleValues } from "@project/domain";
 import { ActorRpcGroup } from "@project/rpc";
 import { afterEach, beforeAll, describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import * as RpcClient from "effect/unstable/rpc/RpcClient";
 import { RpcTest } from "effect/unstable/rpc";
 
@@ -21,9 +21,7 @@ const ActorTestLive = makeRpcTestLive(
   AppRpcMiddlewareLive,
 );
 
-const makeActorClient = RpcTest.makeClient(ActorRpcGroup).pipe(
-  Effect.provide(ActorTestLive),
-);
+const makeActorClient = RpcTest.makeClient(ActorRpcGroup);
 
 const postgresTestInfra = getComposeTestInfraAvailability();
 
@@ -52,7 +50,7 @@ describeWithPostgres("actor rpc", () => {
 
       expect(actor.role).toBe("company");
       expect(actor.email).toContain("@example.com");
-    }));
+    }).pipe(Effect.provide(Layer.fresh(ActorTestLive))));
 
   it.effect("rejects unauthenticated actor access", () =>
     Effect.gen(function*() {
@@ -60,7 +58,7 @@ describeWithPostgres("actor rpc", () => {
       const exit = yield* Effect.exit(client.currentActor());
 
       expect(exit._tag).toBe("Failure");
-    }));
+    }).pipe(Effect.provide(Layer.fresh(ActorTestLive))));
 
   it.effect("enforces the expected role for protected probes", () =>
     Effect.gen(function*() {
@@ -86,5 +84,5 @@ describeWithPostgres("actor rpc", () => {
         expect(companyExit._tag).toBe(role === "company" ? "Success" : "Failure");
         expect(checkInExit._tag).toBe(role === "check-in" ? "Success" : "Failure");
       }
-    }));
+    }).pipe(Effect.provide(Layer.fresh(ActorTestLive))));
 });

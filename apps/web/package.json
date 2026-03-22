@@ -8,7 +8,7 @@
     "dev": "vite dev",
     "test": "bun run test:vitest && bun run test:bun",
     "test:vitest": "vitest run --config vitest.config.ts",
-    "test:bun": "bun run ./scripts/run-bun-tests.ts",
+    "test:bun": "bun test --timeout 60000 --max-concurrency 1 --pass-with-no-tests ./src/server/rpc/handlers/*.bun.test.ts",
     "typecheck": "tsgo --noEmit",
     "check-types": "tsgo --noEmit"
   },

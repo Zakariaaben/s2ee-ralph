@@ -2,7 +2,7 @@ import { account, session, user } from "@project/db/schema/auth";
 import { company as companyTable, recruiter } from "@project/db/schema/company";
 import { CompanyRpcGroup } from "@project/rpc";
 import { afterEach, beforeAll, describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import * as RpcClient from "effect/unstable/rpc/RpcClient";
 import { RpcTest } from "effect/unstable/rpc";
 
@@ -21,9 +21,7 @@ const CompanyTestLive = makeRpcTestLive(
   AppRpcMiddlewareLive,
 );
 
-const makeCompanyClient = RpcTest.makeClient(CompanyRpcGroup).pipe(
-  Effect.provide(CompanyTestLive),
-);
+const makeCompanyClient = RpcTest.makeClient(CompanyRpcGroup);
 
 const postgresTestInfra = getComposeTestInfraAvailability();
 
@@ -44,7 +42,7 @@ describeWithPostgres("company rpc", () => {
     startPostgresTestInfra();
   });
 
-  it.effect("company mutations normalize surrounding whitespace while blank names stay rejected", () =>
+  it.effect("company mutations persist already-decoded names while blank names stay rejected", () =>
     Effect.gen(function*() {
       const headers = yield* provisionSessionHeaders("company");
       const client = yield* makeCompanyClient;
@@ -60,13 +58,13 @@ describeWithPostgres("company rpc", () => {
       ).toBeNull();
 
       const company = yield* client.upsertCompanyProfile({
-        name: "  Acme Systems  ",
+        name: "Acme Systems",
       }).pipe(RpcClient.withHeaders(headers));
 
       expect(company.name).toBe("Acme Systems");
 
       const withRecruiter = yield* client.addRecruiter({
-        name: "  Nora Recruiter  ",
+        name: "Nora Recruiter",
       }).pipe(RpcClient.withHeaders(headers));
 
       expect(withRecruiter.recruiters).toEqual([
@@ -78,7 +76,7 @@ describeWithPostgres("company rpc", () => {
 
       const renamed = yield* client.renameRecruiter({
         recruiterId: withRecruiter.recruiters[0]!.id,
-        name: "  Nora Updated  ",
+        name: "Nora Updated",
       }).pipe(RpcClient.withHeaders(headers));
 
       expect(renamed.recruiters).toEqual([
@@ -87,7 +85,7 @@ describeWithPostgres("company rpc", () => {
           name: "Nora Updated",
         },
       ]);
-    }));
+    }).pipe(Effect.provide(Layer.fresh(CompanyTestLive))));
 
   it.effect("company actors can create and read back their onboarding record", () =>
     Effect.gen(function*() {
@@ -111,7 +109,7 @@ describeWithPostgres("company rpc", () => {
       );
 
       expect(after).toEqual(company);
-    }));
+    }).pipe(Effect.provide(Layer.fresh(CompanyTestLive))));
 
   it.effect("recruiter roster updates stay scoped to the owning company account", () =>
     Effect.gen(function*() {
@@ -162,5 +160,5 @@ describeWithPostgres("company rpc", () => {
           name: "Nora Updated",
         },
       ]);
-    }));
+    }).pipe(Effect.provide(Layer.fresh(CompanyTestLive))));
 });

@@ -1,13 +1,13 @@
 import { account, session, user } from "@project/db/schema/auth";
 import { company } from "@project/db/schema/company";
 import { room } from "@project/db/schema/venue";
-import { AppRpc } from "@project/rpc";
+import { CompanyRpcGroup, VenueRpcGroup } from "@project/rpc";
 import { afterEach, beforeAll, describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import * as RpcClient from "effect/unstable/rpc/RpcClient";
 import { RpcTest } from "effect/unstable/rpc";
 
-import { AppRpcLive, AppRpcMiddlewareLive } from "../live";
+import { AppRpcMiddlewareLive, CompanyRpcLive, VenueRpcLive } from "../live";
 import {
   getComposeTestInfraAvailability,
   makeRpcTestLive,
@@ -18,13 +18,14 @@ import {
 } from "../test-support";
 
 const VenueTestLive = makeRpcTestLive(
-  AppRpcLive,
+  CompanyRpcLive,
+  VenueRpcLive,
   AppRpcMiddlewareLive,
 );
 
-const makeAppClient = RpcTest.makeClient(AppRpc).pipe(
-  Effect.provide(VenueTestLive),
-);
+const makeCompanyClient = RpcTest.makeClient(CompanyRpcGroup);
+
+const makeVenueClient = RpcTest.makeClient(VenueRpcGroup);
 
 const postgresTestInfra = getComposeTestInfraAvailability();
 
@@ -43,10 +44,10 @@ describeWithPostgres("venue rpc", () => {
     startPostgresTestInfra();
   });
 
-  it.effect("admin actors can create rooms and list them in the venue state", () =>
+  it.effect("admin actors can create rooms and list them in the venue state after transport decoding", () =>
     Effect.gen(function*() {
       const headers = yield* provisionSessionHeaders("admin");
-      const client = yield* makeAppClient;
+      const client = yield* makeVenueClient;
       const blankRoomExit = yield* Effect.exit(
         client.createRoom({ code: "   " }).pipe(
           RpcClient.withHeaders(headers),
@@ -58,7 +59,7 @@ describeWithPostgres("venue rpc", () => {
       ).toEqual([]);
       expect(blankRoomExit._tag).toBe("Failure");
 
-      const createdRoom = yield* client.createRoom({ code: "  s27  " }).pipe(
+      const createdRoom = yield* client.createRoom({ code: "S27" }).pipe(
         RpcClient.withHeaders(headers),
       );
 
@@ -72,7 +73,7 @@ describeWithPostgres("venue rpc", () => {
           companies: [],
         },
       ]);
-    }));
+    }).pipe(Effect.provide(Layer.fresh(VenueTestLive))));
 
   it.effect(
     "admin actors can place companies into rooms while not-arrived companies stay visible",
@@ -80,22 +81,23 @@ describeWithPostgres("venue rpc", () => {
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
-        const client = yield* makeAppClient;
-        const placedRoom = yield* client.createRoom({ code: "CP3" }).pipe(
+        const venueClient = yield* makeVenueClient;
+        const companyClient = yield* makeCompanyClient;
+        const placedRoom = yield* venueClient.createRoom({ code: "CP3" }).pipe(
           RpcClient.withHeaders(adminHeaders),
         );
-        const companyProfile = yield* client.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
+        const companyProfile = yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
           RpcClient.withHeaders(companyHeaders),
         );
         const invalidStandExit = yield* Effect.exit(
-          client.assignCompanyPlacement({
+          venueClient.assignCompanyPlacement({
             companyId: companyProfile.id,
             roomId: placedRoom.id,
             standNumber: 0,
           }).pipe(RpcClient.withHeaders(adminHeaders)),
         );
 
-        yield* client.assignCompanyPlacement({
+        yield* venueClient.assignCompanyPlacement({
           companyId: companyProfile.id,
           roomId: placedRoom.id,
           standNumber: 12,
@@ -104,7 +106,7 @@ describeWithPostgres("venue rpc", () => {
         expect(invalidStandExit._tag).toBe("Failure");
 
         expect(
-          yield* client.listVenueRooms().pipe(
+          yield* venueClient.listVenueRooms().pipe(
             RpcClient.withHeaders(adminHeaders),
           ),
         ).toEqual([
@@ -121,7 +123,7 @@ describeWithPostgres("venue rpc", () => {
             ],
           },
         ]);
-      }),
+      }).pipe(Effect.provide(Layer.fresh(VenueTestLive))),
   );
 
   it.effect("check-in actors can mark placed companies as arrived", () =>
@@ -129,29 +131,30 @@ describeWithPostgres("venue rpc", () => {
       const adminHeaders = yield* provisionSessionHeaders("admin");
       const companyHeaders = yield* provisionSessionHeaders("company");
       const checkInHeaders = yield* provisionSessionHeaders("check-in");
-      const client = yield* makeAppClient;
-      const placedRoom = yield* client.createRoom({ code: "A1" }).pipe(
+      const venueClient = yield* makeVenueClient;
+      const companyClient = yield* makeCompanyClient;
+      const placedRoom = yield* venueClient.createRoom({ code: "A1" }).pipe(
         RpcClient.withHeaders(adminHeaders),
       );
-      const companyProfile = yield* client.upsertCompanyProfile({ name: "Beta Systems" }).pipe(
+      const companyProfile = yield* companyClient.upsertCompanyProfile({ name: "Beta Systems" }).pipe(
         RpcClient.withHeaders(companyHeaders),
       );
 
-      yield* client.assignCompanyPlacement({
+      yield* venueClient.assignCompanyPlacement({
         companyId: companyProfile.id,
         roomId: placedRoom.id,
         standNumber: 4,
       }).pipe(RpcClient.withHeaders(adminHeaders));
 
       const wrongRoleExit = yield* Effect.exit(
-        client.markCompanyArrived({ companyId: companyProfile.id }).pipe(
+        venueClient.markCompanyArrived({ companyId: companyProfile.id }).pipe(
           RpcClient.withHeaders(companyHeaders),
         ),
       );
 
       expect(wrongRoleExit._tag).toBe("Failure");
 
-      const arrivedCompany = yield* client.markCompanyArrived({
+      const arrivedCompany = yield* venueClient.markCompanyArrived({
         companyId: companyProfile.id,
       }).pipe(RpcClient.withHeaders(checkInHeaders));
 
@@ -163,7 +166,7 @@ describeWithPostgres("venue rpc", () => {
       });
 
       expect(
-        yield* client.listVenueRooms().pipe(
+        yield* venueClient.listVenueRooms().pipe(
           RpcClient.withHeaders(checkInHeaders),
         ),
       ).toEqual([
@@ -180,5 +183,5 @@ describeWithPostgres("venue rpc", () => {
           ],
         },
       ]);
-    }));
+    }).pipe(Effect.provide(Layer.fresh(VenueTestLive))));
 });

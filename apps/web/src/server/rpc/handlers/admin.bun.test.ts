@@ -1,3 +1,4 @@
+import { afterEach, beforeAll, describe, expect, it } from "bun:test";
 import { account, session, user } from "@project/db/schema/auth";
 import { company, recruiter } from "@project/db/schema/company";
 import { cvProfile } from "@project/db/schema/cv-profile";
@@ -34,12 +35,12 @@ import {
   VenueRpcLive,
   VocabularyRpcLive,
 } from "../live";
-import { afterEach, beforeAll, describe, expect, itLayerEffect } from "./bun-test";
 import {
   getComposeTestInfraAvailability,
   makeRpcTestLive,
   provisionSessionHeaders,
   resetTables,
+  runLayerEffect,
   startPostgresAndStorageTestInfra,
   warnComposeTestInfraUnavailable,
 } from "../test-support";
@@ -106,10 +107,9 @@ describeWithStorage("admin rpc", () => {
     startPostgresAndStorageTestInfra();
   });
 
-  itLayerEffect(
+  it(
     "admin actors can list the global company ledger with recruiter, placement, and arrival context",
-    AdminTestLive,
-    () =>
+    runLayerEffect(AdminTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
@@ -160,12 +160,12 @@ describeWithStorage("admin rpc", () => {
           },
         ]);
       }),
+    ),
   );
 
-  itLayerEffect(
+  it(
     "admin actors can list the global interview ledger with company, student, CV, and status context across companies",
-    AdminTestLive,
-    () =>
+    runLayerEffect(AdminTestLive, () =>
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
@@ -267,10 +267,12 @@ describeWithStorage("admin rpc", () => {
           },
         ]);
       }),
+    ),
   );
 
-  itLayerEffect("non-admin actors cannot read the admin oversight ledgers", AdminTestLive, () =>
-    Effect.gen(function*() {
+  it("non-admin actors cannot read the admin oversight ledgers", runLayerEffect(
+    AdminTestLive,
+    () => Effect.gen(function*() {
       const companyHeaders = yield* provisionSessionHeaders("company");
       const client = yield* makeAdminClient;
       const exit = yield* Effect.exit(
@@ -278,5 +280,6 @@ describeWithStorage("admin rpc", () => {
       );
 
       expect(exit._tag).toBe("Failure");
-    }));
+    }),
+  ));
 });
