@@ -143,4 +143,77 @@ describeWithPostgres("vocabulary rpc", () => {
         ]);
       }),
   );
+
+  it.effect(
+    "admin actors can add, delete, and bulk replace vocabulary entries while non-admin actors are denied mutations",
+    () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const studentHeaders = yield* provisionSessionHeaders("student");
+        const client = yield* makeVocabularyClient;
+
+        yield* client.seedControlledVocabularies({
+          cvProfileTypes: [
+            { id: "software-engineering", label: "Software Engineering" },
+          ],
+          globalInterviewTags: [
+            { id: "strong-fit", label: "Strong Fit" },
+          ],
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        expect(
+          yield* client.addCvProfileType({
+            id: "product-management",
+            label: "Product Management",
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        ).toEqual([
+          { id: "software-engineering", label: "Software Engineering" },
+          { id: "product-management", label: "Product Management" },
+        ]);
+
+        expect(
+          yield* client.deleteCvProfileType({
+            id: "software-engineering",
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        ).toEqual([
+          { id: "product-management", label: "Product Management" },
+        ]);
+
+        expect(
+          yield* client.replaceGlobalInterviewTags({
+            entries: [
+              { id: "hire", label: "Hire" },
+              { id: "refer", label: "Refer" },
+            ],
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        ).toEqual([
+          { id: "hire", label: "Hire" },
+          { id: "refer", label: "Refer" },
+        ]);
+
+        const deniedExit = yield* Effect.exit(
+          client.addGlobalInterviewTag({
+            id: "follow-up",
+            label: "Follow Up",
+          }).pipe(RpcClient.withHeaders(studentHeaders)),
+        );
+
+        expect(deniedExit._tag).toBe("Failure");
+        expect(
+          yield* client.listCvProfileTypes().pipe(
+            RpcClient.withHeaders(studentHeaders),
+          ),
+        ).toEqual([
+          { id: "product-management", label: "Product Management" },
+        ]);
+        expect(
+          yield* client.listGlobalInterviewTags().pipe(
+            RpcClient.withHeaders(studentHeaders),
+          ),
+        ).toEqual([
+          { id: "hire", label: "Hire" },
+          { id: "refer", label: "Refer" },
+        ]);
+      }),
+  );
 });

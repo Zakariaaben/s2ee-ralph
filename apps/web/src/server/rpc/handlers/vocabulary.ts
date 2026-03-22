@@ -19,6 +19,60 @@ export const makeVocabularyRpcHandlers = Effect.gen(function*() {
 
         return yield* vocabularyService.listGlobalInterviewTags(actor);
       }),
+    addCvProfileType: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.addCvProfileType({
+          actor,
+          entry: input,
+        });
+      }),
+    deleteCvProfileType: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.deleteCvProfileType({
+          actor,
+          id: input.id,
+        });
+      }),
+    replaceCvProfileTypes: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.replaceCvProfileTypes({
+          actor,
+          entries: input.entries,
+        });
+      }),
+    addGlobalInterviewTag: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.addGlobalInterviewTag({
+          actor,
+          entry: input,
+        });
+      }),
+    deleteGlobalInterviewTag: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.deleteGlobalInterviewTag({
+          actor,
+          id: input.id,
+        });
+      }),
+    replaceGlobalInterviewTags: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.replaceGlobalInterviewTags({
+          actor,
+          entries: input.entries,
+        });
+      }),
     seedControlledVocabularies: (input) =>
       Effect.gen(function*() {
         const actor = yield* CurrentActor;

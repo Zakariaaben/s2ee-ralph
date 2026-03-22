@@ -39,6 +39,24 @@ export class VocabularyRepository extends ServiceMap.Service<
     readonly listGlobalInterviewTags: () => Effect.Effect<
       ReadonlyArray<GlobalInterviewTag>
     >;
+    readonly addCvProfileType: (
+      entry: SeedVocabularyEntry,
+    ) => Effect.Effect<ReadonlyArray<CvProfileType>>;
+    readonly deleteCvProfileType: (
+      id: string,
+    ) => Effect.Effect<ReadonlyArray<CvProfileType>>;
+    readonly replaceCvProfileTypes: (
+      entries: ReadonlyArray<SeedVocabularyEntry>,
+    ) => Effect.Effect<ReadonlyArray<CvProfileType>>;
+    readonly addGlobalInterviewTag: (
+      entry: SeedVocabularyEntry,
+    ) => Effect.Effect<ReadonlyArray<GlobalInterviewTag>>;
+    readonly deleteGlobalInterviewTag: (
+      id: string,
+    ) => Effect.Effect<ReadonlyArray<GlobalInterviewTag>>;
+    readonly replaceGlobalInterviewTags: (
+      entries: ReadonlyArray<SeedVocabularyEntry>,
+    ) => Effect.Effect<ReadonlyArray<GlobalInterviewTag>>;
     readonly seedControlledVocabularies: (
       input: {
         readonly cvProfileTypes: ReadonlyArray<SeedVocabularyEntry>;
@@ -73,9 +91,85 @@ export class VocabularyRepository extends ServiceMap.Service<
             .then((rows) => rows.map(toGlobalInterviewTag)),
         );
 
+      const replaceCvProfileTypes = (
+        entries: ReadonlyArray<SeedVocabularyEntry>,
+      ) =>
+        Effect.gen(function*() {
+          yield* Effect.promise(() =>
+            db.transaction(async (tx) => {
+              await tx.delete(cvProfileType);
+
+              if (entries.length > 0) {
+                await tx.insert(cvProfileType).values(
+                  entries.map((entry, sortOrder) => ({
+                    id: entry.id,
+                    label: entry.label,
+                    sortOrder,
+                  })),
+                );
+              }
+            }),
+          );
+
+          return yield* listCvProfileTypes();
+        });
+
+      const replaceGlobalInterviewTags = (
+        entries: ReadonlyArray<SeedVocabularyEntry>,
+      ) =>
+        Effect.gen(function*() {
+          yield* Effect.promise(() =>
+            db.transaction(async (tx) => {
+              await tx.delete(globalInterviewTag);
+
+              if (entries.length > 0) {
+                await tx.insert(globalInterviewTag).values(
+                  entries.map((entry, sortOrder) => ({
+                    id: entry.id,
+                    label: entry.label,
+                    sortOrder,
+                  })),
+                );
+              }
+            }),
+          );
+
+          return yield* listGlobalInterviewTags();
+        });
+
       return VocabularyRepository.of({
         listCvProfileTypes,
         listGlobalInterviewTags,
+        addCvProfileType: (entry) =>
+          Effect.gen(function*() {
+            const currentEntries = yield* listCvProfileTypes();
+
+            return yield* replaceCvProfileTypes([...currentEntries, entry]);
+          }),
+        deleteCvProfileType: (id) =>
+          Effect.gen(function*() {
+            const currentEntries = yield* listCvProfileTypes();
+
+            return yield* replaceCvProfileTypes(
+              currentEntries.filter((entry) => entry.id !== id),
+            );
+          }),
+        replaceCvProfileTypes,
+        addGlobalInterviewTag: (entry) =>
+          Effect.gen(function*() {
+            const currentEntries = yield* listGlobalInterviewTags();
+
+            return yield* replaceGlobalInterviewTags([...currentEntries, entry]);
+          }),
+        deleteGlobalInterviewTag: (id) =>
+          Effect.gen(function*() {
+            const currentEntries = yield* listGlobalInterviewTags();
+
+            return yield* replaceGlobalInterviewTags(
+              currentEntries.filter((entry) => entry.id !== id),
+            );
+          }),
+        replaceGlobalInterviewTags,
         seedControlledVocabularies: ({ cvProfileTypes, globalInterviewTags }) =>
           Effect.gen(function*() {
             yield* Effect.promise(() =>
