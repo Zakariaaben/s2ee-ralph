@@ -1,10 +1,17 @@
-import { Room, RoomId, VenueCompany, VenueRoom } from "@project/domain";
+import { PublishedVenueMap, Room, RoomId, VenueCompany, VenueRoom } from "@project/domain";
 import { Schema } from "effect";
 import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
-import { PositiveInteger, RoomCode } from "../request-schemas";
+import {
+  Base64FileContents,
+  CoordinatePercentage,
+  ImageContentType,
+  PositiveInteger,
+  RequiredText,
+  RoomCode,
+} from "../request-schemas";
 
 export class CreateRoomInput extends Schema.Class<CreateRoomInput>(
   "CreateRoomInput",
@@ -45,6 +52,28 @@ export class MarkCompanyArrivedInput extends Schema.Class<MarkCompanyArrivedInpu
   companyId: Schema.String,
 }) {}
 
+export class PublishVenueMapInput extends Schema.Class<PublishVenueMapInput>(
+  "PublishVenueMapInput",
+)({
+  fileName: RequiredText,
+  contentType: ImageContentType,
+  contentsBase64: Base64FileContents,
+}) {}
+
+export class UpsertVenueMapRoomPinInput extends Schema.Class<UpsertVenueMapRoomPinInput>(
+  "UpsertVenueMapRoomPinInput",
+)({
+  roomId: RoomId,
+  xPercent: CoordinatePercentage,
+  yPercent: CoordinatePercentage,
+}) {}
+
+export class DeleteVenueMapRoomPinInput extends Schema.Class<DeleteVenueMapRoomPinInput>(
+  "DeleteVenueMapRoomPinInput",
+)({
+  roomId: RoomId,
+}) {}
+
 export const VenueRpcAccessError = Schema.Union([
   HttpApiError.Unauthorized,
   HttpApiError.Forbidden,
@@ -60,6 +89,25 @@ export const VenueRpcGroup = RpcGroup.make(
   Rpc.make("listVenueRooms", {
     success: Schema.Array(VenueRoom),
     error: VenueRpcAccessError,
+  }),
+  Rpc.make("publishVenueMap", {
+    success: PublishedVenueMap,
+    error: Schema.Union([VenueRpcAccessError, HttpApiError.BadRequest]),
+    payload: PublishVenueMapInput,
+  }),
+  Rpc.make("clearPublishedVenueMap", {
+    success: Schema.Void,
+    error: VenueRpcAccessError,
+  }),
+  Rpc.make("upsertVenueMapRoomPin", {
+    success: PublishedVenueMap,
+    error: VenueRpcMutationError,
+    payload: UpsertVenueMapRoomPinInput,
+  }),
+  Rpc.make("deleteVenueMapRoomPin", {
+    success: Schema.Void,
+    error: Schema.Union([VenueRpcAccessError, HttpApiError.NotFound]),
+    payload: DeleteVenueMapRoomPinInput,
   }),
   Rpc.make("createRoom", {
     success: Room,
@@ -92,3 +140,9 @@ export const VenueRpcGroup = RpcGroup.make(
     payload: MarkCompanyArrivedInput,
   }),
 ).middleware(CurrentActorRpcMiddleware);
+
+export const PublicVenueRpcGroup = RpcGroup.make(
+  Rpc.make("getPublishedVenueMap", {
+    success: Schema.NullOr(PublishedVenueMap),
+  }),
+);

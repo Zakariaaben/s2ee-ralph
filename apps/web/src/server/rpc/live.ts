@@ -5,6 +5,7 @@ import {
   CvProfileRpcGroup,
   HealthRpcGroup,
   InterviewRpcGroup,
+  PublicVenueRpcGroup,
   StudentRpcGroup,
   VenueRpcGroup,
   VocabularyRpcGroup,
@@ -27,7 +28,7 @@ import { makeCvProfileRpcHandlers } from "./handlers/cv-profile";
 import { makeHealthRpcHandlers } from "./handlers/health";
 import { makeInterviewRpcHandlers } from "./handlers/interview";
 import { makeStudentRpcHandlers } from "./handlers/student";
-import { makeVenueRpcHandlers } from "./handlers/venue";
+import { makePublicVenueRpcHandlers, makeVenueRpcHandlers } from "./handlers/venue";
 import { makeVocabularyRpcHandlers } from "./handlers/vocabulary";
 import { CurrentActorRpcMiddlewareLive } from "./middleware/current-actor";
 
@@ -65,6 +66,10 @@ export const VenueRpcLive = VenueRpcGroup.toLayer(
   makeVenueRpcHandlers,
 ).pipe(Layer.provide(VenueService.layer));
 
+export const PublicVenueRpcLive = PublicVenueRpcGroup.toLayer(
+  makePublicVenueRpcHandlers,
+).pipe(Layer.provide(VenueService.layer));
+
 export const VocabularyRpcLive = VocabularyRpcGroup.toLayer(
   makeVocabularyRpcHandlers,
 ).pipe(Layer.provide(VocabularyService.layer));
@@ -78,6 +83,7 @@ export const AppRpcLive = Layer.mergeAll(
   InterviewRpcLive,
   StudentRpcLive,
   VocabularyRpcLive,
+  PublicVenueRpcLive,
   VenueRpcLive,
 );
 

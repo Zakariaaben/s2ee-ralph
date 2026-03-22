@@ -54,6 +54,30 @@ export const Base64FileContents = RequiredText.pipe(
   Schema.check(validBase64Contents),
 );
 
+const validImageContentType = Schema.makeFilter<string>((value) => {
+  if (!value.startsWith("image/")) {
+    return "Expected an image content type";
+  }
+
+  return true;
+});
+
+const validCoordinatePercentage = Schema.makeFilter<number>((value) => {
+  if (!Number.isFinite(value) || value < 0 || value > 100) {
+    return "Expected a coordinate percentage between 0 and 100";
+  }
+
+  return true;
+});
+
+export const ImageContentType = RequiredText.pipe(
+  Schema.check(validImageContentType),
+);
+
+export const CoordinatePercentage = Schema.Number.pipe(
+  Schema.check(validCoordinatePercentage),
+);
+
 const uniqueIds = Schema.makeFilter<ReadonlyArray<{ readonly id: string }>>(
   (entries) => {
     const seenIds = new Set<string>();

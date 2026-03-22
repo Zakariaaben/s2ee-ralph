@@ -70,6 +70,11 @@ import { authClient } from "@/lib/auth-client";
 import { getRoleHomePath } from "@/lib/auth-routing";
 import { adminWorkspaceAtoms, adminWorkspaceReactivity } from "@/lib/admin-atoms";
 import {
+  buildVenueMapRoomRows,
+  calculateVenueMapPinCoordinates,
+  formatVenueMapPinPosition,
+} from "@/lib/admin-map";
+import {
   describeVenueRoomOccupancy,
   filterPlacementManagementCompanies,
   filterVenueRoomSummaries,
@@ -226,6 +231,9 @@ export function AdminWorkspace(): React.ReactElement {
   const [venueQuery, setVenueQuery] = useState("");
   const [placementQuery, setPlacementQuery] = useState("");
   const [newRoomCode, setNewRoomCode] = useState("");
+  const [selectedVenueMapFile, setSelectedVenueMapFile] = useState<File | null>(null);
+  const [venueMapFileInputResetKey, setVenueMapFileInputResetKey] = useState(0);
+  const [selectedVenueMapRoomId, setSelectedVenueMapRoomId] = useState<Room["id"] | null>(null);
   const [accessQuery, setAccessQuery] = useState("");
   const [accessRoleFilter, setAccessRoleFilter] =
     useState<(typeof accessRoleFilterOptions)[number]["value"]>("all");
@@ -246,11 +254,13 @@ export function AdminWorkspace(): React.ReactElement {
   const companyLedgerResult = useAtomValue(adminWorkspaceAtoms.companyLedger);
   const accessLedgerResult = useAtomValue(adminWorkspaceAtoms.accessLedger);
   const interviewLedgerResult = useAtomValue(adminWorkspaceAtoms.interviewLedger);
+  const publishedVenueMapResult = useAtomValue(adminWorkspaceAtoms.publishedVenueMap);
   const venueRoomsResult = useAtomValue(adminWorkspaceAtoms.venueRooms);
 
   const refreshCompanyLedger = useAtomRefresh(adminWorkspaceAtoms.companyLedger);
   const refreshAccessLedger = useAtomRefresh(adminWorkspaceAtoms.accessLedger);
   const refreshInterviewLedger = useAtomRefresh(adminWorkspaceAtoms.interviewLedger);
+  const refreshPublishedVenueMap = useAtomRefresh(adminWorkspaceAtoms.publishedVenueMap);
   const refreshVenueRooms = useAtomRefresh(adminWorkspaceAtoms.venueRooms);
 
   const changeUserRole = useAtomSet(adminWorkspaceAtoms.changeUserRole, {
@@ -269,6 +279,18 @@ export function AdminWorkspace(): React.ReactElement {
     mode: "promise",
   });
   const clearCompanyPlacement = useAtomSet(adminWorkspaceAtoms.clearCompanyPlacement, {
+    mode: "promise",
+  });
+  const publishVenueMap = useAtomSet(adminWorkspaceAtoms.publishVenueMap, {
+    mode: "promise",
+  });
+  const clearPublishedVenueMap = useAtomSet(adminWorkspaceAtoms.clearPublishedVenueMap, {
+    mode: "promise",
+  });
+  const upsertVenueMapRoomPin = useAtomSet(adminWorkspaceAtoms.upsertVenueMapRoomPin, {
+    mode: "promise",
+  });
+  const deleteVenueMapRoomPin = useAtomSet(adminWorkspaceAtoms.deleteVenueMapRoomPin, {
     mode: "promise",
   });
 
@@ -316,6 +338,10 @@ export function AdminWorkspace(): React.ReactElement {
     interviewLedgerResult,
     "The interview ledger could not be loaded from the admin contract.",
   );
+  const publishedVenueMapState = toAsyncPanelState(
+    publishedVenueMapResult,
+    "The published venue map could not be loaded from the venue contract.",
+  );
   const venueRoomsState = toAsyncPanelState(
     venueRoomsResult,
     "Venue rooms could not be loaded from the venue contract.",
@@ -324,6 +350,8 @@ export function AdminWorkspace(): React.ReactElement {
   const companyLedger = companyLedgerState.kind === "success" ? companyLedgerState.value : [];
   const accessLedger = accessLedgerState.kind === "success" ? accessLedgerState.value : [];
   const interviewLedger = interviewLedgerState.kind === "success" ? interviewLedgerState.value : [];
+  const publishedVenueMap =
+    publishedVenueMapState.kind === "success" ? publishedVenueMapState.value : null;
   const venueRooms = venueRoomsState.kind === "success" ? venueRoomsState.value : [];
 
   useEffect(() => {
@@ -345,6 +373,21 @@ export function AdminWorkspace(): React.ReactElement {
       Object.fromEntries(venueRoomsState.value.map((room) => [room.id, room.code])),
     );
   }, [venueRoomsState]);
+
+  useEffect(() => {
+    if (venueRoomsState.kind !== "success") {
+      return;
+    }
+
+    if (
+      selectedVenueMapRoomId != null &&
+      venueRoomsState.value.some((room) => room.id === selectedVenueMapRoomId)
+    ) {
+      return;
+    }
+
+    setSelectedVenueMapRoomId(venueRoomsState.value[0]?.id ?? null);
+  }, [selectedVenueMapRoomId, venueRoomsState]);
 
   useEffect(() => {
     if (companyLedgerState.kind !== "success") {
@@ -391,11 +434,21 @@ export function AdminWorkspace(): React.ReactElement {
     status: interviewStatusFilter,
   });
   const recentInterviews = selectRecentAdminInterviews(interviewLedger);
+  const venueMapRoomRows = buildVenueMapRoomRows(venueRooms, publishedVenueMap);
+  const selectedVenueMapRoom =
+    selectedVenueMapRoomId == null
+      ? null
+      : venueMapRoomRows.find((row) => row.room.id === selectedVenueMapRoomId) ?? null;
+  const publishedVenueMapImageSrc =
+    publishedVenueMap == null
+      ? null
+      : `data:${publishedVenueMap.image.contentType};base64,${publishedVenueMap.image.contentsBase64}`;
 
   const refreshWorkspace = () => {
     refreshCompanyLedger();
     refreshAccessLedger();
     refreshInterviewLedger();
+    refreshPublishedVenueMap();
     refreshVenueRooms();
   };
 
@@ -584,6 +637,161 @@ export function AdminWorkspace(): React.ReactElement {
     }
   };
 
+  const readFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onerror = () => {
+        reject(new Error("The selected map image could not be read."));
+      };
+      reader.onload = () => {
+        if (typeof reader.result !== "string") {
+          reject(new Error("The selected map image did not produce uploadable contents."));
+          return;
+        }
+
+        resolve(reader.result);
+      };
+
+      reader.readAsDataURL(file);
+    });
+
+  const publishSelectedVenueMap = async () => {
+    if (!selectedVenueMapFile) {
+      setWorkspaceError("Choose a venue map image before publishing.");
+      return;
+    }
+
+    if (!selectedVenueMapFile.type.startsWith("image/")) {
+      setWorkspaceError("The venue map must be an image file.");
+      return;
+    }
+
+    setPendingVenueActionId("map:publish");
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      const dataUrl = await readFileAsDataUrl(selectedVenueMapFile);
+      const [metadata, contentsBase64] = dataUrl.split(",", 2);
+      const contentType = metadata?.match(/^data:(.+);base64$/)?.[1] ?? selectedVenueMapFile.type;
+
+      if (!contentsBase64 || contentsBase64.trim().length === 0) {
+        throw new Error("The selected map image did not contain publishable contents.");
+      }
+
+      await publishVenueMap({
+        payload: {
+          fileName: selectedVenueMapFile.name,
+          contentType,
+          contentsBase64,
+        },
+        reactivityKeys: {
+          publishedVenueMap: adminWorkspaceReactivity.publishedVenueMap,
+        },
+      });
+      startTransition(() => {
+        setSelectedVenueMapFile(null);
+        setVenueMapFileInputResetKey((current) => current + 1);
+        setWorkspaceMessage(`${selectedVenueMapFile.name} published as the venue map.`);
+      });
+    } catch (error) {
+      setWorkspaceError(formatMutationError(error));
+    } finally {
+      setPendingVenueActionId(null);
+    }
+  };
+
+  const resetPublishedVenueMap = async () => {
+    setPendingVenueActionId("map:clear");
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      await clearPublishedVenueMap({
+        payload: undefined,
+        reactivityKeys: {
+          publishedVenueMap: adminWorkspaceReactivity.publishedVenueMap,
+        },
+      });
+      startTransition(() => {
+        setWorkspaceMessage("Published venue map cleared.");
+      });
+    } catch (error) {
+      setWorkspaceError(formatMutationError(error));
+    } finally {
+      setPendingVenueActionId(null);
+    }
+  };
+
+  const saveVenueMapPinFromClick = async (
+    event: React.MouseEvent<HTMLDivElement>,
+  ) => {
+    if (!selectedVenueMapRoom) {
+      setWorkspaceError("Choose a room before placing a venue map pin.");
+      return;
+    }
+
+    if (publishedVenueMap == null) {
+      setWorkspaceError("Publish the venue map image before placing room pins.");
+      return;
+    }
+
+    const { xPercent, yPercent } = calculateVenueMapPinCoordinates({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      bounds: event.currentTarget.getBoundingClientRect(),
+    });
+
+    setPendingVenueActionId(`map:pin:${selectedVenueMapRoom.room.id}`);
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      await upsertVenueMapRoomPin({
+        payload: {
+          roomId: selectedVenueMapRoom.room.id,
+          xPercent,
+          yPercent,
+        },
+        reactivityKeys: {
+          publishedVenueMap: adminWorkspaceReactivity.publishedVenueMap,
+        },
+      });
+      startTransition(() => {
+        setWorkspaceMessage(`Pin saved for room ${selectedVenueMapRoom.room.code}.`);
+      });
+    } catch (error) {
+      setWorkspaceError(formatMutationError(error));
+    } finally {
+      setPendingVenueActionId(null);
+    }
+  };
+
+  const removeVenueMapPin = async (roomEntry: (typeof venueMapRoomRows)[number]) => {
+    setPendingVenueActionId(`map:pin:clear:${roomEntry.room.id}`);
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      await deleteVenueMapRoomPin({
+        payload: {
+          roomId: roomEntry.room.id,
+        },
+        reactivityKeys: {
+          publishedVenueMap: adminWorkspaceReactivity.publishedVenueMap,
+        },
+      });
+      startTransition(() => {
+        setWorkspaceMessage(`Pin cleared for room ${roomEntry.room.code}.`);
+      });
+    } catch (error) {
+      setWorkspaceError(formatMutationError(error));
+    } finally {
+      setPendingVenueActionId(null);
+    }
+  };
+
   const ledgersLoading =
     companyLedgerState.kind === "loading" &&
     accessLedgerState.kind === "loading" &&
@@ -691,6 +899,7 @@ export function AdminWorkspace(): React.ReactElement {
             <TabsList className="w-full justify-start overflow-x-auto rounded-2xl bg-card p-1">
               <TabsTrigger value="companies">Company oversight</TabsTrigger>
               <TabsTrigger value="venue">Venue management</TabsTrigger>
+              <TabsTrigger value="map">Map publishing</TabsTrigger>
               <TabsTrigger value="access">Access ledger</TabsTrigger>
               <TabsTrigger value="interviews">Interview ledger</TabsTrigger>
             </TabsList>
@@ -867,6 +1076,254 @@ export function AdminWorkspace(): React.ReactElement {
                   </CardContent>
                 </Card>
               ) : null}
+            </TabsContent>
+
+            <TabsContent value="map">
+              <div className="grid gap-6 xl:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.2fr)]">
+                <Card>
+                  <CardHeader className="gap-4">
+                    <div className="space-y-1">
+                      <CardTitle>Published venue map</CardTitle>
+                      <CardDescription>
+                        Upload the single public map image, then keep room pins aligned with the
+                        real room registry used elsewhere in admin operations.
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="venue-map-upload">Map image</Label>
+                      <Input
+                        key={venueMapFileInputResetKey}
+                        accept="image/*"
+                        id="venue-map-upload"
+                        onChange={(event) => {
+                          setSelectedVenueMapFile(event.currentTarget.files?.[0] ?? null);
+                        }}
+                        type="file"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Re-publishing replaces the current map image and keeps existing room pins in
+                        place for downstream public-map work.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        disabled={pendingVenueActionId === "map:publish"}
+                        onClick={() => {
+                          void publishSelectedVenueMap();
+                        }}
+                        type="button"
+                      >
+                        {pendingVenueActionId === "map:publish" ? "Publishing..." : "Publish map"}
+                      </Button>
+                      <Button
+                        disabled={publishedVenueMap == null || pendingVenueActionId === "map:clear"}
+                        onClick={() => {
+                          void resetPublishedVenueMap();
+                        }}
+                        type="button"
+                        variant="ghost"
+                      >
+                        {pendingVenueActionId === "map:clear" ? "Clearing..." : "Clear map"}
+                      </Button>
+                    </div>
+
+                    {publishedVenueMapState.kind === "loading" ? (
+                      <Skeleton className="h-40 w-full rounded-2xl" />
+                    ) : null}
+                    {publishedVenueMapState.kind === "failure" ? (
+                      <FailureCard
+                        description={publishedVenueMapState.message}
+                        title="Published venue map unavailable"
+                      />
+                    ) : null}
+                    {publishedVenueMapState.kind === "success" && publishedVenueMap == null ? (
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <MapPinnedIcon className="size-5" />
+                          </EmptyMedia>
+                          <EmptyTitle>No venue map published yet</EmptyTitle>
+                          <EmptyDescription>
+                            Upload the floor map first, then click the preview to place room pins.
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    ) : null}
+                    {publishedVenueMap ? (
+                      <div className="rounded-2xl border border-border/70 bg-background/80 p-4">
+                        <p className="font-medium text-sm text-foreground">
+                          {publishedVenueMap.image.fileName}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {publishedVenueMap.pins.length} room pin
+                          {publishedVenueMap.pins.length === 1 ? "" : "s"} currently published.
+                        </p>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="gap-4">
+                    <div className="space-y-1">
+                      <CardTitle>Room pin console</CardTitle>
+                      <CardDescription>
+                        Select a room, then click the map preview to save or update its pin
+                        coordinates.
+                      </CardDescription>
+                    </div>
+                    {selectedVenueMapRoom ? (
+                      <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3 text-sm text-primary">
+                        Active room: {selectedVenueMapRoom.room.code}. Click the map preview to place
+                        the pin.
+                      </div>
+                    ) : null}
+                  </CardHeader>
+                  <CardContent className="grid gap-6 xl:grid-cols-[minmax(260px,0.75fr)_minmax(0,1.25fr)]">
+                    <div className="space-y-3">
+                      {venueRoomsState.kind === "loading" ? (
+                        <>
+                          <Skeleton className="h-20 w-full rounded-2xl" />
+                          <Skeleton className="h-20 w-full rounded-2xl" />
+                        </>
+                      ) : null}
+                      {venueRoomsState.kind === "failure" ? (
+                        <FailureCard
+                          description={venueRoomsState.message}
+                          title="Venue rooms unavailable"
+                        />
+                      ) : null}
+                      {venueRoomsState.kind === "success" && venueMapRoomRows.length === 0 ? (
+                        <Empty>
+                          <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                              <DoorOpenIcon className="size-5" />
+                            </EmptyMedia>
+                            <EmptyTitle>No rooms available for pinning</EmptyTitle>
+                            <EmptyDescription>
+                              Create rooms in venue management before publishing room pins.
+                            </EmptyDescription>
+                          </EmptyHeader>
+                        </Empty>
+                      ) : null}
+                      {venueRoomsState.kind === "success" && venueMapRoomRows.length > 0 ? (
+                        <div className="grid gap-3">
+                          {venueMapRoomRows.map((entry) => {
+                            const isSelected = entry.room.id === selectedVenueMapRoomId;
+                            const pendingClear =
+                              pendingVenueActionId === `map:pin:clear:${entry.room.id}`;
+
+                            return (
+                              <Card
+                                key={entry.room.id}
+                                className={
+                                  isSelected
+                                    ? "border-primary/40 bg-primary/5 shadow-none"
+                                    : "border-dashed shadow-none"
+                                }
+                              >
+                                <CardContent className="space-y-3 pt-4">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="space-y-1">
+                                      <p className="font-medium text-foreground">{entry.room.code}</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {describeVenueRoomOccupancy({
+                                          room: entry.room,
+                                          companyCount: entry.room.companies.length,
+                                          arrivedCount: entry.room.companies.filter(
+                                            (company) => company.arrivalStatus === "arrived",
+                                          ).length,
+                                          pendingCount: entry.room.companies.filter(
+                                            (company) => company.arrivalStatus !== "arrived",
+                                          ).length,
+                                        })}
+                                      </p>
+                                    </div>
+                                    <Badge variant={entry.pin ? "success" : "outline"}>
+                                      {entry.pin ? "Pinned" : "Unpinned"}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {entry.pin ? formatVenueMapPinPosition(entry.pin) : "No pin saved yet."}
+                                  </p>
+                                  <div className="flex flex-col gap-2 sm:flex-row">
+                                    <Button
+                                      onClick={() => {
+                                        setSelectedVenueMapRoomId(entry.room.id);
+                                      }}
+                                      type="button"
+                                      variant={isSelected ? "default" : "outline"}
+                                    >
+                                      {isSelected ? "Ready to place" : "Select room"}
+                                    </Button>
+                                    <Button
+                                      disabled={entry.pin == null || pendingClear}
+                                      onClick={() => {
+                                        void removeVenueMapPin(entry);
+                                      }}
+                                      type="button"
+                                      variant="ghost"
+                                    >
+                                      {pendingClear ? "Clearing..." : "Clear pin"}
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="space-y-4">
+                      {publishedVenueMap ? (
+                        <div
+                          className="relative overflow-hidden rounded-3xl border border-border/70 bg-muted/40"
+                          onClick={(event) => {
+                            void saveVenueMapPinFromClick(event);
+                          }}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          <img
+                            alt="Published venue map preview"
+                            className="block max-h-[720px] w-full object-contain"
+                            src={publishedVenueMapImageSrc ?? undefined}
+                          />
+                          {publishedVenueMap.pins.map((pin) => (
+                            <button
+                              className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-primary px-2 py-1 text-[11px] font-semibold text-primary-foreground shadow"
+                              key={pin.room.id}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedVenueMapRoomId(pin.room.id);
+                              }}
+                              style={{
+                                left: `${pin.xPercent}%`,
+                                top: `${pin.yPercent}%`,
+                              }}
+                              type="button"
+                            >
+                              {pin.room.code}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex min-h-80 items-center justify-center rounded-3xl border border-dashed border-border/70 bg-muted/30 p-6 text-center text-sm leading-6 text-muted-foreground">
+                          Publish a venue map image to unlock interactive room pin placement.
+                        </div>
+                      )}
+                      <p className="text-sm leading-6 text-muted-foreground">
+                        Published pins are exposed through the shared venue contract with room and
+                        company placement context so the public map slice can consume the data
+                        directly.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
 
             <TabsContent value="venue">

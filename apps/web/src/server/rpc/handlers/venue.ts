@@ -1,4 +1,4 @@
-import { CurrentActor, VenueRpcGroup } from "@project/rpc";
+import { CurrentActor, PublicVenueRpcGroup, VenueRpcGroup } from "@project/rpc";
 import { Effect } from "effect";
 
 import { VenueService } from "../../services/venue-service";
@@ -12,6 +12,43 @@ export const makeVenueRpcHandlers = Effect.gen(function*() {
         const actor = yield* CurrentActor;
 
         return yield* venueService.listVenueRooms(actor);
+      }),
+    publishVenueMap: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* venueService.publishVenueMap({
+          actor,
+          fileName: input.fileName,
+          contentType: input.contentType,
+          contentsBase64: input.contentsBase64,
+        });
+      }),
+    clearPublishedVenueMap: () =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* venueService.clearPublishedVenueMap(actor);
+      }),
+    upsertVenueMapRoomPin: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* venueService.upsertVenueMapRoomPin({
+          actor,
+          roomId: input.roomId,
+          xPercent: input.xPercent,
+          yPercent: input.yPercent,
+        });
+      }),
+    deleteVenueMapRoomPin: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* venueService.deleteVenueMapRoomPin({
+          actor,
+          roomId: input.roomId,
+        });
       }),
     createRoom: (input) =>
       Effect.gen(function*() {
@@ -69,6 +106,17 @@ export const makeVenueRpcHandlers = Effect.gen(function*() {
           actor,
           companyId: input.companyId,
         });
+      }),
+  });
+});
+
+export const makePublicVenueRpcHandlers = Effect.gen(function*() {
+  const venueService = yield* VenueService;
+
+  return PublicVenueRpcGroup.of({
+    getPublishedVenueMap: () =>
+      Effect.gen(function*() {
+        return yield* venueService.getPublishedVenueMap();
       }),
   });
 });

@@ -1,4 +1,10 @@
-import { type AuthenticatedActor, type Room, type VenueCompany, type VenueRoom } from "@project/domain";
+import {
+  type AuthenticatedActor,
+  type PublishedVenueMap,
+  type Room,
+  type VenueCompany,
+  type VenueRoom,
+} from "@project/domain";
 import { Effect, Layer, ServiceMap } from "effect";
 import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 
@@ -28,6 +34,35 @@ export class VenueService extends ServiceMap.Service<
     readonly listVenueRooms: (
       actor: AuthenticatedActor,
     ) => Effect.Effect<ReadonlyArray<VenueRoom>>;
+    readonly getPublishedVenueMap: () => Effect.Effect<PublishedVenueMap | null>;
+    readonly publishVenueMap: (
+      input: {
+        readonly actor: AuthenticatedActor;
+        readonly fileName: string;
+        readonly contentType: string;
+        readonly contentsBase64: string;
+      },
+    ) => Effect.Effect<PublishedVenueMap, HttpApiError.Forbidden>;
+    readonly clearPublishedVenueMap: (
+      actor: AuthenticatedActor,
+    ) => Effect.Effect<void, HttpApiError.Forbidden>;
+    readonly upsertVenueMapRoomPin: (
+      input: {
+        readonly actor: AuthenticatedActor;
+        readonly roomId: string;
+        readonly xPercent: number;
+        readonly yPercent: number;
+      },
+    ) => Effect.Effect<
+      PublishedVenueMap,
+      HttpApiError.Forbidden | HttpApiError.BadRequest | HttpApiError.NotFound
+    >;
+    readonly deleteVenueMapRoomPin: (
+      input: {
+        readonly actor: AuthenticatedActor;
+        readonly roomId: string;
+      },
+    ) => Effect.Effect<void, HttpApiError.Forbidden | HttpApiError.NotFound>;
     readonly createRoom: (
       input: {
         readonly actor: AuthenticatedActor;
@@ -89,6 +124,60 @@ export class VenueService extends ServiceMap.Service<
             void actor;
 
             return yield* venueRepository.listRooms();
+          }),
+        getPublishedVenueMap: () =>
+          Effect.gen(function*() {
+            return yield* venueRepository.getPublishedVenueMap();
+          }),
+        publishVenueMap: ({ actor, fileName, contentType, contentsBase64 }) =>
+          Effect.gen(function*() {
+            yield* requireAdminActor(actor);
+
+            return yield* venueRepository.publishVenueMap({
+              fileName,
+              contentType,
+              contentsBase64,
+            });
+          }),
+        clearPublishedVenueMap: (actor) =>
+          Effect.gen(function*() {
+            yield* requireAdminActor(actor);
+
+            yield* venueRepository.clearPublishedVenueMap();
+          }),
+        upsertVenueMapRoomPin: ({ actor, roomId, xPercent, yPercent }) =>
+          Effect.gen(function*() {
+            yield* requireAdminActor(actor);
+
+            const existingMap = yield* venueRepository.getPublishedVenueMap();
+
+            if (!existingMap) {
+              return yield* Effect.fail(new HttpApiError.BadRequest({}));
+            }
+
+            const publishedMap = yield* venueRepository.upsertVenueMapRoomPin({
+              roomId,
+              xPercent,
+              yPercent,
+            });
+
+            if (!publishedMap) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            return publishedMap;
+          }),
+        deleteVenueMapRoomPin: ({ actor, roomId }) =>
+          Effect.gen(function*() {
+            yield* requireAdminActor(actor);
+
+            const deleted = yield* venueRepository.deleteVenueMapRoomPin({
+              roomId,
+            });
+
+            if (!deleted) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
           }),
         createRoom: ({ actor, code }) =>
           Effect.gen(function*() {

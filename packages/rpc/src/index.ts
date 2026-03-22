@@ -18,7 +18,7 @@ import { HealthRpcGroup } from "./groups/health";
 import { InterviewRpcGroup } from "./groups/interview";
 import { StudentRpcGroup } from "./groups/student";
 import { VocabularyRpcGroup } from "./groups/vocabulary";
-import { VenueRpcGroup } from "./groups/venue";
+import { PublicVenueRpcGroup, VenueRpcGroup } from "./groups/venue";
 
 export const AppRpc = HealthRpcGroup.merge(AdminRpcGroup)
   .merge(ActorRpcGroup)
@@ -27,4 +27,5 @@ export const AppRpc = HealthRpcGroup.merge(AdminRpcGroup)
   .merge(InterviewRpcGroup)
   .merge(StudentRpcGroup)
   .merge(VocabularyRpcGroup)
+  .merge(PublicVenueRpcGroup)
   .merge(VenueRpcGroup);

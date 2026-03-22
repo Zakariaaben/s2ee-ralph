@@ -5,6 +5,7 @@ export const adminWorkspaceReactivity = {
   interviewLedger: ["admin", "interview-ledger"] as const,
   accessLedger: ["admin", "access-ledger"] as const,
   venueRooms: ["admin", "venue-rooms"] as const,
+  publishedVenueMap: ["admin", "published-venue-map"] as const,
 } as const;
 
 export const adminWorkspaceAtoms = {
@@ -20,10 +21,18 @@ export const adminWorkspaceAtoms = {
     reactivityKeys: adminWorkspaceReactivity.accessLedger,
     timeToLive: "30 seconds",
   }),
+  publishedVenueMap: AppRpcClient.query("getPublishedVenueMap", undefined, {
+    reactivityKeys: adminWorkspaceReactivity.publishedVenueMap,
+    timeToLive: "30 seconds",
+  }),
   venueRooms: AppRpcClient.query("listVenueRooms", undefined, {
     reactivityKeys: adminWorkspaceReactivity.venueRooms,
     timeToLive: "30 seconds",
   }),
+  publishVenueMap: AppRpcClient.mutation("publishVenueMap"),
+  clearPublishedVenueMap: AppRpcClient.mutation("clearPublishedVenueMap"),
+  upsertVenueMapRoomPin: AppRpcClient.mutation("upsertVenueMapRoomPin"),
+  deleteVenueMapRoomPin: AppRpcClient.mutation("deleteVenueMapRoomPin"),
   changeUserRole: AppRpcClient.mutation("changeAdminUserRole"),
   createRoom: AppRpcClient.mutation("createRoom"),
   updateRoom: AppRpcClient.mutation("updateRoom"),

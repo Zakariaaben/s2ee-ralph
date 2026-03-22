@@ -1,6 +1,8 @@
 import {
   AssignCompanyPlacementInput,
   CreateRoomInput,
+  PublishVenueMapInput,
+  UpsertVenueMapRoomPinInput,
   UpdateRoomInput,
 } from "@project/rpc";
 import { describe, expect, it } from "@effect/vitest";
@@ -61,5 +63,57 @@ describe("venue rpc input schemas", () => {
       roomId: "room-1",
       code: "S27",
     });
+  });
+
+  it("requires image content types and non-empty base64 map contents", () => {
+    expect(
+      Schema.decodeUnknownSync(PublishVenueMapInput)({
+        fileName: " venue-map.png ",
+        contentType: "image/png",
+        contentsBase64: "aGVsbG8=",
+      }),
+    ).toEqual({
+      fileName: "venue-map.png",
+      contentType: "image/png",
+      contentsBase64: "aGVsbG8=",
+    });
+
+    expect(() =>
+      Schema.decodeUnknownSync(PublishVenueMapInput)({
+        fileName: "venue-map.png",
+        contentType: "application/pdf",
+        contentsBase64: "aGVsbG8=",
+      })
+    ).toThrow();
+  });
+
+  it("rejects room-pin coordinates outside the map bounds", () => {
+    expect(
+      Schema.decodeUnknownSync(UpsertVenueMapRoomPinInput)({
+        roomId: "room-1",
+        xPercent: 50,
+        yPercent: 12.5,
+      }),
+    ).toEqual({
+      roomId: "room-1",
+      xPercent: 50,
+      yPercent: 12.5,
+    });
+
+    expect(() =>
+      Schema.decodeUnknownSync(UpsertVenueMapRoomPinInput)({
+        roomId: "room-1",
+        xPercent: -1,
+        yPercent: 30,
+      })
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(UpsertVenueMapRoomPinInput)({
+        roomId: "room-1",
+        xPercent: 20,
+        yPercent: 101,
+      })
+    ).toThrow();
   });
 });
