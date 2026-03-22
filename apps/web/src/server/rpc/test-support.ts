@@ -2,7 +2,7 @@ import { makeAuth } from "@project/auth";
 import { DB, DBLive } from "@project/db";
 import { type UserRoleValue } from "@project/domain";
 import { ServerEnv } from "@project/env/server";
-import { setCookieToHeader } from "better-auth/cookies";
+import type { TestHelpers } from "better-auth/plugins";
 import { Effect, Layer, Redacted } from "effect";
 import type { AnyPgTable } from "drizzle-orm/pg-core";
 import { execFileSync } from "node:child_process";
@@ -181,47 +181,22 @@ export const provisionSessionHeaders = (role: UserRoleValue) =>
   Effect.gen(function*() {
     const auth = yield* makeAuth;
     const authContext = yield* Effect.promise(() => auth.$context);
-    const password = "password-123456";
-    const email = `${role}-${Date.now()}@example.com`;
-    const passwordHash = yield* Effect.promise(() => authContext.password.hash(password));
-    const createdUser = yield* Effect.promise(() =>
-      authContext.internalAdapter.createUser({
-        email,
-        name: `${role} actor`,
-        role,
-        emailVerified: false,
-      }),
-    );
+    const test = (authContext as typeof authContext & { test?: TestHelpers }).test;
 
-    yield* Effect.promise(() =>
-      authContext.internalAdapter.linkAccount({
-        userId: createdUser.id,
-        providerId: "credential",
-        accountId: createdUser.id,
-        password: passwordHash,
-      }),
-    );
+    if (!test) {
+      throw new Error("Better Auth test utils are not available in the test environment");
+    }
 
-    const headers = new Headers({
-      origin: testOrigin,
+    const createdUser = test.createUser({
+      email: `${role}-${Date.now()}@example.com`,
+      name: `${role} actor`,
+      role,
+      emailVerified: false,
     });
+    const savedUser = yield* Effect.promise(() => test.saveUser(createdUser));
+    const headers = yield* Effect.promise(() => test.getAuthHeaders({ userId: savedUser.id }));
 
-    const signIn = yield* Effect.promise(() =>
-      auth.api.signInEmail({
-        headers,
-        body: {
-          email,
-          password,
-        },
-        returnHeaders: true,
-      }),
-    );
-
-    setCookieToHeader(headers)({
-      response: new Response(null, {
-        headers: signIn.headers,
-      }),
-    });
+    headers.set("origin", testOrigin);
 
     return headers;
   }).pipe(Effect.provide(makeAuthTestLive()));

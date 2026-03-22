@@ -5,6 +5,7 @@ import * as schema from "@project/db/schema/auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { betterAuth } from "better-auth";
+import { testUtils } from "better-auth/plugins";
 import { Effect } from "effect";
 import * as Redacted from "effect/Redacted";
 import { z } from "zod";
@@ -40,6 +41,9 @@ export const makeAuth = Effect.gen(function*() {
     },
     secret: Redacted.value(env.betterAuthSecret),
     baseURL: env.betterAuthUrl.toString(),
-    plugins: [tanstackStartCookies()],
+    plugins: [
+      tanstackStartCookies(),
+      ...(env.nodeEnv === "test" ? [testUtils()] : []),
+    ],
   });
 });
