@@ -9,16 +9,14 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 
 import { VocabularyRepository } from "../repositories/vocabulary-repository";
 
-type SeedVocabularyEntry = {
+type VocabularyEntry = {
   readonly id: string;
   readonly label: string;
 };
 
-type VocabularyEntryWithId = {
+type VocabularyEntryIdentity = {
   readonly id: string;
 };
-
-const requireAuthenticatedActor = (actor: AuthenticatedActor) => Effect.succeed(actor);
 
 const requireAdminActor = (actor: AuthenticatedActor) =>
   Effect.gen(function*() {
@@ -31,7 +29,7 @@ const requireAdminActor = (actor: AuthenticatedActor) =>
 
 const ensureEntryAbsent = (
   id: string,
-  entries: ReadonlyArray<VocabularyEntryWithId>,
+  entries: ReadonlyArray<VocabularyEntryIdentity>,
 ) =>
   Effect.gen(function*() {
     if (entries.some((entry) => entry.id === id)) {
@@ -41,7 +39,7 @@ const ensureEntryAbsent = (
 
 const ensureEntryPresent = (
   id: string,
-  entries: ReadonlyArray<VocabularyEntryWithId>,
+  entries: ReadonlyArray<VocabularyEntryIdentity>,
 ) =>
   Effect.gen(function*() {
     if (!entries.some((entry) => entry.id === id)) {
@@ -64,8 +62,8 @@ export class VocabularyService extends ServiceMap.Service<
     readonly seedControlledVocabularies: (
       input: {
         readonly actor: AuthenticatedActor;
-        readonly cvProfileTypes: ReadonlyArray<SeedVocabularyEntry>;
-        readonly globalInterviewTags: ReadonlyArray<SeedVocabularyEntry>;
+        readonly cvProfileTypes: ReadonlyArray<VocabularyEntry>;
+        readonly globalInterviewTags: ReadonlyArray<VocabularyEntry>;
       },
     ) => Effect.Effect<
       ControlledVocabularies,
@@ -74,7 +72,7 @@ export class VocabularyService extends ServiceMap.Service<
     readonly addCvProfileType: (
       input: {
         readonly actor: AuthenticatedActor;
-        readonly entry: SeedVocabularyEntry;
+        readonly entry: VocabularyEntry;
       },
     ) => Effect.Effect<
       ReadonlyArray<CvProfileType>,
@@ -92,7 +90,7 @@ export class VocabularyService extends ServiceMap.Service<
     readonly replaceCvProfileTypes: (
       input: {
         readonly actor: AuthenticatedActor;
-        readonly entries: ReadonlyArray<SeedVocabularyEntry>;
+        readonly entries: ReadonlyArray<VocabularyEntry>;
       },
     ) => Effect.Effect<
       ReadonlyArray<CvProfileType>,
@@ -101,7 +99,7 @@ export class VocabularyService extends ServiceMap.Service<
     readonly addGlobalInterviewTag: (
       input: {
         readonly actor: AuthenticatedActor;
-        readonly entry: SeedVocabularyEntry;
+        readonly entry: VocabularyEntry;
       },
     ) => Effect.Effect<
       ReadonlyArray<GlobalInterviewTag>,
@@ -119,7 +117,7 @@ export class VocabularyService extends ServiceMap.Service<
     readonly replaceGlobalInterviewTags: (
       input: {
         readonly actor: AuthenticatedActor;
-        readonly entries: ReadonlyArray<SeedVocabularyEntry>;
+        readonly entries: ReadonlyArray<VocabularyEntry>;
       },
     ) => Effect.Effect<
       ReadonlyArray<GlobalInterviewTag>,
@@ -135,13 +133,13 @@ export class VocabularyService extends ServiceMap.Service<
       return VocabularyService.of({
         listCvProfileTypes: (actor) =>
           Effect.gen(function*() {
-            yield* requireAuthenticatedActor(actor);
+            void actor;
 
             return yield* vocabularyRepository.listCvProfileTypes();
           }),
         listGlobalInterviewTags: (actor) =>
           Effect.gen(function*() {
-            yield* requireAuthenticatedActor(actor);
+            void actor;
 
             return yield* vocabularyRepository.listGlobalInterviewTags();
           }),

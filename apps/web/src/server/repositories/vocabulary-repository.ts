@@ -13,7 +13,7 @@ import {
 import { asc } from "drizzle-orm";
 import { Effect, Layer, ServiceMap } from "effect";
 
-type SeedVocabularyEntry = {
+type VocabularyEntry = {
   readonly id: string;
   readonly label: string;
 };
@@ -40,27 +40,27 @@ export class VocabularyRepository extends ServiceMap.Service<
       ReadonlyArray<GlobalInterviewTag>
     >;
     readonly addCvProfileType: (
-      entry: SeedVocabularyEntry,
+      entry: VocabularyEntry,
     ) => Effect.Effect<ReadonlyArray<CvProfileType>>;
     readonly deleteCvProfileType: (
       id: string,
     ) => Effect.Effect<ReadonlyArray<CvProfileType>>;
     readonly replaceCvProfileTypes: (
-      entries: ReadonlyArray<SeedVocabularyEntry>,
+      entries: ReadonlyArray<VocabularyEntry>,
     ) => Effect.Effect<ReadonlyArray<CvProfileType>>;
     readonly addGlobalInterviewTag: (
-      entry: SeedVocabularyEntry,
+      entry: VocabularyEntry,
     ) => Effect.Effect<ReadonlyArray<GlobalInterviewTag>>;
     readonly deleteGlobalInterviewTag: (
       id: string,
     ) => Effect.Effect<ReadonlyArray<GlobalInterviewTag>>;
     readonly replaceGlobalInterviewTags: (
-      entries: ReadonlyArray<SeedVocabularyEntry>,
+      entries: ReadonlyArray<VocabularyEntry>,
     ) => Effect.Effect<ReadonlyArray<GlobalInterviewTag>>;
     readonly seedControlledVocabularies: (
       input: {
-        readonly cvProfileTypes: ReadonlyArray<SeedVocabularyEntry>;
-        readonly globalInterviewTags: ReadonlyArray<SeedVocabularyEntry>;
+        readonly cvProfileTypes: ReadonlyArray<VocabularyEntry>;
+        readonly globalInterviewTags: ReadonlyArray<VocabularyEntry>;
       },
     ) => Effect.Effect<ControlledVocabularies>;
   }
@@ -92,7 +92,7 @@ export class VocabularyRepository extends ServiceMap.Service<
         );
 
       const replaceCvProfileTypes = (
-        entries: ReadonlyArray<SeedVocabularyEntry>,
+        entries: ReadonlyArray<VocabularyEntry>,
       ) =>
         Effect.gen(function*() {
           yield* Effect.promise(() =>
@@ -115,7 +115,7 @@ export class VocabularyRepository extends ServiceMap.Service<
         });
 
       const replaceGlobalInterviewTags = (
-        entries: ReadonlyArray<SeedVocabularyEntry>,
+        entries: ReadonlyArray<VocabularyEntry>,
       ) =>
         Effect.gen(function*() {
           yield* Effect.promise(() =>

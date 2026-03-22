@@ -14,30 +14,34 @@ import {
   VocabularyEntryLabel,
 } from "../request-schemas";
 
-export class SeedVocabularyEntryInput extends Schema.Class<SeedVocabularyEntryInput>(
-  "SeedVocabularyEntryInput",
+export class VocabularyEntryInput extends Schema.Class<VocabularyEntryInput>(
+  "VocabularyEntryInput",
 )({
   id: VocabularyEntryId,
   label: VocabularyEntryLabel,
 }) {}
 
+export const SeedVocabularyEntryInput = VocabularyEntryInput;
+
 export class ReplaceVocabularyEntriesInput extends Schema.Class<ReplaceVocabularyEntriesInput>(
   "ReplaceVocabularyEntriesInput",
 )({
-  entries: UniqueIdArray(SeedVocabularyEntryInput),
+  entries: UniqueIdArray(VocabularyEntryInput),
 }) {}
 
-export class DeleteVocabularyEntryInput extends Schema.Class<DeleteVocabularyEntryInput>(
-  "DeleteVocabularyEntryInput",
+export class VocabularyEntryIdInput extends Schema.Class<VocabularyEntryIdInput>(
+  "VocabularyEntryIdInput",
 )({
   id: VocabularyEntryId,
 }) {}
 
+export const DeleteVocabularyEntryInput = VocabularyEntryIdInput;
+
 export class SeedControlledVocabulariesInput extends Schema.Class<SeedControlledVocabulariesInput>(
   "SeedControlledVocabulariesInput",
 )({
-  cvProfileTypes: UniqueIdArray(SeedVocabularyEntryInput),
-  globalInterviewTags: UniqueIdArray(SeedVocabularyEntryInput),
+  cvProfileTypes: UniqueIdArray(VocabularyEntryInput),
+  globalInterviewTags: UniqueIdArray(VocabularyEntryInput),
 }) {}
 
 export const VocabularyRpcAccessError = HttpApiError.Unauthorized;
@@ -60,12 +64,12 @@ export const VocabularyRpcGroup = RpcGroup.make(
   Rpc.make("addCvProfileType", {
     success: Schema.Array(CvProfileType),
     error: VocabularyRpcMutationError,
-    payload: SeedVocabularyEntryInput,
+    payload: VocabularyEntryInput,
   }),
   Rpc.make("deleteCvProfileType", {
     success: Schema.Array(CvProfileType),
     error: VocabularyRpcMutationError,
-    payload: DeleteVocabularyEntryInput,
+    payload: VocabularyEntryIdInput,
   }),
   Rpc.make("replaceCvProfileTypes", {
     success: Schema.Array(CvProfileType),
@@ -75,12 +79,12 @@ export const VocabularyRpcGroup = RpcGroup.make(
   Rpc.make("addGlobalInterviewTag", {
     success: Schema.Array(GlobalInterviewTag),
     error: VocabularyRpcMutationError,
-    payload: SeedVocabularyEntryInput,
+    payload: VocabularyEntryInput,
   }),
   Rpc.make("deleteGlobalInterviewTag", {
     success: Schema.Array(GlobalInterviewTag),
     error: VocabularyRpcMutationError,
-    payload: DeleteVocabularyEntryInput,
+    payload: VocabularyEntryIdInput,
   }),
   Rpc.make("replaceGlobalInterviewTags", {
     success: Schema.Array(GlobalInterviewTag),

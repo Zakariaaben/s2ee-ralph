@@ -1,8 +1,8 @@
 import {
-  DeleteVocabularyEntryInput,
   ReplaceVocabularyEntriesInput,
   SeedControlledVocabulariesInput,
-  SeedVocabularyEntryInput,
+  VocabularyEntryIdInput,
+  VocabularyEntryInput,
 } from "@project/rpc";
 import { describe, expect, it } from "@effect/vitest";
 import { Schema } from "effect";
@@ -10,7 +10,7 @@ import { Schema } from "effect";
 describe("vocabulary rpc input schemas", () => {
   it("trims surrounding whitespace from vocabulary ids and labels", () => {
     expect(
-      Schema.decodeUnknownSync(SeedVocabularyEntryInput)({
+      Schema.decodeUnknownSync(VocabularyEntryInput)({
         id: "  software-engineering  ",
         label: "  Software Engineering  ",
       }),
@@ -20,7 +20,7 @@ describe("vocabulary rpc input schemas", () => {
     });
 
     expect(
-      Schema.decodeUnknownSync(DeleteVocabularyEntryInput)({
+      Schema.decodeUnknownSync(VocabularyEntryIdInput)({
         id: "  software-engineering  ",
       }),
     ).toEqual({
@@ -38,25 +38,43 @@ describe("vocabulary rpc input schemas", () => {
         { id: "software-engineering", label: "Software Engineering" },
       ],
     });
+
+    expect(
+      Schema.decodeUnknownSync(SeedControlledVocabulariesInput)({
+        cvProfileTypes: [
+          { id: "  software-engineering  ", label: "  Software Engineering  " },
+        ],
+        globalInterviewTags: [
+          { id: "  follow-up  ", label: "  Follow Up  " },
+        ],
+      }),
+    ).toEqual({
+      cvProfileTypes: [
+        { id: "software-engineering", label: "Software Engineering" },
+      ],
+      globalInterviewTags: [
+        { id: "follow-up", label: "Follow Up" },
+      ],
+    });
   });
 
   it("rejects blank vocabulary ids and labels", () => {
     expect(() =>
-      Schema.decodeUnknownSync(SeedVocabularyEntryInput)({
+      Schema.decodeUnknownSync(VocabularyEntryInput)({
         id: "   ",
         label: "Software Engineering",
       })
     ).toThrow();
 
     expect(() =>
-      Schema.decodeUnknownSync(SeedVocabularyEntryInput)({
+      Schema.decodeUnknownSync(VocabularyEntryInput)({
         id: "software-engineering",
         label: "\n\t  ",
       })
     ).toThrow();
 
     expect(() =>
-      Schema.decodeUnknownSync(DeleteVocabularyEntryInput)({
+      Schema.decodeUnknownSync(VocabularyEntryIdInput)({
         id: "   ",
       })
     ).toThrow();

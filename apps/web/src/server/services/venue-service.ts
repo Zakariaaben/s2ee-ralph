@@ -4,8 +4,6 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 
 import { VenueRepository } from "../repositories/venue-repository";
 
-const requireAuthenticatedActor = (actor: AuthenticatedActor) => Effect.succeed(actor);
-
 const requireAdminActor = (actor: AuthenticatedActor) =>
   Effect.gen(function*() {
     if (actor.role !== "admin") {
@@ -63,7 +61,7 @@ export class VenueService extends ServiceMap.Service<
       return VenueService.of({
         listVenueRooms: (actor) =>
           Effect.gen(function*() {
-            yield* requireAuthenticatedActor(actor);
+            void actor;
 
             return yield* venueRepository.listRooms();
           }),
