@@ -12,16 +12,6 @@ const requireCompanyActor = (actor: AuthenticatedActor) => {
   return Effect.succeed(actor);
 };
 
-const normalizeName = (value: string) => {
-  const normalized = value.trim();
-
-  if (normalized.length === 0) {
-    return Effect.fail(new HttpApiError.BadRequest({}));
-  }
-
-  return Effect.succeed(normalized);
-};
-
 export class CompanyService extends ServiceMap.Service<
   CompanyService,
   {
@@ -35,7 +25,7 @@ export class CompanyService extends ServiceMap.Service<
       },
     ) => Effect.Effect<
       Company,
-      HttpApiError.Forbidden | HttpApiError.BadRequest
+      HttpApiError.Forbidden
     >;
     readonly addRecruiter: (
       input: {
@@ -44,7 +34,7 @@ export class CompanyService extends ServiceMap.Service<
       },
     ) => Effect.Effect<
       Company,
-      HttpApiError.Forbidden | HttpApiError.BadRequest | HttpApiError.NotFound
+      HttpApiError.Forbidden | HttpApiError.NotFound
     >;
     readonly renameRecruiter: (
       input: {
@@ -54,7 +44,7 @@ export class CompanyService extends ServiceMap.Service<
       },
     ) => Effect.Effect<
       Company,
-      HttpApiError.Forbidden | HttpApiError.BadRequest | HttpApiError.NotFound
+      HttpApiError.Forbidden | HttpApiError.NotFound
     >;
   }
 >()("@project/web/CompanyService") {
@@ -73,20 +63,18 @@ export class CompanyService extends ServiceMap.Service<
         upsertCompanyProfile: ({ actor, name }) =>
           Effect.gen(function*() {
             const companyActor = yield* requireCompanyActor(actor);
-            const normalizedName = yield* normalizeName(name);
 
             return yield* companyRepository.upsertByOwnerUserId({
               ownerUserId: companyActor.id,
-              name: normalizedName,
+              name,
             });
           }),
         addRecruiter: ({ actor, name }) =>
           Effect.gen(function*() {
             const companyActor = yield* requireCompanyActor(actor);
-            const normalizedName = yield* normalizeName(name);
             const currentCompany = yield* companyRepository.addRecruiter({
               ownerUserId: companyActor.id,
-              name: normalizedName,
+              name,
             });
 
             if (!currentCompany) {
@@ -98,11 +86,10 @@ export class CompanyService extends ServiceMap.Service<
         renameRecruiter: ({ actor, recruiterId, name }) =>
           Effect.gen(function*() {
             const companyActor = yield* requireCompanyActor(actor);
-            const normalizedName = yield* normalizeName(name);
             const currentCompany = yield* companyRepository.renameRecruiter({
               ownerUserId: companyActor.id,
               recruiterId,
-              name: normalizedName,
+              name,
             });
 
             if (!currentCompany) {

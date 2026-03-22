@@ -44,6 +44,51 @@ describeWithPostgres("company rpc", () => {
     startPostgresTestInfra();
   });
 
+  it.effect("company mutations normalize surrounding whitespace while blank names stay rejected", () =>
+    Effect.gen(function*() {
+      const headers = yield* provisionSessionHeaders("company");
+      const client = yield* makeCompanyClient;
+      const blankProfileExit = yield* Effect.exit(
+        client.upsertCompanyProfile({ name: "   " }).pipe(
+          RpcClient.withHeaders(headers),
+        ),
+      );
+
+      expect(blankProfileExit._tag).toBe("Failure");
+      expect(
+        yield* client.currentCompany().pipe(RpcClient.withHeaders(headers)),
+      ).toBeNull();
+
+      const company = yield* client.upsertCompanyProfile({
+        name: "  Acme Systems  ",
+      }).pipe(RpcClient.withHeaders(headers));
+
+      expect(company.name).toBe("Acme Systems");
+
+      const withRecruiter = yield* client.addRecruiter({
+        name: "  Nora Recruiter  ",
+      }).pipe(RpcClient.withHeaders(headers));
+
+      expect(withRecruiter.recruiters).toEqual([
+        {
+          id: withRecruiter.recruiters[0]!.id,
+          name: "Nora Recruiter",
+        },
+      ]);
+
+      const renamed = yield* client.renameRecruiter({
+        recruiterId: withRecruiter.recruiters[0]!.id,
+        name: "  Nora Updated  ",
+      }).pipe(RpcClient.withHeaders(headers));
+
+      expect(renamed.recruiters).toEqual([
+        {
+          id: withRecruiter.recruiters[0]!.id,
+          name: "Nora Updated",
+        },
+      ]);
+    }));
+
   it.effect("company actors can create and read back their onboarding record", () =>
     Effect.gen(function*() {
       const headers = yield* provisionSessionHeaders("company");

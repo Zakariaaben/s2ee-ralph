@@ -4,24 +4,25 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
+import { RequiredText } from "../request-schemas";
 
 export class UpsertCompanyProfileInput extends Schema.Class<UpsertCompanyProfileInput>(
   "UpsertCompanyProfileInput",
 )({
-  name: Schema.String,
+  name: RequiredText,
 }) {}
 
 export class AddRecruiterInput extends Schema.Class<AddRecruiterInput>(
   "AddRecruiterInput",
 )({
-  name: Schema.String,
+  name: RequiredText,
 }) {}
 
 export class RenameRecruiterInput extends Schema.Class<RenameRecruiterInput>(
   "RenameRecruiterInput",
 )({
   recruiterId: RecruiterId,
-  name: Schema.String,
+  name: RequiredText,
 }) {}
 
 export const CompanyRpcAccessError = Schema.Union([

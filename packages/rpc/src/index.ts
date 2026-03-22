@@ -4,6 +4,7 @@ export * from "./groups/company";
 export * from "./groups/cv-profile";
 export * from "./groups/health";
 export * from "./groups/interview";
+export * from "./request-schemas";
 export * from "./groups/student";
 export * from "./groups/vocabulary";
 export * from "./groups/venue";
