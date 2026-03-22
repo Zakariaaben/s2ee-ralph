@@ -24,34 +24,8 @@ const requireCompanyActor = (actor: AuthenticatedActor) =>
     return actor;
   });
 
-const normalizeValue = (value: string) =>
-  Effect.gen(function* () {
-    const normalized = value.trim();
-
-    if (normalized.length === 0) {
-      yield* new HttpApiError.BadRequest({});
-    }
-
-    return normalized;
-  });
-
 const encodeStudentQrIdentity = (studentId: string) =>
   `${studentQrIdentityPrefix}${studentId}`;
-
-const decodeStudentQrIdentity = (qrIdentity: string) =>
-  Effect.gen(function* () {
-    if (!qrIdentity.startsWith(studentQrIdentityPrefix)) {
-      yield* new HttpApiError.BadRequest({});
-    }
-
-    const studentId = qrIdentity.slice(studentQrIdentityPrefix.length).trim();
-
-    if (studentId.length === 0) {
-      yield* new HttpApiError.BadRequest({});
-    }
-
-    return studentId;
-  });
 
 export class StudentService extends ServiceMap.Service<
   StudentService,
@@ -64,20 +38,14 @@ export class StudentService extends ServiceMap.Service<
       readonly firstName: string;
       readonly lastName: string;
       readonly course: string;
-    }) => Effect.Effect<
-      Student,
-      HttpApiError.Forbidden | HttpApiError.BadRequest
-    >;
+    }) => Effect.Effect<Student, HttpApiError.Forbidden>;
     readonly issueStudentQrIdentity: (
       actor: AuthenticatedActor,
     ) => Effect.Effect<string, HttpApiError.Forbidden | HttpApiError.NotFound>;
     readonly resolveStudentQrIdentity: (input: {
       readonly actor: AuthenticatedActor;
-      readonly qrIdentity: string;
-    }) => Effect.Effect<
-      Student,
-      HttpApiError.Forbidden | HttpApiError.BadRequest | HttpApiError.NotFound
-    >;
+      readonly studentId: string;
+    }) => Effect.Effect<Student, HttpApiError.Forbidden | HttpApiError.NotFound>;
   }
 >()("@project/web/StudentService") {
   static readonly layer = Layer.effect(
@@ -95,15 +63,12 @@ export class StudentService extends ServiceMap.Service<
         upsertStudentOnboarding: ({ actor, firstName, lastName, course }) =>
           Effect.gen(function* () {
             const studentActor = yield* requireStudentActor(actor);
-            const normalizedFirstName = yield* normalizeValue(firstName);
-            const normalizedLastName = yield* normalizeValue(lastName);
-            const normalizedCourse = yield* normalizeValue(course);
 
             return yield* studentRepository.upsertByOwnerUserId({
               ownerUserId: studentActor.id,
-              firstName: normalizedFirstName,
-              lastName: normalizedLastName,
-              course: normalizedCourse,
+              firstName,
+              lastName,
+              course,
             });
           }),
         issueStudentQrIdentity: (actor) =>
@@ -119,11 +84,9 @@ export class StudentService extends ServiceMap.Service<
 
             return encodeStudentQrIdentity(currentStudent.id);
           }),
-        resolveStudentQrIdentity: ({ actor, qrIdentity }) =>
+        resolveStudentQrIdentity: ({ actor, studentId }) =>
           Effect.gen(function* () {
             yield* requireCompanyActor(actor);
-
-            const studentId = yield* decodeStudentQrIdentity(qrIdentity);
             const resolvedStudent = yield* studentRepository.getById(studentId);
 
             if (!resolvedStudent) {

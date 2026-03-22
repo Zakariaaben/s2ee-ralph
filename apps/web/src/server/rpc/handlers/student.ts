@@ -36,7 +36,7 @@ export const makeStudentRpcHandlers = Effect.gen(function*() {
 
         return yield* studentService.resolveStudentQrIdentity({
           actor,
-          qrIdentity: input.qrIdentity,
+          studentId: input.qrIdentity,
         });
       }),
   });

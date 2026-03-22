@@ -55,9 +55,9 @@ describeWithPostgres("student rpc", () => {
         expect(before).toBeNull();
 
         const student = yield* client.upsertStudentOnboarding({
-          firstName: "Ada",
-          lastName: "Lovelace",
-          course: "Computer Science",
+          firstName: "  Ada  ",
+          lastName: "  Lovelace  ",
+          course: "  Computer Science  ",
         }).pipe(RpcClient.withHeaders(headers));
 
         expect(student.firstName).toBe("Ada");
@@ -96,8 +96,12 @@ describeWithPostgres("student rpc", () => {
         const resolved = yield* client.resolveStudentQrIdentity({ qrIdentity }).pipe(
           RpcClient.withHeaders(companyHeaders),
         );
+        const resolvedFromTrimmedIdentity = yield* client.resolveStudentQrIdentity({
+          qrIdentity: `  ${qrIdentity}  `,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
 
         expect(resolved).toEqual(student);
+        expect(resolvedFromTrimmedIdentity).toEqual(student);
 
         const wrongRoleExit = yield* Effect.exit(
           client.resolveStudentQrIdentity({ qrIdentity }).pipe(
@@ -112,8 +116,16 @@ describeWithPostgres("student rpc", () => {
             RpcClient.withHeaders(companyHeaders),
           ),
         );
+        const blankOnboardingExit = yield* Effect.exit(
+          client.upsertStudentOnboarding({
+            firstName: "  ",
+            lastName: "Hopper",
+            course: "Computer Science",
+          }).pipe(RpcClient.withHeaders(studentHeaders)),
+        );
 
         expect(malformedExit._tag).toBe("Failure");
+        expect(blankOnboardingExit._tag).toBe("Failure");
       }),
   );
 });

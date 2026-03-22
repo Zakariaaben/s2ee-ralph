@@ -4,19 +4,20 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
+import { RequiredText, StudentQrIdentity } from "../request-schemas";
 
 export class UpsertStudentOnboardingInput extends Schema.Class<UpsertStudentOnboardingInput>(
   "UpsertStudentOnboardingInput",
 )({
-  firstName: Schema.String,
-  lastName: Schema.String,
-  course: Schema.String,
+  firstName: RequiredText,
+  lastName: RequiredText,
+  course: RequiredText,
 }) {}
 
 export class ResolveStudentQrIdentityInput extends Schema.Class<ResolveStudentQrIdentityInput>(
   "ResolveStudentQrIdentityInput",
 )({
-  qrIdentity: Schema.String,
+  qrIdentity: StudentQrIdentity,
 }) {}
 
 export const StudentRpcAccessError = Schema.Union([
