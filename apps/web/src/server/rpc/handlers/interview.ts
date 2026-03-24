@@ -19,6 +19,24 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
 
         return yield* interviewService.listCurrentCompanyCompletedInterviews(actor);
       }),
+    getCurrentCompanyInterviewDetail: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* interviewService.getCurrentCompanyInterviewDetail({
+          actor,
+          interviewId: input.interviewId,
+        });
+      }),
+    getCurrentCompanyInterviewCvDownloadUrl: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* interviewService.getCurrentCompanyInterviewCvDownloadUrl({
+          actor,
+          interviewId: input.interviewId,
+        });
+      }),
     exportCurrentCompanyCompletedInterviews: (input) =>
       Effect.gen(function*() {
         const actor = yield* CurrentActor;
@@ -28,15 +46,23 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
           includeCvFiles: input.includeCvFiles,
         });
       }),
+    startInterview: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* interviewService.startInterview({
+          actor,
+          recruiterId: input.recruiterId,
+          presentationCode: input.presentationIdentity,
+        });
+      }),
     completeInterview: (input) =>
       Effect.gen(function*() {
         const actor = yield* CurrentActor;
 
         return yield* interviewService.completeInterview({
           actor,
-          recruiterId: input.recruiterId,
-          studentId: input.qrIdentity,
-          cvProfileId: input.cvProfileId,
+          interviewId: input.interviewId,
           score: input.score,
           globalTagIds: input.globalTagIds,
           companyTagLabels: input.companyTagLabels,
@@ -49,9 +75,7 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
 
         return yield* interviewService.cancelInterview({
           actor,
-          recruiterId: input.recruiterId,
-          studentId: input.qrIdentity,
-          cvProfileId: input.cvProfileId,
+          interviewId: input.interviewId,
           notes: input.notes,
         });
       }),

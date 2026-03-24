@@ -3,9 +3,6 @@
 import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import { Alert, AlertDescription, AlertTitle } from "@project/ui/components/alert";
-import { Badge } from "@project/ui/components/badge";
-import { Button } from "@project/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@project/ui/components/card";
 import {
   Empty,
   EmptyContent,
@@ -15,15 +12,7 @@ import {
   EmptyTitle,
 } from "@project/ui/components/empty";
 import { Skeleton } from "@project/ui/components/skeleton";
-import {
-  ArrowLeftIcon,
-  Building2Icon,
-  CircleAlertIcon,
-  CompassIcon,
-  MapPinnedIcon,
-  RefreshCwIcon,
-  SparklesIcon,
-} from "lucide-react";
+import { CircleAlertIcon, MapPinnedIcon, RefreshCwIcon } from "lucide-react";
 import type { VenueRoom } from "@project/domain";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -33,16 +22,10 @@ import {
   describePublishedVenueRoom,
   resolvePublishedVenueMapSelection,
   sortPublishedVenueMapPins,
-  summarizePublishedVenueMap,
 } from "@/lib/public-venue-map";
 
 const toImageSource = (input: { readonly contentType: string; readonly contentsBase64: string }): string =>
   `data:${input.contentType};base64,${input.contentsBase64}`;
-
-const arrivalBadgeVariant = (
-  arrivalStatus: "arrived" | "not-arrived",
-): React.ComponentProps<typeof Badge>["variant"] =>
-  arrivalStatus === "arrived" ? "success" : "outline";
 
 export function PublicVenueMap(): React.ReactElement {
   const publishedVenueMapResult = useAtomValue(publicVenueMapAtom);
@@ -60,283 +43,234 @@ export function PublicVenueMap(): React.ReactElement {
   }, [sortedPins]);
 
   const selectedPin = sortedPins.find((pin) => pin.room.id === selectedRoomId) ?? sortedPins[0] ?? null;
-  const summary = AsyncResult.isSuccess(publishedVenueMapResult)
-    ? summarizePublishedVenueMap(publishedVenueMapResult.value)
-    : null;
 
   return (
-    <main className="min-h-screen overflow-hidden bg-background px-6 py-8 text-foreground sm:px-8">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_top,_hsl(var(--warning)/0.2),_transparent_58%)]" />
-        <div className="absolute left-[-6rem] top-40 size-72 rounded-full bg-info/10 blur-3xl" />
-        <div className="absolute right-[-8rem] top-72 size-80 rounded-full bg-success/10 blur-3xl" />
-      </div>
-
-      <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col gap-6">
-        <header className="grid gap-4 rounded-[2rem] border border-border/60 bg-card/75 p-6 shadow-sm backdrop-blur sm:p-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
-          <div className="space-y-5">
-            <Badge variant="outline" size="lg" className="rounded-full px-4">
-              Public venue map
-            </Badge>
-            <div className="max-w-3xl space-y-3">
-              <h1 className="font-heading text-4xl leading-none tracking-tight sm:text-5xl lg:text-6xl">
-                Find the room.
-                <br />
-                See who is live there.
-              </h1>
-              <p className="max-w-2xl text-base text-muted-foreground sm:text-lg">
-                Explore the published event floor plan, open room pins, and inspect company placement
-                plus arrival state before you head across the venue.
-              </p>
-            </div>
+    <main className="min-h-[100dvh] overflow-hidden bg-[var(--s2ee-canvas)] font-mono text-foreground">
+      <header className="flex items-center justify-between border-b bg-[var(--s2ee-surface-soft)] px-6 py-3 [border-color:var(--s2ee-border)]">
+        <div className="flex items-center gap-8">
+          <span className="text-sm font-bold tracking-[-0.04em] text-primary">S2EE Edition 16</span>
+          <nav className="hidden items-center gap-6 md:flex">
+            <a className="text-sm uppercase tracking-[0.12em] text-[color:var(--s2ee-muted-foreground)] transition-colors hover:text-primary" href="/">
+              Public entry
+            </a>
+            <a className="border-b-2 border-primary pb-1 text-sm font-bold uppercase tracking-[0.12em] text-primary" href="/map">
+              Venue map
+            </a>
+            <a className="text-sm uppercase tracking-[0.12em] text-[color:var(--s2ee-muted-foreground)] transition-colors hover:text-primary" href="/auth/sign-in">
+              Sign in
+            </a>
+          </nav>
+        </div>
+        <div className="hidden items-center gap-3 md:flex">
+          <div className="flex items-center gap-2 border bg-[var(--s2ee-surface)] px-3 py-1 [border-color:var(--s2ee-border)]">
+            <span className="size-2 rounded-full bg-primary" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-900">
+              Live map active
+            </span>
           </div>
+        </div>
+      </header>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Button variant="outline" size="lg" onClick={() => window.location.assign("/")}>
-              <ArrowLeftIcon />
-              Back to sign-in
-            </Button>
-            <Button variant="secondary" size="lg" onClick={() => refreshPublishedVenueMap()}>
-              <RefreshCwIcon />
-              Refresh map
-            </Button>
-          </div>
-        </header>
-
+      <div className="mx-auto flex max-w-[1600px] flex-col">
         {AsyncResult.isInitial(publishedVenueMapResult) ? (
-          <section className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-            <Card className="overflow-hidden border-border/60 bg-card/85">
-              <CardContent className="p-0">
-                <Skeleton className="aspect-[16/10] w-full rounded-none" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="gap-3">
-                <Skeleton className="h-6 w-40" />
-                <Skeleton className="h-4 w-56" />
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-              </CardContent>
-            </Card>
+          <section className="grid min-h-[calc(100dvh-57px)] gap-0 md:grid-cols-[16rem_minmax(0,1fr)_22rem]">
+            <div className="space-y-2 border-r bg-[var(--s2ee-surface-soft)] p-6 [border-color:var(--s2ee-border)]">
+              <Skeleton className="h-6 rounded-none" />
+              <Skeleton className="h-14 rounded-none" />
+              <Skeleton className="h-14 rounded-none" />
+              <Skeleton className="h-14 rounded-none" />
+            </div>
+            <div className="border-r bg-[var(--s2ee-surface-soft)] p-8 [border-color:var(--s2ee-border)]">
+              <Skeleton className="h-full min-h-[28rem] w-full rounded-none" />
+            </div>
+            <div className="space-y-3 bg-[var(--s2ee-surface)] p-8">
+              <Skeleton className="h-8 rounded-none" />
+              <Skeleton className="h-20 rounded-none" />
+              <Skeleton className="h-20 rounded-none" />
+            </div>
           </section>
         ) : AsyncResult.isFailure(publishedVenueMapResult) ? (
-          <Alert variant="error">
-            <CircleAlertIcon className="size-4" />
-            <AlertTitle>Venue map unavailable</AlertTitle>
-            <AlertDescription>
-              The published venue map could not be loaded. Refresh the page and try again.
-            </AlertDescription>
-          </Alert>
+          <div className="p-6">
+            <Alert variant="error">
+              <CircleAlertIcon className="size-4" />
+              <AlertTitle>Venue map unavailable</AlertTitle>
+              <AlertDescription>
+                The published venue map could not be loaded. Refresh the page and try again.
+              </AlertDescription>
+            </Alert>
+          </div>
         ) : publishedVenueMapResult.value == null ? (
-          <Card>
-            <CardContent className="pt-6">
-              <Empty className="rounded-[2rem] border border-dashed border-border/70 bg-background/70 p-8">
+          <div className="p-6">
+            <div className="border bg-[var(--s2ee-surface)] p-6 [border-color:var(--s2ee-border)]">
+              <Empty className="border border-dashed p-8 [border-color:var(--s2ee-border)]">
                 <EmptyHeader>
-                  <EmptyMedia variant="icon" className="size-14 rounded-3xl">
+                  <EmptyMedia variant="icon" className="size-14 rounded-none">
                     <MapPinnedIcon className="size-6" />
                   </EmptyMedia>
                   <EmptyTitle>No public map has been published yet</EmptyTitle>
                   <EmptyDescription>
-                    Admin operations still need to publish the venue image and room pins before the
-                    public map can be explored here.
+                    Publish the venue image and room pins before this route can be used.
                   </EmptyDescription>
                 </EmptyHeader>
                 <EmptyContent>
-                  <Button variant="outline" onClick={() => refreshPublishedVenueMap()}>
-                    <RefreshCwIcon />
+                  <button
+                    className="inline-flex min-h-12 items-center justify-center border px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[var(--s2ee-surface-soft)] [border-color:var(--s2ee-border)]"
+                    type="button"
+                    onClick={() => refreshPublishedVenueMap()}
+                  >
                     Check again
-                  </Button>
+                  </button>
                 </EmptyContent>
               </Empty>
-            </CardContent>
-          </Card>
-        ) : (
-          <section className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-            <div className="space-y-6">
-              <div className="grid gap-3 sm:grid-cols-4">
-                <Card className="border-border/60 bg-card/75">
-                  <CardHeader className="gap-2">
-                    <CardDescription>Pinned rooms</CardDescription>
-                    <CardTitle className="font-heading text-3xl">{summary?.pinnedRoomCount ?? 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card className="border-border/60 bg-card/75">
-                  <CardHeader className="gap-2">
-                    <CardDescription>Placed companies</CardDescription>
-                    <CardTitle className="font-heading text-3xl">{summary?.placedCompanyCount ?? 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card className="border-border/60 bg-card/75">
-                  <CardHeader className="gap-2">
-                    <CardDescription>Arrived</CardDescription>
-                    <CardTitle className="font-heading text-3xl">{summary?.arrivedCompanyCount ?? 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card className="border-border/60 bg-card/75">
-                  <CardHeader className="gap-2">
-                    <CardDescription>Still pending</CardDescription>
-                    <CardTitle className="font-heading text-3xl">{summary?.pendingCompanyCount ?? 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-              </div>
-
-              <Card className="overflow-hidden border-border/60 bg-card/85 shadow-sm">
-                <CardHeader className="gap-2 border-b border-border/60 bg-[linear-gradient(180deg,_hsl(var(--card)),_transparent)]">
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <CompassIcon className="size-5" />
-                    Interactive floor plan
-                  </CardTitle>
-                  <CardDescription>
-                    Click any pinned room to inspect company placement and operational status.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <div className="relative">
-                    <img
-                      alt="Published event venue map"
-                      className="block h-auto w-full"
-                      src={toImageSource(publishedVenueMapResult.value.image)}
-                    />
-
-                    {sortedPins.map((pin) => {
-                      const isSelected = pin.room.id === selectedPin?.room.id;
-
-                      return (
-                        <button
-                          key={pin.room.id}
-                          aria-label={`Open room ${pin.room.code}`}
-                          className="group absolute -translate-x-1/2 -translate-y-1/2"
-                          style={{
-                            left: `${pin.xPercent}%`,
-                            top: `${pin.yPercent}%`,
-                          }}
-                          type="button"
-                          onClick={() => setSelectedRoomId(pin.room.id)}
-                        >
-                          <span
-                            className={[
-                              "flex size-11 items-center justify-center rounded-full border text-sm font-semibold shadow-lg transition",
-                              isSelected
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-background/70 bg-background/90 text-foreground hover:scale-105 hover:bg-background",
-                            ].join(" ")}
-                          >
-                            {pin.room.code}
-                          </span>
-                          <span
-                            className={[
-                              "pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 py-1 text-xs shadow-sm transition",
-                              isSelected
-                                ? "border-primary/30 bg-primary/12 text-primary"
-                                : "border-border/70 bg-card/90 text-muted-foreground opacity-0 group-hover:opacity-100",
-                            ].join(" ")}
-                          >
-                            {pin.room.companies.length === 0
-                              ? "Open room"
-                              : `${pin.room.companies.length} ${pin.room.companies.length === 1 ? "company" : "companies"}`}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
+          </div>
+        ) : (
+          <section className="grid min-h-[calc(100dvh-57px)] gap-0 md:grid-cols-[16rem_minmax(0,1fr)_24rem]">
+            <aside className="s2ee-fade-up border-r bg-[var(--s2ee-surface-soft)] [border-color:var(--s2ee-border)]">
+              <div className="border-b px-6 py-6 [border-color:var(--s2ee-border)]">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                  Room index
+                </p>
+              </div>
+              <div className="divide-y [divide-color:var(--s2ee-border)]">
+                {sortedPins.map((pin) => {
+                  const isSelected = pin.room.id === selectedPin?.room.id;
 
-            <div className="space-y-6">
-              <Card className="border-border/60 bg-card/85">
-                <CardHeader className="gap-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-2">
-                      <Badge variant="secondary" size="lg" className="rounded-full px-3">
-                        {selectedPin == null ? "No room selected" : `Room ${selectedPin.room.code}`}
-                      </Badge>
-                      <CardTitle className="font-heading text-3xl">
-                        {selectedPin == null ? "Published pins will appear here" : `Room ${selectedPin.room.code}`}
-                      </CardTitle>
-                      <CardDescription>
-                        {selectedPin == null
-                          ? "Select a pin from the map to inspect placement details."
-                          : describePublishedVenueRoom(selectedPin)}
-                      </CardDescription>
-                    </div>
-                    <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                      <MapPinnedIcon className="size-5" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {selectedPin == null ? null : selectedPin.room.companies.length === 0 ? (
-                    <Empty className="items-start rounded-[1.5rem] border border-dashed border-border/70 bg-background/70 p-5 text-left">
-                      <EmptyHeader className="items-start text-left">
-                        <EmptyMedia variant="icon" className="size-12 rounded-2xl">
-                          <SparklesIcon className="size-5" />
-                        </EmptyMedia>
-                        <EmptyTitle>No companies assigned here yet</EmptyTitle>
-                        <EmptyDescription>
-                          This room is pinned on the public map, but operations have not published any
-                          company placement for it yet.
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
-                  ) : (
-                    selectedPin.room.companies.map((company) => (
-                      <Card key={company.companyId} className="border-border/60 bg-background/70">
-                        <CardContent className="space-y-3 p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="space-y-1">
-                              <p className="font-medium">{company.companyName}</p>
-                              <p className="text-sm text-muted-foreground">
-                                Stand {company.standNumber} in room {selectedPin.room.code}
-                              </p>
-                            </div>
-                            <Building2Icon className="mt-1 size-4 text-muted-foreground" />
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Badge variant="outline">Stand {company.standNumber}</Badge>
-                            <Badge variant={arrivalBadgeVariant(company.arrivalStatus)}>
-                              {company.arrivalStatus === "arrived" ? "Arrived" : "Not arrived"}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/60 bg-card/85">
-                <CardHeader>
-                  <CardTitle className="text-base">Pinned rooms</CardTitle>
-                  <CardDescription>Fast room selection for smaller screens and quick jumps.</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-                  {sortedPins.map((pin) => (
+                  return (
                     <button
                       key={pin.room.id}
                       className={[
-                        "rounded-2xl border px-4 py-3 text-left transition",
-                        pin.room.id === selectedPin?.room.id
-                          ? "border-primary/40 bg-primary/8"
-                          : "border-border/60 bg-background/70 hover:bg-accent/50",
+                        "flex w-full items-center justify-between px-6 py-4 text-left text-sm transition-colors",
+                        isSelected
+                          ? "bg-[color:color-mix(in_srgb,var(--color-primary)_8%,white)] text-primary"
+                          : "bg-[var(--s2ee-surface)] text-[color:var(--s2ee-soft-foreground)] hover:bg-[var(--s2ee-canvas)]",
                       ].join(" ")}
                       type="button"
                       onClick={() => setSelectedRoomId(pin.room.id)}
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="font-medium">Room {pin.room.code}</span>
-                        <Badge variant="secondary">
-                          {pin.room.companies.length} {pin.room.companies.length === 1 ? "company" : "companies"}
-                        </Badge>
-                      </div>
+                      <span className="font-semibold tracking-[-0.04em]">ROOM {pin.room.code}</span>
+                      <span className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
+                        {pin.room.companies.length}
+                      </span>
                     </button>
-                  ))}
-                </CardContent>
-              </Card>
+                  );
+                })}
+              </div>
+            </aside>
+
+            <div className="s2ee-fade-up relative bg-[var(--s2ee-surface-soft)] p-8 md:border-r [border-color:var(--s2ee-border)]">
+              <div className="mb-6 flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                    Published canvas
+                  </p>
+                  <p className="text-sm text-[color:var(--s2ee-soft-foreground)]">
+                    Select a room from the index or the plan to update the inspector.
+                  </p>
+                </div>
+                <button
+                  className="inline-flex items-center gap-2 border bg-[var(--s2ee-surface)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-soft-foreground)] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-white [border-color:var(--s2ee-border)]"
+                  type="button"
+                  onClick={() => refreshPublishedVenueMap()}
+                >
+                  Refresh
+                  <RefreshCwIcon className="size-3.5" />
+                </button>
+              </div>
+
+              <div className="relative h-full min-h-[28rem] overflow-hidden border bg-[var(--s2ee-surface)] shadow-sm [border-color:var(--s2ee-border)]">
+                <img
+                  alt="Published event venue map"
+                  className="block h-full w-full object-contain p-6"
+                  src={toImageSource(publishedVenueMapResult.value.image)}
+                />
+
+                <div className="s2ee-terminal-grid pointer-events-none absolute inset-0 opacity-10" />
+
+                {sortedPins.map((pin) => {
+                  const isSelected = pin.room.id === selectedPin?.room.id;
+
+                  return (
+                    <button
+                      key={pin.room.id}
+                      aria-label={`Open room ${pin.room.code}`}
+                      className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-105"
+                      style={{
+                        left: `${pin.xPercent}%`,
+                        top: `${pin.yPercent}%`,
+                      }}
+                      type="button"
+                      onClick={() => setSelectedRoomId(pin.room.id)}
+                    >
+                      <span
+                        className={[
+                          "flex min-h-11 min-w-11 items-center justify-center border px-3 text-[11px] font-semibold uppercase tracking-[0.16em]",
+                          isSelected
+                            ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_6px_color-mix(in_srgb,var(--color-primary)_14%,transparent)]"
+                            : "border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] text-foreground",
+                        ].join(" ")}
+                      >
+                        {pin.room.code}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
+            <aside className="s2ee-fade-up bg-[var(--s2ee-surface)]">
+              <div className="space-y-2 border-b px-8 py-8 [border-color:var(--s2ee-border)]">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                  Inspector
+                </p>
+                <h2 className="text-2xl font-semibold tracking-[-0.07em]">
+                  {selectedPin == null ? "NO ROOM" : `ROOM ${selectedPin.room.code}`}
+                </h2>
+                <p className="text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
+                  {selectedPin == null
+                    ? "Select a room from the index or map plane."
+                    : describePublishedVenueRoom(selectedPin)}
+                </p>
+              </div>
+
+              <div className="space-y-4 bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_45%,white)] px-8 py-8">
+                {selectedPin == null ? null : selectedPin.room.companies.length === 0 ? (
+                  <Empty className="items-start border border-dashed p-5 text-left [border-color:var(--s2ee-border)]">
+                    <EmptyHeader className="items-start text-left">
+                      <EmptyTitle>No companies assigned</EmptyTitle>
+                      <EmptyDescription>
+                        This room is published on the map, but no company placement has been attached yet.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <div className="space-y-3">
+                    {selectedPin.room.companies.map((company) => (
+                      <div key={company.companyId} className="border bg-[var(--s2ee-surface)] px-4 py-4 [border-color:var(--s2ee-border)]">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <p className="text-sm font-semibold tracking-[-0.04em]">{company.companyName}</p>
+                            <p className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
+                              Stand {company.standNumber}
+                            </p>
+                          </div>
+                          <span
+                            className={[
+                              "text-[11px] uppercase tracking-[0.18em]",
+                              company.arrivalStatus === "arrived"
+                                ? "text-primary"
+                                : "text-[color:var(--s2ee-muted-foreground)]",
+                            ].join(" ")}
+                          >
+                            {company.arrivalStatus === "arrived" ? "Arrived" : "Pending"}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </aside>
           </section>
         )}
       </div>

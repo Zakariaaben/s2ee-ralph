@@ -214,7 +214,11 @@ describeWithStorage("admin rpc", () => {
         const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Ada",
           lastName: "Lovelace",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
         const cv = yield* cvProfileClient.createStudentCvProfile({
           profileTypeId: "software-engineering",
@@ -227,19 +231,23 @@ describeWithStorage("admin rpc", () => {
         );
         expect(issuedQrIdentity).toContain(student.id);
 
-        const completedInterview = yield* interviewClient.completeInterview({
+        const startedCompletedInterview = yield* interviewClient.startInterview({
           recruiterId: acmeWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: cv.id,
+          presentationIdentity: cv.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const completedInterview = yield* interviewClient.completeInterview({
+          interviewId: startedCompletedInterview.id,
           score: 4.3,
           globalTagIds: [asGlobalInterviewTagId("curious")],
           companyTagLabels: ["Backend Ready"],
           notes: "Strong backend fit.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
-        const cancelledInterview = yield* interviewClient.cancelInterview({
+        const startedCancelledInterview = yield* interviewClient.startInterview({
           recruiterId: globexWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: cv.id,
+          presentationIdentity: cv.presentationCode,
+        }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
+        const cancelledInterview = yield* interviewClient.cancelInterview({
+          interviewId: startedCancelledInterview.id,
           notes: "Candidate no-show at booth.",
         }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
 
@@ -291,7 +299,11 @@ describeWithStorage("admin rpc", () => {
         const studentProfile = yield* studentClient.upsertStudentOnboarding({
           firstName: "Ada",
           lastName: "Lovelace",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
         const companyProfile = yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
           RpcClient.withHeaders(companyHeaders),

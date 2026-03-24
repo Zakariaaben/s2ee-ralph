@@ -1,10 +1,5 @@
-import {
-  Effect,
-  Option,
-  Schema,
-  SchemaIssue,
-  SchemaTransformation,
-} from "effect";
+import { decodeCvProfilePresentationCode } from "@project/domain";
+import { Effect, Option, Schema, SchemaIssue, SchemaTransformation } from "effect";
 
 export const RequiredText = Schema.Trim.pipe(
   Schema.check(Schema.isNonEmpty()),
@@ -41,17 +36,46 @@ export const InterviewNotes = Schema.Trim;
 const base64ContentsPattern =
   /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const invalidBase64ContentsMessage = "Expected non-empty base64-encoded file contents";
+const getBase64ByteLength = (value: string): number => {
+  const paddingLength = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
+
+  return (value.length / 4) * 3 - paddingLength;
+};
 
 const validBase64Contents = Schema.makeFilter<string>((value) => {
   if (!base64ContentsPattern.test(value)) {
     return invalidBase64ContentsMessage;
   }
 
-  return Buffer.from(value, "base64").byteLength > 0 || invalidBase64ContentsMessage;
+  return getBase64ByteLength(value) > 0 || invalidBase64ContentsMessage;
 });
 
 export const Base64FileContents = RequiredText.pipe(
   Schema.check(validBase64Contents),
+);
+
+const validPdfContentType = Schema.makeFilter<string>((value) => {
+  if (value !== "application/pdf") {
+    return "Expected a PDF content type";
+  }
+
+  return true;
+});
+
+const validPdfFileName = Schema.makeFilter<string>((value) => {
+  if (!value.toLowerCase().endsWith(".pdf")) {
+    return "Expected a PDF file name";
+  }
+
+  return true;
+});
+
+export const PdfContentType = RequiredText.pipe(
+  Schema.check(validPdfContentType),
+);
+
+export const PdfFileName = RequiredText.pipe(
+  Schema.check(validPdfFileName),
 );
 
 const validImageContentType = Schema.makeFilter<string>((value) => {
@@ -128,6 +152,31 @@ export const StudentQrIdentity = Schema.Trim.pipe(
       },
       encode: (studentId) =>
         Effect.succeed(`${studentQrIdentityPrefix}${studentId}`),
+    }),
+  ),
+);
+
+const invalidCvProfilePresentationIdentityMessage =
+  "Expected a CV profile presentation identity";
+
+export const CvProfilePresentationIdentity = Schema.Trim.pipe(
+  Schema.decodeTo(
+    Schema.String,
+    SchemaTransformation.transformOrFail({
+      decode: (value) => {
+        const cvProfileId = decodeCvProfilePresentationCode(value);
+
+        if (!cvProfileId) {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue(Option.some(value), {
+              message: invalidCvProfilePresentationIdentityMessage,
+            }),
+          );
+        }
+
+        return Effect.succeed(cvProfileId);
+      },
+      encode: (cvProfileId) => Effect.succeed(cvProfileId),
     }),
   ),
 );

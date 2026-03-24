@@ -1,9 +1,11 @@
 import {
+  CompanyActiveInterviewDetail,
   CompanyCompletedInterviewLedgerEntry,
   CompanyCompletedInterviewExportFile,
-  CvProfileId,
+  CvProfileDownloadUrl,
   GlobalInterviewTagId,
   Interview,
+  InterviewId,
   RecruiterId,
 } from "@project/domain";
 import { Schema } from "effect";
@@ -12,18 +14,23 @@ import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
 import {
+  CvProfilePresentationIdentity,
   InterviewCompanyTagLabel,
   InterviewNotes,
   InterviewScore,
-  StudentQrIdentity,
 } from "../request-schemas";
+
+export class StartInterviewInput extends Schema.Class<StartInterviewInput>(
+  "StartInterviewInput",
+)({
+  recruiterId: RecruiterId,
+  presentationIdentity: CvProfilePresentationIdentity,
+}) {}
 
 export class CompleteInterviewInput extends Schema.Class<CompleteInterviewInput>(
   "CompleteInterviewInput",
 )({
-  recruiterId: RecruiterId,
-  qrIdentity: StudentQrIdentity,
-  cvProfileId: CvProfileId,
+  interviewId: InterviewId,
   score: InterviewScore,
   globalTagIds: Schema.Array(GlobalInterviewTagId),
   companyTagLabels: Schema.Array(InterviewCompanyTagLabel),
@@ -33,9 +40,7 @@ export class CompleteInterviewInput extends Schema.Class<CompleteInterviewInput>
 export class CancelInterviewInput extends Schema.Class<CancelInterviewInput>(
   "CancelInterviewInput",
 )({
-  recruiterId: RecruiterId,
-  qrIdentity: StudentQrIdentity,
-  cvProfileId: CvProfileId,
+  interviewId: InterviewId,
   notes: InterviewNotes,
 }) {}
 
@@ -43,6 +48,18 @@ export class ExportCurrentCompanyCompletedInterviewsInput extends Schema.Class<E
   "ExportCurrentCompanyCompletedInterviewsInput",
 )({
   includeCvFiles: Schema.Boolean,
+}) {}
+
+export class GetCurrentCompanyInterviewDetailInput extends Schema.Class<GetCurrentCompanyInterviewDetailInput>(
+  "GetCurrentCompanyInterviewDetailInput",
+)({
+  interviewId: InterviewId,
+}) {}
+
+export class GetCurrentCompanyInterviewCvDownloadUrlInput extends Schema.Class<GetCurrentCompanyInterviewCvDownloadUrlInput>(
+  "GetCurrentCompanyInterviewCvDownloadUrlInput",
+)({
+  interviewId: InterviewId,
 }) {}
 
 export const InterviewRpcAccessError = Schema.Union([
@@ -65,10 +82,25 @@ export const InterviewRpcGroup = RpcGroup.make(
     success: Schema.Array(CompanyCompletedInterviewLedgerEntry),
     error: InterviewRpcAccessError,
   }),
+  Rpc.make("getCurrentCompanyInterviewDetail", {
+    success: CompanyActiveInterviewDetail,
+    error: Schema.Union([InterviewRpcAccessError, HttpApiError.NotFound]),
+    payload: GetCurrentCompanyInterviewDetailInput,
+  }),
+  Rpc.make("getCurrentCompanyInterviewCvDownloadUrl", {
+    success: CvProfileDownloadUrl,
+    error: Schema.Union([InterviewRpcAccessError, HttpApiError.NotFound]),
+    payload: GetCurrentCompanyInterviewCvDownloadUrlInput,
+  }),
   Rpc.make("exportCurrentCompanyCompletedInterviews", {
     success: CompanyCompletedInterviewExportFile,
     error: Schema.Union([InterviewRpcAccessError, HttpApiError.NotFound]),
     payload: ExportCurrentCompanyCompletedInterviewsInput,
+  }),
+  Rpc.make("startInterview", {
+    success: Interview,
+    error: InterviewRpcMutationError,
+    payload: StartInterviewInput,
   }),
   Rpc.make("completeInterview", {
     success: Interview,

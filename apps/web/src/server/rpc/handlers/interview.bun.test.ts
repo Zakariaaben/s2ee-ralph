@@ -131,7 +131,11 @@ describeWithStorage("interview rpc", () => {
         const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Ada",
           lastName: "Lovelace",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
         const selectedCvProfile = yield* cvProfileClient.createStudentCvProfile({
@@ -146,27 +150,33 @@ describeWithStorage("interview rpc", () => {
         );
         expect(issuedQrIdentity).toContain(student.id);
 
-        const completedInterview = yield* interviewClient.completeInterview({
+        const startedCompletedInterview = yield* interviewClient.startInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: selectedCvProfile.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const completedInterview = yield* interviewClient.completeInterview({
+          interviewId: startedCompletedInterview.id,
           score: 4.3,
           globalTagIds: [asGlobalInterviewTagId("curious")],
           companyTagLabels: ["Backend Ready"],
           notes: "Strong systems instincts.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
-        yield* interviewClient.cancelInterview({
+        const startedCancelledInterview = yield* interviewClient.startInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: selectedCvProfile.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        yield* interviewClient.cancelInterview({
+          interviewId: startedCancelledInterview.id,
           notes: "Student had to leave early.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
-        yield* interviewClient.completeInterview({
+        const otherStartedInterview = yield* interviewClient.startInterview({
           recruiterId: otherCompanyWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: selectedCvProfile.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
+        yield* interviewClient.completeInterview({
+          interviewId: otherStartedInterview.id,
           score: 3.7,
           globalTagIds: [],
           companyTagLabels: [],
@@ -216,7 +226,11 @@ describeWithStorage("interview rpc", () => {
         const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Ada",
           lastName: "Lovelace",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
         const selectedCvProfile = yield* cvProfileClient.createStudentCvProfile({
@@ -231,10 +245,12 @@ describeWithStorage("interview rpc", () => {
         );
         expect(issuedQrIdentity).toContain(student.id);
 
-        const completedInterview = yield* interviewClient.completeInterview({
+        const startedInterview = yield* interviewClient.startInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: selectedCvProfile.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const completedInterview = yield* interviewClient.completeInterview({
+          interviewId: startedInterview.id,
           score: 4.3,
           globalTagIds: [asGlobalInterviewTagId("curious")],
           companyTagLabels: ["Backend Ready"],
@@ -292,7 +308,11 @@ describeWithStorage("interview rpc", () => {
         const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Grace",
           lastName: "Hopper",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
         const selectedCvProfile = yield* cvProfileClient.createStudentCvProfile({
@@ -307,11 +327,14 @@ describeWithStorage("interview rpc", () => {
         );
         expect(issuedQrIdentity).toContain(student.id);
 
+        const startedInterview = yield* interviewClient.startInterview({
+          recruiterId: companyWithRecruiter.recruiters[0]!.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+
         const invalidScoreExit = yield* Effect.exit(
           interviewClient.completeInterview({
-            recruiterId: companyWithRecruiter.recruiters[0]!.id,
-            qrIdentity: student.id,
-            cvProfileId: selectedCvProfile.id,
+            interviewId: startedInterview.id,
             score: 5.1,
             globalTagIds: [],
             companyTagLabels: [],
@@ -319,21 +342,14 @@ describeWithStorage("interview rpc", () => {
           }).pipe(RpcClient.withHeaders(companyHeaders)),
         );
         const invalidQrExit = yield* Effect.exit(
-          interviewClient.completeInterview({
+          interviewClient.startInterview({
             recruiterId: companyWithRecruiter.recruiters[0]!.id,
-            qrIdentity: "not-a-student-qr",
-            cvProfileId: selectedCvProfile.id,
-            score: 4.3,
-            globalTagIds: [],
-            companyTagLabels: [],
-            notes: "",
+            presentationIdentity: "not-a-student-qr",
           }).pipe(RpcClient.withHeaders(companyHeaders)),
         );
         const blankCompanyTagExit = yield* Effect.exit(
           interviewClient.completeInterview({
-            recruiterId: companyWithRecruiter.recruiters[0]!.id,
-            qrIdentity: student.id,
-            cvProfileId: selectedCvProfile.id,
+            interviewId: startedInterview.id,
             score: 4.3,
             globalTagIds: [],
             companyTagLabels: [""],
@@ -381,7 +397,11 @@ describeWithStorage("interview rpc", () => {
         const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Grace",
           lastName: "Hopper",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
         const selectedCvProfile = yield* cvProfileClient.createStudentCvProfile({
@@ -396,10 +416,12 @@ describeWithStorage("interview rpc", () => {
         );
         expect(issuedQrIdentity).toContain(student.id);
 
-        const cancelledInterview = yield* interviewClient.cancelInterview({
+        const startedInterview = yield* interviewClient.startInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: selectedCvProfile.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const cancelledInterview = yield* interviewClient.cancelInterview({
+          interviewId: startedInterview.id,
           notes: "Candidate left for another booth.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
@@ -453,7 +475,11 @@ describeWithStorage("interview rpc", () => {
         const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Grace",
           lastName: "Hopper",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
         const selectedCvProfile = yield* cvProfileClient.createStudentCvProfile({
@@ -468,27 +494,33 @@ describeWithStorage("interview rpc", () => {
         );
         expect(issuedQrIdentity).toContain(student.id);
 
-        const completedInterview = yield* interviewClient.completeInterview({
+        const startedCompletedInterview = yield* interviewClient.startInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: selectedCvProfile.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const completedInterview = yield* interviewClient.completeInterview({
+          interviewId: startedCompletedInterview.id,
           score: 4.7,
           globalTagIds: [asGlobalInterviewTagId("curious")],
           companyTagLabels: ["Backend Ready"],
           notes: "Recommend final-round follow-up.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
-        yield* interviewClient.cancelInterview({
+        const startedCancelledInterview = yield* interviewClient.startInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: selectedCvProfile.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        yield* interviewClient.cancelInterview({
+          interviewId: startedCancelledInterview.id,
           notes: "Duplicate scan from booth device.",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
-        yield* interviewClient.completeInterview({
+        const otherStartedInterview = yield* interviewClient.startInterview({
           recruiterId: otherCompanyWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: selectedCvProfile.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
+        yield* interviewClient.completeInterview({
+          interviewId: otherStartedInterview.id,
           score: 3.4,
           globalTagIds: [],
           companyTagLabels: [],
@@ -603,7 +635,11 @@ describeWithStorage("interview rpc", () => {
         const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Katherine",
           lastName: "Johnson",
-          course: "Mathematics",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Mathematics",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
         const selectedCvProfile = yield* cvProfileClient.createStudentCvProfile({
@@ -618,10 +654,12 @@ describeWithStorage("interview rpc", () => {
         );
         expect(issuedQrIdentity).toContain(student.id);
 
-        const firstInterview = yield* interviewClient.completeInterview({
+        const startedFirstInterview = yield* interviewClient.startInterview({
           recruiterId: companyWithRecruiter.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: selectedCvProfile.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const firstInterview = yield* interviewClient.completeInterview({
+          interviewId: startedFirstInterview.id,
           score: 4.1,
           globalTagIds: [],
           companyTagLabels: [],
@@ -633,10 +671,12 @@ describeWithStorage("interview rpc", () => {
           name: "Nora Updated",
         }).pipe(RpcClient.withHeaders(companyHeaders));
 
-        const secondInterview = yield* interviewClient.completeInterview({
+        const startedSecondInterview = yield* interviewClient.startInterview({
           recruiterId: renamedCompany.recruiters[0]!.id,
-          qrIdentity: student.id,
-          cvProfileId: selectedCvProfile.id,
+          presentationIdentity: selectedCvProfile.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const secondInterview = yield* interviewClient.completeInterview({
+          interviewId: startedSecondInterview.id,
           score: 4.8,
           globalTagIds: [],
           companyTagLabels: [],

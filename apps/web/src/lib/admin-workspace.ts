@@ -173,7 +173,8 @@ export const filterAdminInterviewLedger = (
     return [
       entry.company.name,
       `${entry.student.firstName} ${entry.student.lastName}`,
-      entry.student.course,
+      entry.student.major,
+      entry.student.institution,
       entry.interview.recruiterName,
       entry.cvProfile.profileType.label,
       entry.cvProfile.fileName,

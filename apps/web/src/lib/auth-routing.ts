@@ -1,5 +1,11 @@
 import type { UserRoleValue } from "@project/domain";
 
+export const authPaths = {
+  root: "/auth",
+  signIn: "/auth/sign-in",
+  signUp: "/auth/sign-up",
+} as const;
+
 export const roleHomePaths = {
   admin: "/admin",
   student: "/student",

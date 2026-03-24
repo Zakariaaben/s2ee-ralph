@@ -12,16 +12,15 @@ import { z } from "zod";
 
 const UserRoleSchema = z.enum(UserRoleValues);
 
-export const makeAuth = Effect.gen(function*() {
+export const makeAuth = Effect.gen(function* () {
   const db = yield* DB;
   const env = yield* ServerEnv;
-
   return betterAuth({
     database: drizzleAdapter(db, {
       provider: "pg",
       schema,
     }),
-    trustedOrigins: [env.corsOrigin.toString()],
+    trustedOrigins: [env.corsOrigin.origin],
     emailAndPassword: {
       enabled: true,
     },

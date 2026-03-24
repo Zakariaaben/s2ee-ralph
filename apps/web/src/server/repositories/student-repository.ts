@@ -1,4 +1,5 @@
 import { DB } from "@project/db";
+import { user } from "@project/db/schema/auth";
 import { student } from "@project/db/schema/student";
 import { Student } from "@project/domain";
 import { eq } from "drizzle-orm";
@@ -6,12 +7,19 @@ import { Effect, Layer, ServiceMap } from "effect";
 
 const makeStudentId = () => crypto.randomUUID();
 
-const toStudent = (studentRow: typeof student.$inferSelect) =>
+const toStudent = (input: {
+  readonly studentRow: typeof student.$inferSelect;
+  readonly image: string | null;
+}) =>
   new Student({
-    id: studentRow.id as Student["id"],
-    firstName: studentRow.firstName,
-    lastName: studentRow.lastName,
-    course: studentRow.course,
+    id: input.studentRow.id as Student["id"],
+    firstName: input.studentRow.firstName,
+    lastName: input.studentRow.lastName,
+    phoneNumber: input.studentRow.phoneNumber,
+    academicYear: input.studentRow.academicYear,
+    major: input.studentRow.major,
+    institution: input.studentRow.institution,
+    image: input.image,
   });
 
 export class StudentRepository extends ServiceMap.Service<
@@ -28,7 +36,11 @@ export class StudentRepository extends ServiceMap.Service<
         readonly ownerUserId: string;
         readonly firstName: string;
         readonly lastName: string;
-        readonly course: string;
+        readonly phoneNumber: string;
+        readonly academicYear: string;
+        readonly major: string;
+        readonly institution: string;
+        readonly image: string | null;
       },
     ) => Effect.Effect<Student>;
   }
@@ -41,8 +53,12 @@ export class StudentRepository extends ServiceMap.Service<
       const getStudentRowByOwnerUserId = (ownerUserId: string) =>
         Effect.promise(() =>
           db
-            .select()
+            .select({
+              studentRow: student,
+              image: user.image,
+            })
             .from(student)
+            .innerJoin(user, eq(user.id, student.ownerUserId))
             .where(eq(student.ownerUserId, ownerUserId))
             .limit(1)
             .then((rows) => rows[0] ?? null),
@@ -51,8 +67,12 @@ export class StudentRepository extends ServiceMap.Service<
       const getStudentRowById = (studentId: string) =>
         Effect.promise(() =>
           db
-            .select()
+            .select({
+              studentRow: student,
+              image: user.image,
+            })
             .from(student)
+            .innerJoin(user, eq(user.id, student.ownerUserId))
             .where(eq(student.id, studentId))
             .limit(1)
             .then((rows) => rows[0] ?? null),
@@ -60,22 +80,31 @@ export class StudentRepository extends ServiceMap.Service<
 
       const loadStudentByOwnerUserId = (ownerUserId: string) =>
         Effect.gen(function*() {
-          const studentRow = yield* getStudentRowByOwnerUserId(ownerUserId);
+          const row = yield* getStudentRowByOwnerUserId(ownerUserId);
 
-          return studentRow ? toStudent(studentRow) : null;
+          return row ? toStudent(row) : null;
         });
 
       const loadStudentById = (studentId: string) =>
         Effect.gen(function*() {
-          const studentRow = yield* getStudentRowById(studentId);
+          const row = yield* getStudentRowById(studentId);
 
-          return studentRow ? toStudent(studentRow) : null;
+          return row ? toStudent(row) : null;
         });
 
       return StudentRepository.of({
         getByOwnerUserId: loadStudentByOwnerUserId,
         getById: loadStudentById,
-        upsertByOwnerUserId: ({ ownerUserId, firstName, lastName, course }) =>
+        upsertByOwnerUserId: ({
+          ownerUserId,
+          firstName,
+          lastName,
+          phoneNumber,
+          academicYear,
+          major,
+          institution,
+          image,
+        }) =>
           Effect.gen(function*() {
             yield* Effect.promise(() =>
               db
@@ -85,17 +114,32 @@ export class StudentRepository extends ServiceMap.Service<
                   ownerUserId,
                   firstName,
                   lastName,
-                  course,
+                  phoneNumber,
+                  academicYear,
+                  major,
+                  institution,
                 })
                 .onConflictDoUpdate({
                   target: student.ownerUserId,
                   set: {
                     firstName,
                     lastName,
-                    course,
+                    phoneNumber,
+                    academicYear,
+                    major,
+                    institution,
                     updatedAt: new Date(),
                   },
                 }),
+            );
+            yield* Effect.promise(() =>
+              db
+                .update(user)
+                .set({
+                  image,
+                  updatedAt: new Date(),
+                })
+                .where(eq(user.id, ownerUserId)),
             );
 
             const savedStudent = yield* loadStudentByOwnerUserId(ownerUserId);

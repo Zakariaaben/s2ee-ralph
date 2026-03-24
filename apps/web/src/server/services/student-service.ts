@@ -37,7 +37,11 @@ export class StudentService extends ServiceMap.Service<
       readonly actor: AuthenticatedActor;
       readonly firstName: string;
       readonly lastName: string;
-      readonly course: string;
+      readonly phoneNumber: string;
+      readonly academicYear: string;
+      readonly major: string;
+      readonly institution: string;
+      readonly image: string | null;
     }) => Effect.Effect<Student, HttpApiError.Forbidden>;
     readonly issueStudentQrIdentity: (
       actor: AuthenticatedActor,
@@ -60,7 +64,16 @@ export class StudentService extends ServiceMap.Service<
 
             return yield* studentRepository.getByOwnerUserId(studentActor.id);
           }),
-        upsertStudentOnboarding: ({ actor, firstName, lastName, course }) =>
+        upsertStudentOnboarding: ({
+          actor,
+          firstName,
+          lastName,
+          phoneNumber,
+          academicYear,
+          major,
+          institution,
+          image,
+        }) =>
           Effect.gen(function* () {
             const studentActor = yield* requireStudentActor(actor);
 
@@ -68,7 +81,11 @@ export class StudentService extends ServiceMap.Service<
               ownerUserId: studentActor.id,
               firstName,
               lastName,
-              course,
+              phoneNumber,
+              academicYear,
+              major,
+              institution,
+              image,
             });
           }),
         issueStudentQrIdentity: (actor) =>

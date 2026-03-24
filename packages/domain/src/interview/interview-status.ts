@@ -1,6 +1,6 @@
 import { Schema } from "effect";
 
-export const InterviewStatusValues = ["completed", "cancelled"] as const;
+export const InterviewStatusValues = ["active", "completed", "cancelled"] as const;
 
 export type InterviewStatusValue = (typeof InterviewStatusValues)[number];
 

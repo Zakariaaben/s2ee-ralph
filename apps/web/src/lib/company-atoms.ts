@@ -1,6 +1,5 @@
-import type { Student } from "@project/domain";
-
 import { AppRpcClient } from "@/lib/rpc-client";
+import type { Interview } from "@project/domain";
 
 export const companyWorkspaceReactivity = {
   currentCompany: ["company", "current-company"] as const,
@@ -18,6 +17,10 @@ export const companyWorkspaceAtoms = {
     reactivityKeys: companyWorkspaceReactivity.activeInterviews,
     timeToLive: "30 seconds",
   }),
+  getCurrentCompanyInterviewDetail: (interviewId: Interview["id"]) =>
+    AppRpcClient.query("getCurrentCompanyInterviewDetail", { interviewId }, { timeToLive: "30 seconds" }),
+  getCurrentCompanyInterviewCvDownloadUrl: (interviewId: Interview["id"]) =>
+    AppRpcClient.query("getCurrentCompanyInterviewCvDownloadUrl", { interviewId }, { timeToLive: "30 seconds" }),
   completedInterviews: AppRpcClient.query("listCurrentCompanyCompletedInterviews", undefined, {
     reactivityKeys: companyWorkspaceReactivity.completedInterviews,
     timeToLive: "30 seconds",
@@ -26,17 +29,14 @@ export const companyWorkspaceAtoms = {
     reactivityKeys: companyWorkspaceReactivity.globalInterviewTags,
     timeToLive: "5 minutes",
   }),
-  resolveStudentQrIdentity: (qrIdentity: string) =>
-    AppRpcClient.query("resolveStudentQrIdentity", { qrIdentity }, {
-      timeToLive: "30 seconds",
-    }),
-  listStudentCvProfiles: (studentId: Student["id"]) =>
-    AppRpcClient.query("listStudentCvProfiles", { studentId }, {
+  resolvePresentedCvProfile: (presentationIdentity: string) =>
+    AppRpcClient.query("resolvePresentedCvProfile", { presentationIdentity }, {
       timeToLive: "30 seconds",
     }),
   upsertCompanyProfile: AppRpcClient.mutation("upsertCompanyProfile"),
   addRecruiter: AppRpcClient.mutation("addRecruiter"),
   renameRecruiter: AppRpcClient.mutation("renameRecruiter"),
+  startInterview: AppRpcClient.mutation("startInterview"),
   completeInterview: AppRpcClient.mutation("completeInterview"),
   cancelInterview: AppRpcClient.mutation("cancelInterview"),
   exportCompletedInterviews: AppRpcClient.mutation("exportCurrentCompanyCompletedInterviews"),

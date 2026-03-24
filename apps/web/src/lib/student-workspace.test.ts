@@ -2,9 +2,11 @@ import { CvProfile, CvProfileType, Student } from "@project/domain";
 import { describe, expect, it } from "vitest";
 
 import {
+  findStudentCvProfileById,
   formatFileSize,
   formatStudentDisplayName,
-  summarizeStudentWorkspace,
+  groupStudentCvProfiles,
+  hasStudentOnboardingProfile,
 } from "@/lib/student-workspace";
 
 const softwareCvType = new CvProfileType({
@@ -12,79 +14,105 @@ const softwareCvType = new CvProfileType({
   label: "Software Engineering",
 });
 
-describe("student workspace helper", () => {
-  it("marks a fresh student as not ready when onboarding has not started", () => {
-    const summary = summarizeStudentWorkspace({
-      student: null,
-      cvProfiles: [],
-    });
+const dataCvType = new CvProfileType({
+  id: "data-science" as CvProfileType["id"],
+  label: "Data Science",
+});
 
-    expect(summary.hasOnboardingProfile).toBe(false);
-    expect(summary.hasUploadedCv).toBe(false);
-    expect(summary.qrIdentityAvailable).toBe(false);
-    expect(summary.isEventReady).toBe(false);
-    expect(summary.completionPercent).toBe(0);
-    expect(summary.nextStepLabel).toBe("Finish your onboarding profile.");
+const makeStudent = (overrides: Partial<Student> = {}) =>
+  new Student({
+    id: "student_1" as Student["id"],
+    firstName: "Ada",
+    lastName: "Lovelace",
+    phoneNumber: "+213 555 12 34",
+    academicYear: "5th year",
+    major: "Computer Science",
+    institution: "ESI",
+    image: null,
+    ...overrides,
   });
 
-  it("unlocks QR identity after onboarding while keeping event-ready blocked until a CV exists", () => {
-    const summary = summarizeStudentWorkspace({
-      student: new Student({
-        id: "student_1" as Student["id"],
-        firstName: "Ada",
-        lastName: "Lovelace",
-        course: "Computer Science",
+const makeCvProfile = (input: {
+  readonly contentType?: string;
+  readonly fileName: string;
+  readonly id: string;
+  readonly profileType: CvProfileType;
+}) =>
+  new CvProfile({
+    id: input.id as CvProfile["id"],
+    studentId: "student_1" as Student["id"],
+    presentationCode: `profile:v1:${input.id}`,
+    profileType: input.profileType,
+    fileName: input.fileName,
+    contentType: input.contentType ?? "application/pdf",
+    fileSizeBytes: 150_000,
+  });
+
+describe("student workspace helpers", () => {
+  it("requires all onboarding fields to be non-empty", () => {
+    expect(hasStudentOnboardingProfile(null)).toBe(false);
+
+    const incompleteStudent = makeStudent({
+      major: " ",
+    });
+    expect(hasStudentOnboardingProfile(incompleteStudent)).toBe(false);
+
+    expect(hasStudentOnboardingProfile(makeStudent())).toBe(true);
+  });
+
+  it("groups cv profiles by profile type and sorts groups and entries", () => {
+    const groupedProfiles = groupStudentCvProfiles([
+      makeCvProfile({
+        id: "cv-3",
+        fileName: "zeta.pdf",
+        profileType: softwareCvType,
       }),
-      cvProfiles: [],
-    });
-
-    expect(summary.hasOnboardingProfile).toBe(true);
-    expect(summary.hasUploadedCv).toBe(false);
-    expect(summary.qrIdentityAvailable).toBe(true);
-    expect(summary.isEventReady).toBe(false);
-    expect(summary.completionPercent).toBe(67);
-    expect(summary.nextStepLabel).toBe("Upload your first CV profile.");
-  });
-
-  it("marks the student ready once onboarding and CV coverage are both in place", () => {
-    const summary = summarizeStudentWorkspace({
-      student: new Student({
-        id: "student_1" as Student["id"],
-        firstName: "Ada",
-        lastName: "Lovelace",
-        course: "Computer Science",
+      makeCvProfile({
+        id: "cv-2",
+        fileName: "alpha.pdf",
+        profileType: softwareCvType,
       }),
-      cvProfiles: [
-        new CvProfile({
-          id: "cv_1" as CvProfile["id"],
-          studentId: "student_1" as Student["id"],
-          profileType: softwareCvType,
-          fileName: "ada-software.pdf",
-          contentType: "application/pdf",
-          fileSizeBytes: 230_000,
-        }),
-      ],
-    });
+      makeCvProfile({
+        id: "cv-1",
+        fileName: "beta.pdf",
+        profileType: dataCvType,
+      }),
+    ]);
 
-    expect(summary.isEventReady).toBe(true);
-    expect(summary.completionPercent).toBe(100);
-    expect(summary.nextStepLabel).toBe("You are event-ready.");
+    expect(groupedProfiles).toHaveLength(2);
+    expect(groupedProfiles[0]?.profileTypeLabel).toBe("Data Science");
+    expect(groupedProfiles[1]?.profileTypeLabel).toBe("Software Engineering");
+    expect(groupedProfiles[1]?.profiles.map((profile) => profile.fileName)).toEqual([
+      "alpha.pdf",
+      "zeta.pdf",
+    ]);
   });
 
-  it("formats student names and file sizes for compact UI display", () => {
+  it("finds a cv profile by id", () => {
+    const profiles = [
+      makeCvProfile({
+        id: "cv-11",
+        fileName: "ml.pdf",
+        profileType: dataCvType,
+      }),
+      makeCvProfile({
+        id: "cv-12",
+        fileName: "systems.pdf",
+        profileType: softwareCvType,
+      }),
+    ];
+
+    expect(findStudentCvProfileById(profiles, "cv-12")?.fileName).toBe("systems.pdf");
+    expect(findStudentCvProfileById(profiles, "missing-profile")).toBeNull();
+  });
+
+  it("formats compact display values", () => {
     expect(formatStudentDisplayName(null)).toBe("New student");
-    expect(
-      formatStudentDisplayName(
-        new Student({
-          id: "student_1" as Student["id"],
-          firstName: "Grace",
-          lastName: "Hopper",
-          course: "Computer Science",
-        }),
-      ),
-    ).toBe("Grace Hopper");
+    expect(formatStudentDisplayName(makeStudent({ firstName: "Grace", lastName: "Hopper" }))).toBe(
+      "Grace Hopper",
+    );
 
-    expect(formatFileSize(880)).toBe("880 B");
+    expect(formatFileSize(900)).toBe("900 B");
     expect(formatFileSize(20_480)).toBe("20.0 KB");
     expect(formatFileSize(2_621_440)).toBe("2.5 MB");
   });

@@ -43,6 +43,15 @@ export const makeCvProfileRpcHandlers = Effect.gen(function*() {
           cvProfileId: input.cvProfileId,
         });
       }),
+    getStudentCvProfileDownloadUrl: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* cvProfileService.getStudentCvProfileDownloadUrl({
+          actor,
+          cvProfileId: input.cvProfileId,
+        });
+      }),
     deleteStudentCvProfile: (input) =>
       Effect.gen(function*() {
         const actor = yield* CurrentActor;
@@ -50,6 +59,15 @@ export const makeCvProfileRpcHandlers = Effect.gen(function*() {
         return yield* cvProfileService.deleteStudentCvProfile({
           actor,
           cvProfileId: input.cvProfileId,
+        });
+      }),
+    resolvePresentedCvProfile: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* cvProfileService.resolvePresentedCvProfile({
+          actor,
+          presentationCode: input.presentationIdentity,
         });
       }),
   });

@@ -11,12 +11,20 @@ describe("student rpc input schemas", () => {
       Schema.decodeUnknownSync(UpsertStudentOnboardingInput)({
         firstName: "  Ada  ",
         lastName: "  Lovelace  ",
-        course: "  Computer Science  ",
+        phoneNumber: "  +213 555 12 34  ",
+        academicYear: "  5th year  ",
+        major: "  Computer Science  ",
+        institution: "  ESI  ",
+        image: "  https://example.com/ada.png  ",
       }),
     ).toEqual({
       firstName: "Ada",
       lastName: "Lovelace",
-      course: "Computer Science",
+      phoneNumber: "+213 555 12 34",
+      academicYear: "5th year",
+      major: "Computer Science",
+      institution: "ESI",
+      image: "https://example.com/ada.png",
     });
   });
 
@@ -25,7 +33,11 @@ describe("student rpc input schemas", () => {
       Schema.decodeUnknownSync(UpsertStudentOnboardingInput)({
         firstName: "  ",
         lastName: "Lovelace",
-        course: "Computer Science",
+        phoneNumber: "+213 555 12 34",
+        academicYear: "5th year",
+        major: "Computer Science",
+        institution: "ESI",
+        image: null,
       })
     ).toThrow();
 
@@ -33,7 +45,11 @@ describe("student rpc input schemas", () => {
       Schema.decodeUnknownSync(UpsertStudentOnboardingInput)({
         firstName: "Ada",
         lastName: "\n\t  ",
-        course: "Computer Science",
+        phoneNumber: "+213 555 12 34",
+        academicYear: "5th year",
+        major: "Computer Science",
+        institution: "ESI",
+        image: null,
       })
     ).toThrow();
 
@@ -41,7 +57,47 @@ describe("student rpc input schemas", () => {
       Schema.decodeUnknownSync(UpsertStudentOnboardingInput)({
         firstName: "Ada",
         lastName: "Lovelace",
-        course: "   ",
+        phoneNumber: "   ",
+        academicYear: "5th year",
+        major: "Computer Science",
+        institution: "ESI",
+        image: null,
+      })
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(UpsertStudentOnboardingInput)({
+        firstName: "Ada",
+        lastName: "Lovelace",
+        phoneNumber: "+213 555 12 34",
+        academicYear: "   ",
+        major: "Computer Science",
+        institution: "ESI",
+        image: null,
+      })
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(UpsertStudentOnboardingInput)({
+        firstName: "Ada",
+        lastName: "Lovelace",
+        phoneNumber: "+213 555 12 34",
+        academicYear: "5th year",
+        major: "   ",
+        institution: "ESI",
+        image: null,
+      })
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(UpsertStudentOnboardingInput)({
+        firstName: "Ada",
+        lastName: "Lovelace",
+        phoneNumber: "+213 555 12 34",
+        academicYear: "5th year",
+        major: "Computer Science",
+        institution: "   ",
+        image: null,
       })
     ).toThrow();
   });

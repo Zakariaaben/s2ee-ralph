@@ -3,60 +3,33 @@
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import { Alert, AlertDescription, AlertTitle } from "@project/ui/components/alert";
-import { Badge } from "@project/ui/components/badge";
 import { Button } from "@project/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@project/ui/components/card";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@project/ui/components/empty";
-import { Field, FieldDescription, FieldLabel } from "@project/ui/components/field";
 import { Input } from "@project/ui/components/input";
-import { Progress, ProgressIndicator, ProgressTrack } from "@project/ui/components/progress";
-import { Separator } from "@project/ui/components/separator";
 import { Skeleton } from "@project/ui/components/skeleton";
-import type { CvProfile, CvProfileType, UserRoleValue } from "@project/domain";
+import type { CvProfile } from "@project/domain";
+import { useNavigate } from "@tanstack/react-router";
 import {
-  CheckCircle2Icon,
-  CopyIcon,
-  FileCheck2Icon,
-  GraduationCapIcon,
-  IdCardIcon,
+  ArrowRightIcon,
+  CircleAlertIcon,
   LogOutIcon,
   RefreshCwIcon,
-  ShieldCheckIcon,
   Trash2Icon,
-  TriangleAlertIcon,
   UploadIcon,
 } from "lucide-react";
 import type React from "react";
-import { startTransition, useEffect, useEffectEvent, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
+import { StudentOnboardingDialog } from "@/components/student/student-onboarding-dialog";
 import { authClient } from "@/lib/auth-client";
-import { getRoleHomePath } from "@/lib/auth-routing";
 import { studentWorkspaceAtoms, studentWorkspaceReactivity } from "@/lib/student-atoms";
-import {
-  formatFileSize,
-  formatStudentDisplayName,
-  summarizeStudentWorkspace,
-} from "@/lib/student-workspace";
-
-const formatMutationError = (error: unknown): string => {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
-  }
-
-  return "The student workspace update did not complete. Refresh and try again.";
-};
+import { formatFileSize, hasStudentOnboardingProfile } from "@/lib/student-workspace";
 
 type AsyncPanelState<Value> =
   | { readonly kind: "loading" }
   | { readonly kind: "failure"; readonly message: string }
   | { readonly kind: "success"; readonly value: Value };
+
+type StudentTab = "cvs" | "settings";
 
 const toAsyncPanelState = <Value,>(
   result: AsyncResult.AsyncResult<Value, unknown>,
@@ -77,6 +50,14 @@ const toAsyncPanelState = <Value,>(
     kind: "success",
     value: result.value,
   };
+};
+
+const formatMutationError = (error: unknown): string => {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return "The student workspace update did not complete. Refresh and try again.";
 };
 
 const readFileAsBase64 = (file: File): Promise<string> =>
@@ -106,172 +87,206 @@ const readFileAsBase64 = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
-const acceptedCvFileTypes = ".pdf,.doc,.docx";
+const acceptedCvFileTypes = ".pdf";
+const hiddenStudentCvProfileTypeId = "default";
 
 export function StudentWorkspace(): React.ReactElement {
-  const session = authClient.useSession();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<StudentTab>("cvs");
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [firstNameDraft, setFirstNameDraft] = useState("");
-  const [lastNameDraft, setLastNameDraft] = useState("");
-  const [courseDraft, setCourseDraft] = useState("");
-  const [selectedProfileTypeId, setSelectedProfileTypeId] = useState<string | null>(null);
+  const [isSavingOnboarding, setIsSavingOnboarding] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileInputResetKey, setFileInputResetKey] = useState(0);
-  const [isCopyingQrIdentity, setIsCopyingQrIdentity] = useState(false);
+  const [deletingProfileId, setDeletingProfileId] = useState<string | null>(null);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [onboardingMutationError, setOnboardingMutationError] = useState<string | null>(null);
+  const [firstNameDraft, setFirstNameDraft] = useState("");
+  const [lastNameDraft, setLastNameDraft] = useState("");
+  const [phoneNumberDraft, setPhoneNumberDraft] = useState("");
+  const [academicYearDraft, setAcademicYearDraft] = useState("");
+  const [majorDraft, setMajorDraft] = useState("");
+  const [institutionDraft, setInstitutionDraft] = useState("");
 
   const currentStudentResult = useAtomValue(studentWorkspaceAtoms.currentStudent);
-  const cvProfilesResult = useAtomValue(studentWorkspaceAtoms.cvProfiles);
-  const cvProfileTypesResult = useAtomValue(studentWorkspaceAtoms.cvProfileTypes);
-  const qrIdentityResult = useAtomValue(studentWorkspaceAtoms.qrIdentity);
-
+  const cvsResult = useAtomValue(studentWorkspaceAtoms.cvProfiles);
   const refreshCurrentStudent = useAtomRefresh(studentWorkspaceAtoms.currentStudent);
-  const refreshCvProfiles = useAtomRefresh(studentWorkspaceAtoms.cvProfiles);
-  const refreshCvProfileTypes = useAtomRefresh(studentWorkspaceAtoms.cvProfileTypes);
-  const refreshQrIdentity = useAtomRefresh(studentWorkspaceAtoms.qrIdentity);
+  const refreshCvs = useAtomRefresh(studentWorkspaceAtoms.cvProfiles);
 
-  const saveOnboarding = useAtomSet(studentWorkspaceAtoms.upsertStudentOnboarding, {
+  const saveStudent = useAtomSet(studentWorkspaceAtoms.upsertStudentOnboarding, {
     mode: "promise",
   });
-  const createCvProfile = useAtomSet(studentWorkspaceAtoms.createStudentCvProfile, {
+  const createCv = useAtomSet(studentWorkspaceAtoms.createStudentCvProfile, {
     mode: "promise",
   });
-  const deleteCvProfile = useAtomSet(studentWorkspaceAtoms.deleteStudentCvProfile, {
+  const deleteCv = useAtomSet(studentWorkspaceAtoms.deleteStudentCvProfile, {
     mode: "promise",
   });
 
-  const redirectTo = useEffectEvent((role: UserRoleValue | undefined | null) => {
-    window.location.replace(role ? getRoleHomePath(role) : "/");
-  });
+  const studentState = toAsyncPanelState(
+    currentStudentResult,
+    "Your student settings could not be loaded.",
+  );
+  const cvsState = toAsyncPanelState(
+    cvsResult,
+    "Your CV list could not be loaded.",
+  );
+  const student = studentState.kind === "success" ? studentState.value : null;
+  const cvs = cvsState.kind === "success" ? cvsState.value : [];
+  const sortedCvs = [...cvs].sort((left, right) => {
+    const byFileName = left.fileName.localeCompare(right.fileName);
+    if (byFileName !== 0) {
+      return byFileName;
+    }
 
-  const currentRole = (session.data?.user as { role?: UserRoleValue } | undefined)?.role;
+    return left.id.localeCompare(right.id);
+  });
+  const onboardingRequired = studentState.kind === "success" && !hasStudentOnboardingProfile(student);
 
   useEffect(() => {
-    if (session.isPending) {
+    if (studentState.kind !== "success") {
       return;
     }
 
-    if (!currentRole) {
-      redirectTo(null);
-      return;
-    }
+    setFirstNameDraft(student?.firstName ?? "");
+    setLastNameDraft(student?.lastName ?? "");
+    setPhoneNumberDraft(student?.phoneNumber ?? "");
+    setAcademicYearDraft(student?.academicYear ?? "");
+    setMajorDraft(student?.major ?? "");
+    setInstitutionDraft(student?.institution ?? "");
+  }, [student, studentState.kind]);
 
-    if (currentRole !== "student") {
-      redirectTo(currentRole);
+  useEffect(() => {
+    if (onboardingRequired) {
+      setHasCompletedOnboarding(false);
     }
-  }, [currentRole, redirectTo, session.isPending]);
+  }, [onboardingRequired]);
+
+  const refreshWorkspace = () => {
+    refreshCurrentStudent();
+    refreshCvs();
+  };
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
 
     try {
       await authClient.signOut();
-      redirectTo(null);
+      await navigate({ replace: true, to: "/" });
     } finally {
       setIsSigningOut(false);
     }
   };
 
-  const studentState = toAsyncPanelState(
-    currentStudentResult,
-    "Your onboarding record could not be loaded from the student contract.",
-  );
-  const cvProfilesState = toAsyncPanelState(
-    cvProfilesResult,
-    "Your CV profiles could not be loaded from the CV contract.",
-  );
-  const cvProfileTypesState = toAsyncPanelState(
-    cvProfileTypesResult,
-    "The CV profile type list could not be loaded.",
-  );
-
-  const student = studentState.kind === "success" ? studentState.value : null;
-  const cvProfiles = cvProfilesState.kind === "success" ? cvProfilesState.value : [];
-  const cvProfileTypes = cvProfileTypesState.kind === "success" ? cvProfileTypesState.value : [];
-
-  useEffect(() => {
-    if (student == null) {
-      setFirstNameDraft("");
-      setLastNameDraft("");
-      setCourseDraft("");
-      return;
-    }
-
-    setFirstNameDraft(student.firstName);
-    setLastNameDraft(student.lastName);
-    setCourseDraft(student.course);
-  }, [student]);
-
-  useEffect(() => {
-    if (selectedProfileTypeId != null) {
-      return;
-    }
-
-    if (cvProfileTypes.length > 0) {
-      setSelectedProfileTypeId(cvProfileTypes[0]!.id);
-    }
-  }, [cvProfileTypes, selectedProfileTypeId]);
-
-  const summary = summarizeStudentWorkspace({
-    student,
-    cvProfiles,
-  });
-
-  const refreshWorkspace = () => {
-    refreshCurrentStudent();
-    refreshCvProfiles();
-    refreshCvProfileTypes();
-    refreshQrIdentity();
+  const submitStudentUpdate = async (payload: {
+    readonly academicYear: string;
+    readonly firstName: string;
+    readonly image: string | null;
+    readonly institution: string;
+    readonly lastName: string;
+    readonly major: string;
+    readonly phoneNumber: string;
+  }) => {
+    await saveStudent({
+      payload,
+      reactivityKeys: {
+        currentStudent: studentWorkspaceReactivity.currentStudent,
+      },
+    });
   };
 
-  const submitOnboarding = async (event: React.FormEvent<HTMLFormElement>) => {
+  const submitOnboarding = async (payload: {
+    readonly academicYear: string;
+    readonly firstName: string;
+    readonly image: string | null;
+    readonly institution: string;
+    readonly lastName: string;
+    readonly major: string;
+    readonly phoneNumber: string;
+  }) => {
+    setIsSavingOnboarding(true);
+    setOnboardingMutationError(null);
+
+    try {
+      await submitStudentUpdate(payload);
+      refreshCurrentStudent();
+      setHasCompletedOnboarding(true);
+      startTransition(() => {
+        setWorkspaceMessage("Settings saved.");
+      });
+    } catch (error) {
+      setOnboardingMutationError(formatMutationError(error));
+    } finally {
+      setIsSavingOnboarding(false);
+    }
+  };
+
+  const saveSettings = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const firstName = firstNameDraft.trim();
     const lastName = lastNameDraft.trim();
-    const course = courseDraft.trim();
+    const phoneNumber = phoneNumberDraft.trim();
+    const academicYear = academicYearDraft.trim();
+    const major = majorDraft.trim();
+    const institution = institutionDraft.trim();
 
-    if (firstName.length === 0 || lastName.length === 0 || course.length === 0) {
-      setWorkspaceError("First name, last name, and course are all required.");
+    if (
+      firstName.length === 0 ||
+      lastName.length === 0 ||
+      phoneNumber.length === 0 ||
+      academicYear.length === 0 ||
+      major.length === 0 ||
+      institution.length === 0
+    ) {
+      setWorkspaceError("Complete every settings field before saving.");
+      setActiveTab("settings");
       return;
     }
 
     setWorkspaceError(null);
     setWorkspaceMessage(null);
+    setIsSavingSettings(true);
 
     try {
-      await saveOnboarding({
-        payload: { firstName, lastName, course },
-        reactivityKeys: {
-          currentStudent: studentWorkspaceReactivity.currentStudent,
-          qrIdentity: studentWorkspaceReactivity.qrIdentity,
-        },
+      await submitStudentUpdate({
+        firstName,
+        lastName,
+        phoneNumber,
+        academicYear,
+        major,
+        institution,
+        image: student?.image ?? null,
       });
-      refreshQrIdentity();
+      refreshCurrentStudent();
       startTransition(() => {
-        setWorkspaceMessage(student == null ? "Onboarding profile created." : "Onboarding profile updated.");
+        setWorkspaceMessage("Settings saved.");
       });
     } catch (error) {
       setWorkspaceError(formatMutationError(error));
+      setActiveTab("settings");
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
   const submitCvUpload = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!summary.hasOnboardingProfile) {
-      setWorkspaceError("Complete onboarding before uploading CV profiles.");
-      return;
-    }
-
-    if (selectedProfileTypeId == null) {
-      setWorkspaceError("Choose a CV profile type before uploading.");
+    if (studentState.kind !== "success") {
+      setWorkspaceError("Wait until your student settings finish loading, then try again.");
       return;
     }
 
     if (selectedFile == null) {
       setWorkspaceError("Choose a CV file before uploading.");
+      return;
+    }
+
+    if (selectedFile.type !== "application/pdf" && !selectedFile.name.toLowerCase().endsWith(".pdf")) {
+      setWorkspaceError("Only PDF CV files are allowed.");
       return;
     }
 
@@ -281,9 +296,9 @@ export function StudentWorkspace(): React.ReactElement {
     try {
       const contentsBase64 = await readFileAsBase64(selectedFile);
 
-      await createCvProfile({
+      await createCv({
         payload: {
-          profileTypeId: selectedProfileTypeId,
+          profileTypeId: hiddenStudentCvProfileTypeId,
           fileName: selectedFile.name,
           contentType: selectedFile.type || "application/octet-stream",
           contentsBase64,
@@ -294,503 +309,382 @@ export function StudentWorkspace(): React.ReactElement {
       startTransition(() => {
         setSelectedFile(null);
         setFileInputResetKey((value) => value + 1);
-        setWorkspaceMessage(`${selectedFile.name} uploaded as a CV profile.`);
+        setWorkspaceMessage(`${selectedFile.name} uploaded.`);
       });
     } catch (error) {
       setWorkspaceError(formatMutationError(error));
     }
   };
 
-  const removeCvProfile = async (cvProfile: CvProfile) => {
+  const removeCv = async (cv: CvProfile) => {
+    const confirmed = window.confirm(`Delete ${cv.fileName}? This cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingProfileId(cv.id);
     setWorkspaceError(null);
     setWorkspaceMessage(null);
 
     try {
-      await deleteCvProfile({
-        payload: { cvProfileId: cvProfile.id },
+      await deleteCv({
+        payload: { cvProfileId: cv.id },
         reactivityKeys: studentWorkspaceReactivity.cvProfiles,
       });
-      startTransition(() => {
-        setWorkspaceMessage(`${cvProfile.fileName} removed from your CV library.`);
-      });
+      setWorkspaceMessage(`${cv.fileName} deleted.`);
     } catch (error) {
       setWorkspaceError(formatMutationError(error));
-    }
-  };
-
-  const copyQrIdentity = async () => {
-    if (!summary.qrIdentityAvailable || AsyncResult.isFailure(qrIdentityResult)) {
-      return;
-    }
-
-    if (AsyncResult.isInitial(qrIdentityResult)) {
-      return;
-    }
-
-    setIsCopyingQrIdentity(true);
-    setWorkspaceError(null);
-    setWorkspaceMessage(null);
-
-    try {
-      await navigator.clipboard.writeText(qrIdentityResult.value);
-      startTransition(() => {
-        setWorkspaceMessage("Student QR identity copied.");
-      });
-    } catch {
-      setWorkspaceError("Clipboard access was not available. Copy the QR identity manually.");
     } finally {
-      setIsCopyingQrIdentity(false);
+      setDeletingProfileId(null);
     }
   };
-
-  const readinessTone = summary.isEventReady
-    ? {
-        badge: "Event-ready",
-        icon: ShieldCheckIcon,
-      }
-    : {
-        badge: "Needs action",
-        icon: TriangleAlertIcon,
-      };
-
-  const headingName = formatStudentDisplayName(student);
-  const qrIdentityText = AsyncResult.isSuccess(qrIdentityResult) ? qrIdentityResult.value : null;
-
-  const cvProfilesByType = cvProfiles.reduce<Map<CvProfileType["id"], Array<CvProfile>>>(
-    (map, profile) => {
-      const existing = map.get(profile.profileType.id) ?? [];
-      existing.push(profile);
-      map.set(profile.profileType.id, existing);
-      return map;
-    },
-    new Map(),
-  );
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--info)/0.14),_transparent_42%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--muted)/0.42))] px-4 py-6 text-foreground sm:px-6 sm:py-8">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <Card className="overflow-hidden border-border/60 bg-card/92 shadow-sm">
-          <CardHeader className="gap-6 border-b border-border/60 bg-[linear-gradient(135deg,_hsl(var(--info)/0.1),_transparent_40%),radial-gradient(circle_at_top_right,_hsl(var(--warning)/0.18),_transparent_35%)]">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="space-y-4">
-                <div className="flex flex-wrap gap-3">
-                  <Badge variant="outline" size="lg" className="rounded-full px-4">
-                    Student workspace
-                  </Badge>
-                  <Badge variant={summary.isEventReady ? "secondary" : "outline"} size="lg" className="rounded-full px-4">
-                    <readinessTone.icon className="size-4" />
-                    {readinessTone.badge}
-                  </Badge>
-                </div>
-
-                <div className="space-y-2">
-                  <CardTitle className="font-heading text-4xl tracking-tight sm:text-5xl">
-                    CV-first home for {headingName}
-                  </CardTitle>
-                  <CardDescription className="max-w-3xl text-base text-muted-foreground">
-                    Keep your profile event-ready from one mobile-first surface: finish onboarding,
-                    manage CV variants, and expose the QR identity recruiters will scan.
-                  </CardDescription>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 sm:items-end">
-                <Button variant="outline" onClick={refreshWorkspace}>
-                  <RefreshCwIcon />
-                  Refresh workspace
-                </Button>
-                <Button loading={isSigningOut} variant="outline" onClick={handleSignOut}>
-                  Sign out
-                  <LogOutIcon />
-                </Button>
-              </div>
+    <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-foreground">
+      <header className="border-b bg-[var(--s2ee-surface-soft)] [border-color:var(--s2ee-border)]">
+        <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-5 py-4 sm:px-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em]">
+              <span className="text-primary">S2EE</span>
+              <span className="text-[color:var(--s2ee-muted-foreground)]">Student</span>
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <Card className="border-border/60 bg-background/80">
-                <CardContent className="flex items-center justify-between gap-3 p-4">
-                  <div>
-                    <p className="text-muted-foreground text-xs uppercase tracking-[0.24em]">Readiness</p>
-                    <p className="mt-1 font-semibold text-lg">{summary.completionPercent}%</p>
-                  </div>
-                  <GraduationCapIcon className="size-5 text-primary" />
-                </CardContent>
-              </Card>
-              <Card className="border-border/60 bg-background/80">
-                <CardContent className="flex items-center justify-between gap-3 p-4">
-                  <div>
-                    <p className="text-muted-foreground text-xs uppercase tracking-[0.24em]">CV profiles</p>
-                    <p className="mt-1 font-semibold text-lg">{cvProfiles.length}</p>
-                  </div>
-                  <FileCheck2Icon className="size-5 text-primary" />
-                </CardContent>
-              </Card>
-              <Card className="border-border/60 bg-background/80">
-                <CardContent className="flex items-center justify-between gap-3 p-4">
-                  <div>
-                    <p className="text-muted-foreground text-xs uppercase tracking-[0.24em]">QR access</p>
-                    <p className="mt-1 font-semibold text-lg">
-                      {summary.qrIdentityAvailable ? "Unlocked" : "Locked"}
-                    </p>
-                  </div>
-                  <IdCardIcon className="size-5 text-primary" />
-                </CardContent>
-              </Card>
+            <div className="space-y-2">
+              <h1 className="text-[clamp(2rem,5vw,3.25rem)] font-black tracking-[-0.08em] text-[color:var(--s2ee-soft-foreground)]">
+                My CVs
+              </h1>
+              <p className="max-w-3xl text-sm leading-7 text-[color:var(--s2ee-soft-foreground)] sm:text-base">
+                Upload CVs, open one when you need its QR and code, and update your personal settings when needed.
+              </p>
             </div>
-          </CardHeader>
-        </Card>
-
-        {workspaceError ? (
-          <Alert variant="error">
-            <TriangleAlertIcon />
-            <AlertTitle>Workspace update failed</AlertTitle>
-            <AlertDescription>{workspaceError}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {workspaceMessage ? (
-          <Alert variant="success">
-            <CheckCircle2Icon />
-            <AlertTitle>Workspace updated</AlertTitle>
-            <AlertDescription>{workspaceMessage}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-          <div className="grid gap-6">
-            <Card className="border-border/60 bg-card/90">
-              <CardHeader>
-                <CardTitle className="font-heading text-2xl">Readiness gate</CardTitle>
-                <CardDescription>
-                  You are only treated as event-ready once the profile is complete and at least one CV is on file.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <Progress className="gap-3" value={summary.completionPercent}>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Event readiness</span>
-                    <span className="tabular-nums">{summary.completionPercent}%</span>
-                  </div>
-                  <ProgressTrack>
-                    <ProgressIndicator style={{ width: `${summary.completionPercent}%` }} />
-                  </ProgressTrack>
-                </Progress>
-
-                <Alert variant={summary.isEventReady ? "success" : "warning"}>
-                  {summary.isEventReady ? <ShieldCheckIcon /> : <TriangleAlertIcon />}
-                  <AlertTitle>{summary.isEventReady ? "Ready for recruiters" : "Action required"}</AlertTitle>
-                  <AlertDescription>{summary.nextStepLabel}</AlertDescription>
-                </Alert>
-
-                <div className="grid gap-3">
-                  {summary.checklist.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-2xl border border-border/60 bg-background/80 p-4"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`mt-0.5 rounded-full p-1 ${
-                            item.done ? "bg-primary/14 text-primary" : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          <CheckCircle2Icon className="size-4" />
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-medium text-sm">{item.label}</p>
-                          <p className="text-muted-foreground text-sm">{item.description}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/60 bg-card/90">
-              <CardHeader>
-                <CardTitle className="font-heading text-2xl">Student QR identity</CardTitle>
-                <CardDescription>
-                  Recruiters use this transport-safe identity string during on-site scanning.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!summary.qrIdentityAvailable ? (
-                  <Empty className="items-start rounded-[1.5rem] border border-dashed border-border/70 bg-background/80 p-5 text-left">
-                    <EmptyHeader className="items-start text-left">
-                      <EmptyMedia variant="icon" className="size-11 rounded-2xl">
-                        <IdCardIcon className="size-5" />
-                      </EmptyMedia>
-                      <EmptyTitle>Complete onboarding first</EmptyTitle>
-                      <EmptyDescription>
-                        Your QR identity becomes available as soon as your onboarding profile is saved.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                ) : AsyncResult.isInitial(qrIdentityResult) ? (
-                  <div className="rounded-[1.5rem] border border-border/60 bg-background/80 p-5">
-                    <Skeleton className="h-5 w-40" />
-                    <Skeleton className="mt-3 h-14 w-full rounded-2xl" />
-                  </div>
-                ) : AsyncResult.isFailure(qrIdentityResult) ? (
-                  <Alert variant="warning">
-                    <TriangleAlertIcon />
-                    <AlertTitle>QR identity unavailable</AlertTitle>
-                    <AlertDescription>
-                      The student contract did not return a QR identity yet. Refresh after saving onboarding.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="space-y-4 rounded-[1.5rem] border border-border/60 bg-background/88 p-5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-muted-foreground text-xs uppercase tracking-[0.22em]">Current identity</p>
-                        <p className="mt-1 font-medium text-sm">{headingName}</p>
-                      </div>
-                      <Button
-                        loading={isCopyingQrIdentity}
-                        size="sm"
-                        variant="outline"
-                        onClick={copyQrIdentity}
-                      >
-                        Copy
-                        <CopyIcon />
-                      </Button>
-                    </div>
-                    <div className="overflow-x-auto rounded-2xl border border-border/60 bg-muted/40 px-4 py-3 font-mono text-sm">
-                      {qrIdentityText}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
 
-          <div className="grid gap-6">
-            <Card className="border-border/60 bg-card/90">
-              <CardHeader>
-                <CardTitle className="font-heading text-2xl">Onboarding profile</CardTitle>
-                <CardDescription>
-                  Capture the required event fields once, then keep them current from the same landing surface.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {studentState.kind === "loading" ? (
-                  <div className="grid gap-4">
-                    <Skeleton className="h-22 rounded-2xl" />
-                    <Skeleton className="h-22 rounded-2xl" />
-                    <Skeleton className="h-22 rounded-2xl" />
-                  </div>
-                ) : studentState.kind === "failure" ? (
-                  <Alert variant="warning">
-                    <TriangleAlertIcon />
-                    <AlertTitle>Student profile unavailable</AlertTitle>
-                    <AlertDescription>{studentState.message}</AlertDescription>
-                  </Alert>
-                ) : (
-                  <form className="grid gap-4" onSubmit={submitOnboarding}>
-                    <Field>
-                      <FieldLabel htmlFor="student-first-name">First name</FieldLabel>
-                      <Input
-                        id="student-first-name"
-                        name="firstName"
-                        placeholder="Ada"
-                        value={firstNameDraft}
-                        onChange={(event) => setFirstNameDraft(event.currentTarget.value)}
-                      />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="student-last-name">Last name</FieldLabel>
-                      <Input
-                        id="student-last-name"
-                        name="lastName"
-                        placeholder="Lovelace"
-                        value={lastNameDraft}
-                        onChange={(event) => setLastNameDraft(event.currentTarget.value)}
-                      />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="student-course">Course</FieldLabel>
-                      <Input
-                        id="student-course"
-                        name="course"
-                        placeholder="Computer Science"
-                        value={courseDraft}
-                        onChange={(event) => setCourseDraft(event.currentTarget.value)}
-                      />
-                      <FieldDescription>
-                        This is the minimum profile data shown to recruiter-facing flows today.
-                      </FieldDescription>
-                    </Field>
-                    <Button className="w-full sm:w-auto" type="submit">
-                      Save onboarding
-                      <CheckCircle2Icon />
-                    </Button>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 uppercase tracking-[0.18em] text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
+              variant="outline"
+              onClick={refreshWorkspace}
+            >
+              Refresh
+              <RefreshCwIcon />
+            </Button>
+            <Button
+              className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 uppercase tracking-[0.18em] text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
+              loading={isSigningOut}
+              variant="outline"
+              onClick={handleSignOut}
+            >
+              Sign out
+              <LogOutIcon />
+            </Button>
+          </div>
+        </div>
+      </header>
 
-            <Card className="border-border/60 bg-card/90">
-              <CardHeader>
-                <CardTitle className="font-heading text-2xl">CV library</CardTitle>
-                <CardDescription>
-                  Upload multiple variants and keep them grouped by the controlled profile vocabulary.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {cvProfileTypesState.kind === "loading" ? (
-                  <div className="grid gap-3">
-                    <Skeleton className="h-10 rounded-full" />
-                    <Skeleton className="h-10 rounded-full" />
-                  </div>
-                ) : cvProfileTypesState.kind === "failure" ? (
-                  <Alert variant="warning">
-                    <TriangleAlertIcon />
-                    <AlertTitle>CV profile types unavailable</AlertTitle>
-                    <AlertDescription>{cvProfileTypesState.message}</AlertDescription>
-                  </Alert>
-                ) : (
-                  <form className="space-y-4" onSubmit={submitCvUpload}>
-                    <div className="space-y-3">
-                      <p className="font-medium text-sm">Choose CV profile type</p>
-                      <div className="flex flex-wrap gap-2">
-                        {cvProfileTypes.map((profileType) => (
-                          <Button
-                            key={profileType.id}
-                            size="sm"
-                            type="button"
-                            variant={selectedProfileTypeId === profileType.id ? "default" : "outline"}
-                            onClick={() => setSelectedProfileTypeId(profileType.id)}
-                          >
-                            {profileType.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
+      <div className="mx-auto max-w-[1500px] px-5 py-6 sm:px-8 sm:py-8">
+        {(workspaceError || workspaceMessage || studentState.kind === "failure" || cvsState.kind === "failure") ? (
+          <div className="mb-6 grid gap-3">
+            {workspaceError ? (
+              <Alert variant="error">
+                <CircleAlertIcon className="size-4" />
+                <AlertTitle>Update failed</AlertTitle>
+                <AlertDescription>{workspaceError}</AlertDescription>
+              </Alert>
+            ) : null}
+            {workspaceMessage ? (
+              <Alert>
+                <AlertTitle>Updated</AlertTitle>
+                <AlertDescription>{workspaceMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+            {studentState.kind === "failure" ? (
+              <Alert variant="warning">
+                <CircleAlertIcon className="size-4" />
+                <AlertTitle>Settings unavailable</AlertTitle>
+                <AlertDescription>{studentState.message}</AlertDescription>
+              </Alert>
+            ) : null}
+            {cvsState.kind === "failure" ? (
+              <Alert variant="warning">
+                <CircleAlertIcon className="size-4" />
+                <AlertTitle>CV list unavailable</AlertTitle>
+                <AlertDescription>{cvsState.message}</AlertDescription>
+              </Alert>
+            ) : null}
+          </div>
+        ) : null}
 
-                    <Field>
-                      <FieldLabel htmlFor="student-cv-upload">Upload file</FieldLabel>
+        <div className="mb-6 flex gap-2 border-b pb-4 [border-color:var(--s2ee-border)]">
+          {[
+            { id: "cvs", label: "CVs" },
+            { id: "settings", label: "Settings" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              className={[
+                "min-h-11 border px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] transition-colors",
+                activeTab === tab.id
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] text-[color:var(--s2ee-soft-foreground)] hover:bg-white",
+              ].join(" ")}
+              type="button"
+              onClick={() => setActiveTab(tab.id as StudentTab)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "cvs" ? (
+          <section className="grid gap-0 lg:grid-cols-[20rem_minmax(0,1fr)]">
+            <div className="border-b bg-[var(--s2ee-surface-soft)] p-5 sm:p-6 lg:border-b-0 lg:border-r [border-color:var(--s2ee-border)]">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                    Upload
+                  </p>
+                  <h2 className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
+                    Add CV
+                  </h2>
+                </div>
+
+                <form className="grid gap-5" onSubmit={submitCvUpload}>
+                  <div className="space-y-3">
+                    <label
+                      className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                      htmlFor="student-cv-upload"
+                    >
+                      Select file
+                    </label>
+                    <div className="border bg-[var(--s2ee-surface)] p-4 [border-color:var(--s2ee-border)]">
                       <Input
                         key={fileInputResetKey}
                         accept={acceptedCvFileTypes}
+                        className="rounded-none border-0 bg-transparent px-0 py-0 shadow-none before:shadow-none"
                         id="student-cv-upload"
                         nativeInput
                         type="file"
+                        unstyled
                         onChange={(event) => {
-                          const file = event.currentTarget.files?.[0] ?? null;
-                          setSelectedFile(file);
+                          const { files } = event.currentTarget;
+                          setSelectedFile(files?.[0] ?? null);
                         }}
                       />
-                      <FieldDescription>
-                        Accepted formats: PDF, DOC, and DOCX. Onboarding must exist before upload.
-                      </FieldDescription>
-                    </Field>
+                    </div>
+                    <p className="text-[11px] leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                        PDF files are supported.
+                      </p>
+                  </div>
 
-                    {selectedFile ? (
-                      <div className="rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm">
-                        <p className="font-medium">{selectedFile.name}</p>
-                        <p className="text-muted-foreground">
-                          {selectedFile.type || "application/octet-stream"} · {formatFileSize(selectedFile.size)}
-                        </p>
-                      </div>
-                    ) : null}
+                  {selectedFile ? (
+                    <div className="border bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_65%,white)] p-4 [border-color:var(--s2ee-border)]">
+                      <p className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]">{selectedFile.name}</p>
+                      <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-[color:var(--s2ee-muted-foreground)]">
+                        {selectedFile.type || "application/octet-stream"} · {formatFileSize(selectedFile.size)}
+                      </p>
+                    </div>
+                  ) : null}
 
-                    <Button className="w-full sm:w-auto" type="submit">
-                      Upload CV
-                      <UploadIcon />
-                    </Button>
-                  </form>
-                )}
+                  <Button className="min-h-14 rounded-none px-6 py-4 text-sm uppercase tracking-[0.2em]" size="lg" type="submit">
+                    Upload CV
+                    <UploadIcon />
+                  </Button>
+                </form>
+              </div>
+            </div>
 
-                <Separator />
+            <div className="bg-[var(--s2ee-surface)] p-5 sm:p-6">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                  CVs
+                </p>
+                <h2 className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
+                  Library
+                </h2>
+              </div>
 
-                {cvProfilesState.kind === "loading" ? (
+              <div className="mt-6">
+                {cvsState.kind === "loading" ? (
                   <div className="grid gap-3">
-                    <Skeleton className="h-24 rounded-3xl" />
-                    <Skeleton className="h-24 rounded-3xl" />
+                    <Skeleton className="h-24 rounded-none" />
+                    <Skeleton className="h-24 rounded-none" />
                   </div>
-                ) : cvProfilesState.kind === "failure" ? (
-                  <Alert variant="warning">
-                    <TriangleAlertIcon />
-                    <AlertTitle>CV library unavailable</AlertTitle>
-                    <AlertDescription>{cvProfilesState.message}</AlertDescription>
-                  </Alert>
-                ) : cvProfiles.length === 0 ? (
-                  <Empty className="items-start rounded-[1.5rem] border border-dashed border-border/70 bg-background/80 p-5 text-left">
-                    <EmptyHeader className="items-start text-left">
-                      <EmptyMedia variant="icon" className="size-11 rounded-2xl">
-                        <FileCheck2Icon className="size-5" />
-                      </EmptyMedia>
-                      <EmptyTitle>No CV profiles yet</EmptyTitle>
-                      <EmptyDescription>
-                        Your first uploaded CV is what turns the profile from onboarded to event-ready.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                    <EmptyContent className="items-start text-left">
-                      <Badge variant="outline" size="lg" className="rounded-full px-4">
-                        {summary.hasOnboardingProfile ? "Ready to upload" : "Onboarding required first"}
-                      </Badge>
-                    </EmptyContent>
-                  </Empty>
+                ) : sortedCvs.length === 0 ? (
+                  <div className="border bg-[var(--s2ee-surface-soft)] p-6 [border-color:var(--s2ee-border)]">
+                    <div className="space-y-3">
+                      <p className="text-lg font-black tracking-[-0.05em] text-[color:var(--s2ee-soft-foreground)]">
+                        No CVs yet
+                      </p>
+                      <p className="max-w-xl text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
+                        Upload your first CV from the left side, then open it when you need its QR and code.
+                      </p>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="grid gap-4">
-                    {cvProfileTypes.map((profileType) => {
-                      const entries = cvProfilesByType.get(profileType.id) ?? [];
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-3 border-b pb-3 [border-color:var(--s2ee-border)]">
+                      <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
+                        {sortedCvs.length} file{sortedCvs.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
 
-                      if (entries.length === 0) {
-                        return null;
-                      }
+                    <div className="divide-y [divide-color:var(--s2ee-border)] border-y [border-color:var(--s2ee-border)]">
+                      {sortedCvs.map((cv) => (
+                        <article key={cv.id} className="grid gap-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+                          <div className="min-w-0 space-y-2">
+                            <p className="truncate text-sm font-bold uppercase tracking-[0.08em] text-[color:var(--s2ee-soft-foreground)]">
+                              {cv.fileName}
+                            </p>
+                            <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--s2ee-muted-foreground)]">
+                              {cv.contentType} · {formatFileSize(cv.fileSizeBytes)}
+                            </p>
+                          </div>
 
-                      return (
-                        <div
-                          key={profileType.id}
-                          className="rounded-[1.75rem] border border-border/60 bg-background/80 p-4"
-                        >
-                          <div className="mb-3 flex items-center justify-between gap-3">
-                            <div>
-                              <p className="font-medium">{profileType.label}</p>
-                              <p className="text-muted-foreground text-sm">
-                                {entries.length} variant{entries.length === 1 ? "" : "s"}
-                              </p>
-                            </div>
-                            <Badge variant="outline" size="lg" className="rounded-full px-4">
-                              {entries.length}
-                            </Badge>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] px-4 uppercase tracking-[0.18em] text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                navigate({
+                                  params: { profileId: cv.id },
+                                  to: "/student/profiles/$profileId",
+                                })
+                              }
+                            >
+                              Open CV
+                              <ArrowRightIcon />
+                            </Button>
+                            <Button
+                              className="rounded-none px-4 uppercase tracking-[0.18em]"
+                              loading={deletingProfileId === cv.id}
+                              size="sm"
+                              variant="destructive-outline"
+                              onClick={() => void removeCv(cv)}
+                            >
+                              Delete
+                              <Trash2Icon />
+                            </Button>
                           </div>
-                          <div className="grid gap-3">
-                            {entries.map((cvProfile) => (
-                              <div
-                                key={cvProfile.id}
-                                className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/90 p-4 sm:flex-row sm:items-center sm:justify-between"
-                              >
-                                <div className="space-y-1">
-                                  <p className="font-medium text-sm">{cvProfile.fileName}</p>
-                                  <p className="text-muted-foreground text-sm">
-                                    {cvProfile.contentType} · {formatFileSize(cvProfile.fileSizeBytes)}
-                                  </p>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="destructive-outline"
-                                  onClick={() => void removeCvProfile(cvProfile)}
-                                >
-                                  Remove
-                                  <Trash2Icon />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        </article>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="max-w-3xl border bg-[var(--s2ee-surface)] p-5 sm:p-6 [border-color:var(--s2ee-border)]">
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                Settings
+              </p>
+              <h2 className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
+                Personal information
+              </h2>
+            </div>
+
+            {studentState.kind === "loading" ? (
+              <div className="mt-6 grid gap-3">
+                <Skeleton className="h-12 rounded-none" />
+                <Skeleton className="h-12 rounded-none" />
+                <Skeleton className="h-12 rounded-none" />
+                <Skeleton className="h-12 rounded-none" />
+              </div>
+            ) : (
+              <form className="mt-6 grid gap-5" onSubmit={saveSettings}>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-first-name">
+                      First name
+                    </label>
+                    <Input
+                      id="student-settings-first-name"
+                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      value={firstNameDraft}
+                      onChange={(event) => setFirstNameDraft(event.currentTarget.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-last-name">
+                      Last name
+                    </label>
+                    <Input
+                      id="student-settings-last-name"
+                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      value={lastNameDraft}
+                      onChange={(event) => setLastNameDraft(event.currentTarget.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-school">
+                      School
+                    </label>
+                    <Input
+                      id="student-settings-school"
+                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      value={institutionDraft}
+                      onChange={(event) => setInstitutionDraft(event.currentTarget.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-major">
+                      Major
+                    </label>
+                    <Input
+                      id="student-settings-major"
+                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      value={majorDraft}
+                      onChange={(event) => setMajorDraft(event.currentTarget.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-academic-year">
+                      Academic year
+                    </label>
+                    <Input
+                      id="student-settings-academic-year"
+                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      value={academicYearDraft}
+                      onChange={(event) => setAcademicYearDraft(event.currentTarget.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-phone-number">
+                      Phone number
+                    </label>
+                    <Input
+                      id="student-settings-phone-number"
+                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      value={phoneNumberDraft}
+                      onChange={(event) => setPhoneNumberDraft(event.currentTarget.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end border-t pt-5 [border-color:var(--s2ee-border)]">
+                  <Button className="rounded-none px-6 py-4 text-sm uppercase tracking-[0.2em]" loading={isSavingSettings} size="lg" type="submit">
+                    Save settings
+                  </Button>
+                </div>
+              </form>
+            )}
+          </section>
+        )}
       </div>
+
+      <StudentOnboardingDialog
+        isSaving={isSavingOnboarding}
+        mutationError={onboardingMutationError}
+        onSubmit={submitOnboarding}
+        open={onboardingRequired && !hasCompletedOnboarding}
+        student={student}
+      />
     </main>
   );
 }

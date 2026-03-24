@@ -1,18 +1,9 @@
 import type { CvProfile, Student } from "@project/domain";
 
-export type StudentWorkspaceSummary = {
-  readonly completionPercent: number;
-  readonly hasOnboardingProfile: boolean;
-  readonly hasUploadedCv: boolean;
-  readonly isEventReady: boolean;
-  readonly qrIdentityAvailable: boolean;
-  readonly nextStepLabel: string;
-  readonly checklist: ReadonlyArray<{
-    readonly description: string;
-    readonly done: boolean;
-    readonly id: "profile" | "cv" | "qr";
-    readonly label: string;
-  }>;
+export type StudentCvProfileGroup = {
+  readonly profileTypeId: string;
+  readonly profileTypeLabel: string;
+  readonly profiles: ReadonlyArray<CvProfile>;
 };
 
 const hasText = (value: string | null | undefined): boolean =>
@@ -24,57 +15,54 @@ export const hasStudentOnboardingProfile = (
   student != null &&
   hasText(student.firstName) &&
   hasText(student.lastName) &&
-  hasText(student.course);
+  hasText(student.phoneNumber) &&
+  hasText(student.academicYear) &&
+  hasText(student.major) &&
+  hasText(student.institution);
 
-export const summarizeStudentWorkspace = (input: {
-  readonly cvProfiles: ReadonlyArray<CvProfile>;
-  readonly student: Student | null;
-}): StudentWorkspaceSummary => {
-  const hasOnboardingProfile = hasStudentOnboardingProfile(input.student);
-  const hasUploadedCv = input.cvProfiles.length > 0;
-  const qrIdentityAvailable = hasOnboardingProfile;
-  const isEventReady = hasOnboardingProfile && hasUploadedCv;
+export const groupStudentCvProfiles = (
+  cvProfiles: ReadonlyArray<CvProfile>,
+): ReadonlyArray<StudentCvProfileGroup> => {
+  const groupedEntries = new Map<string, StudentCvProfileGroup>();
 
-  const checklist = [
-    {
-      id: "profile" as const,
-      label: "Complete onboarding",
-      description: "Add your event profile so recruiters see a usable student record.",
-      done: hasOnboardingProfile,
-    },
-    {
-      id: "cv" as const,
-      label: "Upload at least one CV",
-      description: "Keep one ready profile on hand before the event starts.",
-      done: hasUploadedCv,
-    },
-    {
-      id: "qr" as const,
-      label: "Unlock your QR identity",
-      description: "Your QR code becomes available once onboarding is complete.",
-      done: qrIdentityAvailable,
-    },
-  ];
+  for (const cvProfile of cvProfiles) {
+    const existingGroup = groupedEntries.get(cvProfile.profileType.id);
 
-  const completedSteps = checklist.filter((item) => item.done).length;
-  const completionPercent = Math.round((completedSteps / checklist.length) * 100);
+    if (existingGroup == null) {
+      groupedEntries.set(cvProfile.profileType.id, {
+        profileTypeId: cvProfile.profileType.id,
+        profileTypeLabel: cvProfile.profileType.label,
+        profiles: [cvProfile],
+      });
+      continue;
+    }
 
-  const nextStepLabel = !hasOnboardingProfile
-    ? "Finish your onboarding profile."
-    : !hasUploadedCv
-      ? "Upload your first CV profile."
-      : "You are event-ready.";
+    groupedEntries.set(cvProfile.profileType.id, {
+      ...existingGroup,
+      profiles: [...existingGroup.profiles, cvProfile],
+    });
+  }
 
-  return {
-    completionPercent,
-    hasOnboardingProfile,
-    hasUploadedCv,
-    isEventReady,
-    qrIdentityAvailable,
-    nextStepLabel,
-    checklist,
-  };
+  return Array.from(groupedEntries.values())
+    .map((group) => ({
+      ...group,
+      profiles: [...group.profiles].sort((left, right) => {
+        const byFileName = left.fileName.localeCompare(right.fileName);
+        if (byFileName !== 0) {
+          return byFileName;
+        }
+
+        return left.id.localeCompare(right.id);
+      }),
+    }))
+    .sort((left, right) => left.profileTypeLabel.localeCompare(right.profileTypeLabel));
 };
+
+export const findStudentCvProfileById = (
+  cvProfiles: ReadonlyArray<CvProfile>,
+  profileId: string,
+): CvProfile | null =>
+  cvProfiles.find((cvProfile) => cvProfile.id === profileId) ?? null;
 
 export const formatStudentDisplayName = (student: Student | null): string =>
   student == null ? "New student" : `${student.firstName} ${student.lastName}`.trim();

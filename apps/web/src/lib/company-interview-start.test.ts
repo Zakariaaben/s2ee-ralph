@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { CvProfile, CvProfileType, Recruiter } from "@project/domain";
+import {
+  CvProfile,
+  CvProfileType,
+  PresentedCvProfilePreview,
+  Recruiter,
+  Student,
+} from "@project/domain";
 
 import {
   canConfirmInterviewStart,
   normalizeStudentQrIdentityInput,
-  resolveInterviewStartCvProfileId,
   resolveInterviewStartRecruiterId,
   resolvePreferredRecruiter,
   summarizeInterviewStartChecklist,
@@ -23,10 +28,21 @@ const recruiters = [
   }),
 ];
 
-const cvProfiles = [
-  new CvProfile({
+const preview = new PresentedCvProfilePreview({
+  student: new Student({
+    id: asId<Student["id"]>("student-1"),
+    firstName: "Ada",
+    lastName: "Lovelace",
+    phoneNumber: "+213 555 12 34",
+    academicYear: "5th year",
+    major: "Computer Science",
+    institution: "ESI",
+    image: null,
+  }),
+  cvProfile: new CvProfile({
     id: asId<CvProfile["id"]>("cv-1"),
     studentId: asId<CvProfile["studentId"]>("student-1"),
+    presentationCode: "profile:v1:cv-1",
     profileType: new CvProfileType({
       id: asId<CvProfileType["id"]>("type-1"),
       label: "General CV",
@@ -35,7 +51,8 @@ const cvProfiles = [
     contentType: "application/pdf",
     fileSizeBytes: 1024,
   }),
-];
+  qrIdentity: "profile:v1:cv-1",
+});
 
 describe("company-interview-start", () => {
   it("normalizes scanner or pasted QR input", () => {
@@ -78,29 +95,18 @@ describe("company-interview-start", () => {
     ).toBeNull();
   });
 
-  it("drops stale CV selections when the resolved student changes", () => {
-    expect(resolveInterviewStartCvProfileId(cvProfiles, asId<CvProfile["id"]>("cv-1"))).toBe(
-      "cv-1",
-    );
-    expect(
-      resolveInterviewStartCvProfileId(cvProfiles, asId<CvProfile["id"]>("cv-missing")),
-    ).toBeNull();
-  });
-
-  it("requires preview, recruiter, and CV before confirming the interview start", () => {
+  it("requires preview and recruiter before confirming the interview start", () => {
     expect(
       canConfirmInterviewStart({
-        hasResolvedStudent: true,
+        preview,
         selectedRecruiterId: asId<Recruiter["id"]>("recruiter-1"),
-        selectedCvProfileId: asId<CvProfile["id"]>("cv-1"),
       }),
     ).toBe(true);
 
     expect(
       canConfirmInterviewStart({
-        hasResolvedStudent: true,
+        preview: null,
         selectedRecruiterId: asId<Recruiter["id"]>("recruiter-1"),
-        selectedCvProfileId: null,
       }),
     ).toBe(false);
   });
@@ -108,14 +114,12 @@ describe("company-interview-start", () => {
   it("summarizes the interview-start checklist for the UI", () => {
     expect(
       summarizeInterviewStartChecklist({
-        hasResolvedStudent: true,
+        preview,
         selectedRecruiterId: asId<Recruiter["id"]>("recruiter-2"),
-        selectedCvProfileId: null,
       }),
     ).toEqual([
-      { label: "Student preview resolved", done: true },
+      { label: "Candidate preview resolved", done: true },
       { label: "Recruiter selected", done: true },
-      { label: "CV chosen", done: false },
     ]);
   });
 });

@@ -11,7 +11,10 @@ export const student = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
-    course: text("course").notNull(),
+    phoneNumber: text("phone_number").notNull(),
+    academicYear: text("academic_year").notNull(),
+    major: text("major").notNull(),
+    institution: text("institution").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()

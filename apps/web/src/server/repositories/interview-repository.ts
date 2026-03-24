@@ -1,4 +1,5 @@
 import { DB } from "@project/db";
+import { user } from "@project/db/schema/auth";
 import { cvProfile } from "@project/db/schema/cv-profile";
 import {
   companyInterviewTag,
@@ -9,6 +10,7 @@ import {
 import { student } from "@project/db/schema/student";
 import { globalInterviewTag } from "@project/db/schema/vocabulary";
 import {
+  CompanyActiveInterviewDetail,
   CompanyCompletedInterviewLedgerEntry,
   CompanyInterviewTag,
   CvProfile,
@@ -16,6 +18,7 @@ import {
   GlobalInterviewTag,
   Interview,
   Student,
+  encodeCvProfilePresentationCode,
 } from "@project/domain";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { Effect, Layer, ServiceMap } from "effect";
@@ -53,18 +56,26 @@ const toInterview = (input: {
     ),
   });
 
-const toStudent = (row: typeof student.$inferSelect) =>
+const toStudent = (input: {
+  readonly row: typeof student.$inferSelect;
+  readonly image: string | null;
+}) =>
   new Student({
-    id: row.id as Student["id"],
-    firstName: row.firstName,
-    lastName: row.lastName,
-    course: row.course,
+    id: input.row.id as Student["id"],
+    firstName: input.row.firstName,
+    lastName: input.row.lastName,
+    phoneNumber: input.row.phoneNumber,
+    academicYear: input.row.academicYear,
+    major: input.row.major,
+    institution: input.row.institution,
+    image: input.image,
   });
 
 const toCvProfile = (row: typeof cvProfile.$inferSelect) =>
   new CvProfile({
     id: row.id as CvProfile["id"],
     studentId: row.studentId as CvProfile["studentId"],
+    presentationCode: encodeCvProfilePresentationCode(row.id),
     profileType: new CvProfileType({
       id: row.profileTypeId as CvProfileType["id"],
       label: row.profileTypeLabel,
@@ -83,23 +94,29 @@ export class InterviewRepository extends ServiceMap.Service<
     readonly listCompletedLedgerByCompanyId: (
       companyId: string,
     ) => Effect.Effect<ReadonlyArray<CompanyCompletedInterviewLedgerEntry>>;
-    readonly createCompleted: (input: {
+    readonly getActiveDetailByCompanyId: (input: {
+      readonly companyId: string;
+      readonly interviewId: string;
+    }) => Effect.Effect<CompanyActiveInterviewDetail | null>;
+    readonly createStarted: (input: {
       readonly companyId: string;
       readonly studentId: string;
       readonly cvProfileId: string;
       readonly recruiterName: string;
+    }) => Effect.Effect<Interview>;
+    readonly completeActive: (input: {
+      readonly companyId: string;
+      readonly interviewId: string;
       readonly score: number;
       readonly globalTagIds: ReadonlyArray<string>;
       readonly companyTagLabels: ReadonlyArray<string>;
       readonly notes: string;
     }) => Effect.Effect<Interview | null>;
-    readonly createCancelled: (input: {
+    readonly cancelActive: (input: {
       readonly companyId: string;
-      readonly studentId: string;
-      readonly cvProfileId: string;
-      readonly recruiterName: string;
+      readonly interviewId: string;
       readonly notes: string;
-    }) => Effect.Effect<Interview>;
+    }) => Effect.Effect<Interview | null>;
   }
 >()("@project/web/InterviewRepository") {
   static readonly layer = Layer.effect(
@@ -110,20 +127,21 @@ export class InterviewRepository extends ServiceMap.Service<
       const loadByCompanyId = (input: {
         readonly companyId: string;
         readonly interviewId?: string;
+        readonly status?: Interview["status"];
       }) =>
         Effect.gen(function*() {
+          const whereClause = and(
+            eq(interviewTable.companyId, input.companyId),
+            ...(input.interviewId
+              ? [eq(interviewTable.id, input.interviewId)]
+              : []),
+            ...(input.status ? [eq(interviewTable.status, input.status)] : []),
+          );
           const rows = yield* Effect.promise(() =>
             db
               .select()
               .from(interviewTable)
-              .where(
-                input.interviewId
-                  ? and(
-                      eq(interviewTable.companyId, input.companyId),
-                      eq(interviewTable.id, input.interviewId),
-                    )
-                  : eq(interviewTable.companyId, input.companyId),
-              )
+              .where(whereClause)
               .orderBy(asc(interviewTable.createdAt), asc(interviewTable.id)),
           );
 
@@ -222,14 +240,13 @@ export class InterviewRepository extends ServiceMap.Service<
           );
           const studentRows = yield* Effect.promise(() =>
             db
-              .select()
+              .select({
+                studentRow: student,
+                image: user.image,
+              })
               .from(student)
-              .where(
-                inArray(
-                  student.id,
-                  completedRows.map((row) => row.studentId),
-                ),
-              ),
+              .innerJoin(user, eq(user.id, student.ownerUserId))
+              .where(inArray(student.id, completedRows.map((row) => row.studentId))),
           );
           const cvProfileRows = yield* Effect.promise(() =>
             db
@@ -242,7 +259,9 @@ export class InterviewRepository extends ServiceMap.Service<
                 ),
               ),
           );
-          const studentsById = new Map(studentRows.map((row) => [row.id, row]));
+          const studentsById = new Map(
+            studentRows.map((row) => [row.studentRow.id, row]),
+          );
           const cvProfilesById = new Map(cvProfileRows.map((row) => [row.id, row]));
 
           return completedRows.map((row) => {
@@ -256,9 +275,63 @@ export class InterviewRepository extends ServiceMap.Service<
 
             return new CompanyCompletedInterviewLedgerEntry({
               interview,
-              student: toStudent(studentRow),
+              student: toStudent({
+                row: studentRow.studentRow,
+                image: studentRow.image,
+              }),
               cvProfile: toCvProfile(cvProfileRow),
             });
+          });
+        });
+
+      const loadActiveDetailByCompanyId = (input: {
+        readonly companyId: string;
+        readonly interviewId: string;
+      }) =>
+        Effect.gen(function*() {
+          const interview = yield* loadOneByCompanyId({
+            companyId: input.companyId,
+            interviewId: input.interviewId,
+          });
+
+          if (!interview || interview.status !== "active") {
+            return null;
+          }
+
+          const [studentRow, cvProfileRow] = yield* Effect.all([
+            Effect.promise(() =>
+              db
+                .select({
+                  studentRow: student,
+                  image: user.image,
+                })
+                .from(student)
+                .innerJoin(user, eq(user.id, student.ownerUserId))
+                .where(eq(student.id, interview.studentId))
+                .limit(1)
+                .then((rows) => rows[0] ?? null),
+            ),
+            Effect.promise(() =>
+              db
+                .select()
+                .from(cvProfile)
+                .where(eq(cvProfile.id, interview.cvProfileId))
+                .limit(1)
+                .then((rows) => rows[0] ?? null),
+            ),
+          ]);
+
+          if (!studentRow || !cvProfileRow) {
+            return yield* Effect.die("Active interview detail query returned incomplete rows");
+          }
+
+          return new CompanyActiveInterviewDetail({
+            interview,
+            student: toStudent({
+              row: studentRow.studentRow,
+              image: studentRow.image,
+            }),
+            cvProfile: toCvProfile(cvProfileRow),
           });
         });
 
@@ -266,13 +339,46 @@ export class InterviewRepository extends ServiceMap.Service<
         listByCompanyId: (companyId) =>
           loadByCompanyId({
             companyId,
+            status: "active",
           }),
         listCompletedLedgerByCompanyId: loadCompletedLedgerByCompanyId,
-        createCompleted: ({
+        getActiveDetailByCompanyId: loadActiveDetailByCompanyId,
+        createStarted: ({
           companyId,
           studentId,
           cvProfileId,
           recruiterName,
+        }) =>
+          Effect.gen(function*() {
+            const interviewId = makeInterviewId();
+
+            yield* Effect.promise(() =>
+              db.insert(interviewTable).values({
+                id: interviewId,
+                companyId,
+                studentId,
+                cvProfileId,
+                recruiterName,
+                status: "active",
+                score: null,
+                notes: "",
+              }),
+            );
+
+            const savedInterview = yield* loadOneByCompanyId({
+              companyId,
+              interviewId,
+            });
+
+            if (!savedInterview) {
+              return yield* Effect.die("Interview insert did not return an interview");
+            }
+
+            return savedInterview;
+          }),
+        completeActive: ({
+          companyId,
+          interviewId,
           score,
           globalTagIds,
           companyTagLabels,
@@ -334,18 +440,38 @@ export class InterviewRepository extends ServiceMap.Service<
                   orderedCompanyTags.push(inserted);
                 }
 
-                const interviewId = makeInterviewId();
+                const existingInterview = await tx
+                  .select()
+                  .from(interviewTable)
+                  .where(
+                    and(
+                      eq(interviewTable.companyId, companyId),
+                      eq(interviewTable.id, interviewId),
+                      eq(interviewTable.status, "active"),
+                    ),
+                  )
+                  .limit(1)
+                  .then((rows) => rows[0] ?? null);
 
-                await tx.insert(interviewTable).values({
-                  id: interviewId,
-                  companyId,
-                  studentId,
-                  cvProfileId,
-                  recruiterName,
-                  status: "completed",
-                  score,
-                  notes,
-                });
+                if (!existingInterview) {
+                  return null;
+                }
+
+                await tx
+                  .update(interviewTable)
+                  .set({
+                    status: "completed",
+                    score,
+                    notes,
+                  })
+                  .where(eq(interviewTable.id, interviewId));
+
+                await tx
+                  .delete(interviewGlobalTag)
+                  .where(eq(interviewGlobalTag.interviewId, interviewId));
+                await tx
+                  .delete(interviewCompanyTag)
+                  .where(eq(interviewCompanyTag.interviewId, interviewId));
 
                 if (orderedGlobalTags.length > 0) {
                   await tx.insert(interviewGlobalTag).values(
@@ -369,7 +495,7 @@ export class InterviewRepository extends ServiceMap.Service<
                   );
                 }
 
-                return interviewId;
+                return existingInterview.id;
               }),
             );
 
@@ -388,22 +514,29 @@ export class InterviewRepository extends ServiceMap.Service<
 
             return savedInterview;
           }),
-        createCancelled: ({ companyId, studentId, cvProfileId, recruiterName, notes }) =>
+        cancelActive: ({ companyId, interviewId, notes }) =>
           Effect.gen(function*() {
-            const interviewId = makeInterviewId();
-
-            yield* Effect.promise(() =>
-              db.insert(interviewTable).values({
-                id: interviewId,
-                companyId,
-                studentId,
-                cvProfileId,
-                recruiterName,
-                status: "cancelled",
-                score: null,
-                notes,
-              }),
+            const updatedRows = yield* Effect.promise(() =>
+              db
+                .update(interviewTable)
+                .set({
+                  status: "cancelled",
+                  score: null,
+                  notes,
+                })
+                .where(
+                  and(
+                    eq(interviewTable.companyId, companyId),
+                    eq(interviewTable.id, interviewId),
+                    eq(interviewTable.status, "active"),
+                  ),
+                )
+                .returning({ id: interviewTable.id }),
             );
+
+            if (updatedRows.length === 0) {
+              return null;
+            }
 
             const savedInterview = yield* loadOneByCompanyId({
               companyId,

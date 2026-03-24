@@ -1,7 +1,9 @@
 import {
   type AuthenticatedActor,
   type CvProfile,
+  type CvProfileDownloadUrl,
   type CvProfileFile,
+  type PresentedCvProfilePreview,
   type Student,
 } from "@project/domain";
 import { Effect, Layer, ServiceMap } from "effect";
@@ -61,11 +63,25 @@ export class CvProfileService extends ServiceMap.Service<
       CvProfileFile,
       HttpApiError.Forbidden | HttpApiError.NotFound
     >;
+    readonly getStudentCvProfileDownloadUrl: (input: {
+      readonly actor: AuthenticatedActor;
+      readonly cvProfileId: CvProfile["id"];
+    }) => Effect.Effect<
+      CvProfileDownloadUrl,
+      HttpApiError.Forbidden | HttpApiError.NotFound
+    >;
     readonly deleteStudentCvProfile: (input: {
       readonly actor: AuthenticatedActor;
       readonly cvProfileId: CvProfile["id"];
     }) => Effect.Effect<
       CvProfile["id"],
+      HttpApiError.Forbidden | HttpApiError.NotFound
+    >;
+    readonly resolvePresentedCvProfile: (input: {
+      readonly actor: AuthenticatedActor;
+      readonly presentationCode: string;
+    }) => Effect.Effect<
+      PresentedCvProfilePreview,
       HttpApiError.Forbidden | HttpApiError.NotFound
     >;
   }
@@ -148,6 +164,26 @@ export class CvProfileService extends ServiceMap.Service<
 
             return cvProfileFile;
           }),
+        getStudentCvProfileDownloadUrl: ({ actor, cvProfileId }) =>
+          Effect.gen(function*() {
+            const studentActor = yield* requireStudentActor(actor);
+            const student = yield* studentRepository.getByOwnerUserId(studentActor.id);
+
+            if (!student) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            const downloadUrl = yield* cvProfileRepository.getDownloadUrlForStudent({
+              studentId: student.id,
+              cvProfileId,
+            });
+
+            if (!downloadUrl) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            return downloadUrl;
+          }),
         deleteStudentCvProfile: ({ actor, cvProfileId }) =>
           Effect.gen(function*() {
             const studentActor = yield* requireStudentActor(actor);
@@ -167,6 +203,21 @@ export class CvProfileService extends ServiceMap.Service<
             }
 
             return cvProfileId;
+          }),
+        resolvePresentedCvProfile: ({ actor, presentationCode }) =>
+          Effect.gen(function*() {
+            yield* requireCompanyActor(actor);
+
+            const preview =
+              yield* cvProfileRepository.resolvePresentedPreviewByPresentationCode(
+                presentationCode,
+              );
+
+            if (!preview) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            return preview;
           }),
       });
     }),

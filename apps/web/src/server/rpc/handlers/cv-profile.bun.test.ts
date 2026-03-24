@@ -78,7 +78,11 @@ describeWithStorage("cv profile rpc", () => {
         yield* studentClient.upsertStudentOnboarding({
           firstName: "Ada",
           lastName: "Lovelace",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
         const blankMetadataExit = yield* Effect.exit(
@@ -128,6 +132,42 @@ describeWithStorage("cv profile rpc", () => {
   );
 
   it(
+    "student uploads succeed with the hidden default profile type even when vocabularies were never seeded",
+    runLayerEffect(CvProfileTestLive, () =>
+      Effect.gen(function*() {
+        const studentHeaders = yield* provisionSessionHeaders("student");
+        const cvProfileClient = yield* makeCvProfileClient;
+        const studentClient = yield* makeStudentClient;
+
+        yield* studentClient.upsertStudentOnboarding({
+          firstName: "Ada",
+          lastName: "Lovelace",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+
+        const createdCv = yield* cvProfileClient.createStudentCvProfile({
+          profileTypeId: "default",
+          fileName: "ada-general.pdf",
+          contentType: "application/pdf",
+          contentsBase64: Buffer.from("general-cv-v1", "utf8").toString("base64"),
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+
+        expect(createdCv.profileType.id as string).toBe("default");
+        expect(createdCv.profileType.label).toBe("Default");
+        expect(
+          yield* cvProfileClient.listCurrentStudentCvProfiles().pipe(
+            RpcClient.withHeaders(studentHeaders),
+          ),
+        ).toEqual([createdCv]);
+      }),
+    ),
+  );
+
+  it(
     "student actors can create controlled CV profiles, download stored files, and company actors can list them after QR resolution",
     runLayerEffect(CvProfileTestLive, () =>
       Effect.gen(function*() {
@@ -149,7 +189,11 @@ describeWithStorage("cv profile rpc", () => {
         const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Ada",
           lastName: "Lovelace",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
         const softwareCv = yield* cvProfileClient.createStudentCvProfile({
@@ -219,7 +263,11 @@ describeWithStorage("cv profile rpc", () => {
         yield* studentClient.upsertStudentOnboarding({
           firstName: "Grace",
           lastName: "Hopper",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
         const originalCv = yield* cvProfileClient.createStudentCvProfile({
@@ -283,7 +331,11 @@ describeWithStorage("cv profile rpc", () => {
         yield* studentClient.upsertStudentOnboarding({
           firstName: "Katherine",
           lastName: "Johnson",
-          course: "Mathematics",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Mathematics",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
 
         const unknownTypeExit = yield* Effect.exit(

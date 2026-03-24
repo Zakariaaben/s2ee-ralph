@@ -17,7 +17,7 @@ import {
 import { Input } from "@project/ui/components/input";
 import { Separator } from "@project/ui/components/separator";
 import { Skeleton } from "@project/ui/components/skeleton";
-import type { UserRoleValue } from "@project/domain";
+import { useNavigate } from "@tanstack/react-router";
 import {
   BadgeCheckIcon,
   Building2Icon,
@@ -31,13 +31,10 @@ import {
 import type React from "react";
 import {
   startTransition,
-  useEffect,
-  useEffectEvent,
   useState,
 } from "react";
 
 import { authClient } from "@/lib/auth-client";
-import { getRoleHomePath } from "@/lib/auth-routing";
 import { checkInWorkspaceAtoms, checkInWorkspaceReactivity } from "@/lib/check-in-atoms";
 import {
   filterCheckInCompanies,
@@ -86,7 +83,7 @@ const arrivalFilterOptions = [
 ] as const;
 
 export function CheckInWorkspace(): React.ReactElement {
-  const session = authClient.useSession();
+  const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<(typeof arrivalFilterOptions)[number]["value"]>(
@@ -102,33 +99,12 @@ export function CheckInWorkspace(): React.ReactElement {
     mode: "promise",
   });
 
-  const redirectTo = useEffectEvent((role: UserRoleValue | undefined | null) => {
-    window.location.replace(role ? getRoleHomePath(role) : "/");
-  });
-
-  const currentRole = (session.data?.user as { role?: UserRoleValue } | undefined)?.role;
-
-  useEffect(() => {
-    if (session.isPending) {
-      return;
-    }
-
-    if (!currentRole) {
-      redirectTo(null);
-      return;
-    }
-
-    if (currentRole !== "check-in") {
-      redirectTo(currentRole);
-    }
-  }, [currentRole, redirectTo, session.isPending]);
-
   const handleSignOut = async () => {
     setIsSigningOut(true);
 
     try {
       await authClient.signOut();
-      redirectTo(null);
+      await navigate({ replace: true, to: "/" });
     } finally {
       setIsSigningOut(false);
     }

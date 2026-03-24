@@ -1,6 +1,8 @@
 import { DB } from "@project/db";
 import { ServerEnv } from "@project/env/server";
-import { Effect, Layer, Redacted, ServiceMap } from "effect";
+import { Effect, Layer, ServiceMap } from "effect";
+
+import { makeS3StorageClient } from "./s3-storage";
 
 export class InfrastructureProbeRepository extends ServiceMap.Service<
   InfrastructureProbeRepository,
@@ -15,11 +17,11 @@ export class InfrastructureProbeRepository extends ServiceMap.Service<
       const db = yield* DB;
       const env = yield* ServerEnv;
 
-      const s3 = new Bun.S3Client({
-        accessKeyId: Redacted.value(env.s3AccessKeyId),
-        secretAccessKey: Redacted.value(env.s3SecretAccessKey),
+      const makeS3 = () => makeS3StorageClient({
+        accessKeyId: env.s3AccessKeyId,
+        secretAccessKey: env.s3SecretAccessKey,
         bucket: env.s3Bucket,
-        endpoint: env.s3Endpoint.toString(),
+        endpoint: env.s3Endpoint,
         region: env.s3Region,
       });
 
@@ -29,6 +31,7 @@ export class InfrastructureProbeRepository extends ServiceMap.Service<
           return "ok" as const;
         }),
         checkStorage: Effect.gen(function* () {
+          const s3 = makeS3();
           const key = `readiness/${crypto.randomUUID()}.txt`;
           const file = s3.file(key);
           const payload = JSON.stringify({

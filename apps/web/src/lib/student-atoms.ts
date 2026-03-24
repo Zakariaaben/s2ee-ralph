@@ -1,10 +1,10 @@
 import { AppRpcClient } from "@/lib/rpc-client";
+import type { CvProfile } from "@project/domain";
 
 export const studentWorkspaceReactivity = {
   currentStudent: ["student", "current-student"] as const,
   cvProfiles: ["student", "cv-profiles"] as const,
   cvProfileTypes: ["student", "cv-profile-types"] as const,
-  qrIdentity: ["student", "qr-identity"] as const,
 } as const;
 
 export const studentWorkspaceAtoms = {
@@ -20,10 +20,10 @@ export const studentWorkspaceAtoms = {
     reactivityKeys: studentWorkspaceReactivity.cvProfileTypes,
     timeToLive: "30 minutes",
   }),
-  qrIdentity: AppRpcClient.query("issueStudentQrIdentity", undefined, {
-    reactivityKeys: studentWorkspaceReactivity.qrIdentity,
-    timeToLive: "30 seconds",
-  }),
+  getStudentCvProfileDownloadUrl: (cvProfileId: CvProfile["id"]) =>
+    AppRpcClient.query("getStudentCvProfileDownloadUrl", { cvProfileId }, { timeToLive: "30 seconds" }),
+  downloadStudentCvProfileFile: (cvProfileId: CvProfile["id"]) =>
+    AppRpcClient.query("downloadStudentCvProfileFile", { cvProfileId }, { timeToLive: "30 seconds" }),
   upsertStudentOnboarding: AppRpcClient.mutation("upsertStudentOnboarding"),
   createStudentCvProfile: AppRpcClient.mutation("createStudentCvProfile"),
   deleteStudentCvProfile: AppRpcClient.mutation("deleteStudentCvProfile"),

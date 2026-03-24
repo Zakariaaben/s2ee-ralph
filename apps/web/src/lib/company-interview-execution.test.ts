@@ -4,16 +4,22 @@ import {
   CompanyInterviewTag,
   CvProfile,
   CvProfileType,
+  GlobalInterviewTag,
   Interview,
+  PresentedCvProfilePreview,
   Student,
 } from "@project/domain";
 
 import {
+  buildAggregatedInterviewTagOptions,
   canCompleteInterviewDraft,
   collectSuggestedCompanyTagLabels,
   describeInterviewNotes,
-  normalizeCompanyTagLabels,
-  toggleGlobalInterviewTagId,
+  filterAggregatedInterviewTagOptions,
+  normalizeCustomTagLabel,
+  normalizeInterviewScoreInput,
+  partitionAggregatedInterviewTags,
+  toggleAggregatedTagSelection,
   type CompanyInterviewDraft,
 } from "./company-interview-execution";
 
@@ -42,20 +48,21 @@ const makeInterview = (input: {
     ),
   });
 
-const draft: CompanyInterviewDraft = {
+const preview = new PresentedCvProfilePreview({
   student: new Student({
     id: asId<Student["id"]>("student-1"),
     firstName: "Ada",
     lastName: "Lovelace",
-    course: "Computer Science",
+    phoneNumber: "+213 555 12 34",
+    academicYear: "5th year",
+    major: "Computer Science",
+    institution: "ESI",
+    image: null,
   }),
-  recruiter: {
-    id: asId<CompanyInterviewDraft["recruiter"]["id"]>("recruiter-1"),
-    name: "Nora Lane",
-  },
   cvProfile: new CvProfile({
     id: asId<CvProfile["id"]>("cv-1"),
     studentId: asId<CvProfile["studentId"]>("student-1"),
+    presentationCode: "ABC123",
     profileType: new CvProfileType({
       id: asId<CvProfileType["id"]>("type-1"),
       label: "General CV",
@@ -64,14 +71,30 @@ const draft: CompanyInterviewDraft = {
     contentType: "application/pdf",
     fileSizeBytes: 2048,
   }),
-  qrIdentity: "student:v1:student-1",
+  qrIdentity: "ABC123",
+});
+
+const draft: CompanyInterviewDraft = {
+  interviewId: asId<Interview["id"]>("interview-1"),
+  preview,
+  recruiter: {
+    id: asId<CompanyInterviewDraft["recruiter"]["id"]>("recruiter-1"),
+    name: "Nora Lane",
+  },
 };
 
 describe("company-interview-execution", () => {
-  it("normalizes freeform company tags from comma or newline input", () => {
-    expect(
-      normalizeCompanyTagLabels(" Backend Ready, backend ready\nFollow Up \n "),
-    ).toEqual(["Backend Ready", "Follow Up"]);
+  it("normalizes decimal interview score input within the valid range", () => {
+    expect(normalizeInterviewScoreInput("4.3")).toBe(4.3);
+    expect(normalizeInterviewScoreInput(" 5 ")).toBe(5);
+    expect(normalizeInterviewScoreInput("0.8")).toBeNull();
+    expect(normalizeInterviewScoreInput("5.2")).toBeNull();
+    expect(normalizeInterviewScoreInput("")).toBeNull();
+  });
+
+  it("normalizes custom tag labels and ignores blanks", () => {
+    expect(normalizeCustomTagLabel("  Follow Up  ")).toBe("Follow Up");
+    expect(normalizeCustomTagLabel(" \n\t ")).toBeNull();
   });
 
   it("collects unique company tag suggestions from newest interview history first", () => {
@@ -83,16 +106,16 @@ describe("company-interview-execution", () => {
             id: "completed-1",
             companyTags: ["Follow Up", "Backend Ready"],
           }),
-          student: draft.student,
-          cvProfile: draft.cvProfile,
+          student: preview.student,
+          cvProfile: preview.cvProfile,
         }),
         new CompanyCompletedInterviewLedgerEntry({
           interview: makeInterview({
             id: "completed-2",
             companyTags: ["Backend Ready", "Strong Communication"],
           }),
-          student: draft.student,
-          cvProfile: draft.cvProfile,
+          student: preview.student,
+          cvProfile: preview.cvProfile,
         }),
       ],
     });
@@ -105,19 +128,62 @@ describe("company-interview-execution", () => {
     ]);
   });
 
-  it("toggles global tag selections without duplicating ids", () => {
+  it("builds and filters one aggregated tag option list", () => {
+    const options = buildAggregatedInterviewTagOptions({
+      globalTags: [
+        new GlobalInterviewTag({
+          id: asId<GlobalInterviewTag["id"]>("g-1"),
+          label: "Curious",
+        }),
+      ],
+      companyTagSuggestions: ["Backend Ready", "curious"],
+    });
+
+    expect(options).toEqual([
+      {
+        globalTagId: "g-1",
+        key: "curious",
+        kind: "global",
+        label: "Curious",
+      },
+      {
+        key: "backend ready",
+        kind: "company",
+        label: "Backend Ready",
+      },
+    ]);
+
+    expect(filterAggregatedInterviewTagOptions(options, "back")).toEqual([
+      {
+        key: "backend ready",
+        kind: "company",
+        label: "Backend Ready",
+      },
+    ]);
+  });
+
+  it("toggles selected labels and partitions them back into rpc payloads", () => {
+    const options = buildAggregatedInterviewTagOptions({
+      globalTags: [
+        new GlobalInterviewTag({
+          id: asId<GlobalInterviewTag["id"]>("g-1"),
+          label: "Curious",
+        }),
+      ],
+      companyTagSuggestions: ["Backend Ready"],
+    });
+    const selected = toggleAggregatedTagSelection(["Curious"], "Backend Ready");
+
+    expect(toggleAggregatedTagSelection(selected, "curious")).toEqual(["Backend Ready"]);
     expect(
-      toggleGlobalInterviewTagId(
-        [asId<Parameters<typeof toggleGlobalInterviewTagId>[0][number]>("curious")],
-        asId<Parameters<typeof toggleGlobalInterviewTagId>[0][number]>("curious"),
-      ),
-    ).toEqual([]);
-    expect(
-      toggleGlobalInterviewTagId(
-        [asId<Parameters<typeof toggleGlobalInterviewTagId>[0][number]>("curious")],
-        asId<Parameters<typeof toggleGlobalInterviewTagId>[0][number]>("clear-communicator"),
-      ),
-    ).toEqual(["curious", "clear-communicator"]);
+      partitionAggregatedInterviewTags({
+        options,
+        selectedLabels: selected,
+      }),
+    ).toEqual({
+      globalTagIds: ["g-1"],
+      companyTagLabels: ["Backend Ready"],
+    });
   });
 
   it("requires both a staged draft and score before completion", () => {

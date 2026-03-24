@@ -69,13 +69,17 @@ const makeStudent = (input: {
   readonly id: string;
   readonly firstName: string;
   readonly lastName: string;
-  readonly course: string;
+  readonly major: string;
 }) =>
   new Student({
     id: input.id as Student["id"],
     firstName: input.firstName,
     lastName: input.lastName,
-    course: input.course,
+    phoneNumber: "+213 555 12 34",
+    academicYear: "5th year",
+    major: input.major,
+    institution: "ESI",
+    image: null,
   });
 
 const makeCompanyLedgerEntry = (input: {
@@ -128,6 +132,7 @@ const makeInterviewLedgerEntry = (input: {
     cvProfile: new CvProfile({
       id: `cv_${input.id}` as CvProfile["id"],
       studentId: input.student.id,
+      presentationCode: `profile:v1:cv_${input.id}`,
       profileType: softwareCvType,
       fileName: `${input.student.firstName.toLowerCase()}-cv.pdf`,
       contentType: "application/pdf",
@@ -162,13 +167,13 @@ describe("admin workspace helper", () => {
     id: "student_1",
     firstName: "Ada",
     lastName: "Lovelace",
-    course: "Computer Science",
+    major: "Computer Science",
   });
   const grace = makeStudent({
     id: "student_2",
     firstName: "Grace",
     lastName: "Hopper",
-    course: "Software Engineering",
+    major: "Software Engineering",
   });
 
   const companyLedger = [

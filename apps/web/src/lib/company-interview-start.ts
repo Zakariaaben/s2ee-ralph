@@ -1,4 +1,4 @@
-import type { CvProfile, Recruiter } from "@project/domain";
+import type { PresentedCvProfilePreview, Recruiter } from "@project/domain";
 
 export type { CompanyInterviewDraft } from "./company-interview-execution";
 
@@ -34,46 +34,25 @@ export const resolveInterviewStartRecruiterId = (input: {
   return resolvePreferredRecruiter(input.recruiters, input.preferredRecruiterId)?.id ?? null;
 };
 
-export const resolveInterviewStartCvProfileId = (
-  cvProfiles: ReadonlyArray<CvProfile>,
-  selectedCvProfileId: CvProfile["id"] | null,
-): CvProfile["id"] | null => {
-  if (selectedCvProfileId == null) {
-    return null;
-  }
-
-  return cvProfiles.some((cvProfile) => cvProfile.id === selectedCvProfileId)
-    ? selectedCvProfileId
-    : null;
-};
-
 export const canConfirmInterviewStart = (input: {
-  readonly hasResolvedStudent: boolean;
+  readonly preview: PresentedCvProfilePreview | null;
   readonly selectedRecruiterId: Recruiter["id"] | null;
-  readonly selectedCvProfileId: CvProfile["id"] | null;
 }): boolean =>
-  input.hasResolvedStudent &&
-  input.selectedRecruiterId != null &&
-  input.selectedCvProfileId != null;
+  input.preview != null && input.selectedRecruiterId != null;
 
 export const summarizeInterviewStartChecklist = (input: {
-  readonly hasResolvedStudent: boolean;
+  readonly preview: PresentedCvProfilePreview | null;
   readonly selectedRecruiterId: Recruiter["id"] | null;
-  readonly selectedCvProfileId: CvProfile["id"] | null;
 }): ReadonlyArray<{
   readonly label: string;
   readonly done: boolean;
 }> => [
   {
-    label: "Student preview resolved",
-    done: input.hasResolvedStudent,
+    label: "Candidate preview resolved",
+    done: input.preview != null,
   },
   {
     label: "Recruiter selected",
     done: input.selectedRecruiterId != null,
-  },
-  {
-    label: "CV chosen",
-    done: input.selectedCvProfileId != null,
   },
 ];

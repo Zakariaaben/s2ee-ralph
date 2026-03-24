@@ -1,7 +1,9 @@
 import {
+  type CompanyActiveInterviewDetail,
   CompanyCompletedInterviewExportFile,
   type AuthenticatedActor,
   type CompanyCompletedInterviewLedgerEntry,
+  type CvProfileDownloadUrl,
   type Interview,
 } from "@project/domain";
 import { Effect, Layer, ServiceMap } from "effect";
@@ -10,7 +12,6 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 import { CompanyRepository } from "../repositories/company-repository";
 import { CvProfileRepository } from "../repositories/cv-profile-repository";
 import { InterviewRepository } from "../repositories/interview-repository";
-import { StudentRepository } from "../repositories/student-repository";
 
 const requireCompanyActor = (actor: AuthenticatedActor) =>
   Effect.gen(function*() {
@@ -56,6 +57,20 @@ export class InterviewService extends ServiceMap.Service<
       ReadonlyArray<CompanyCompletedInterviewLedgerEntry>,
       HttpApiError.Forbidden
     >;
+    readonly getCurrentCompanyInterviewDetail: (input: {
+      readonly actor: AuthenticatedActor;
+      readonly interviewId: string;
+    }) => Effect.Effect<
+      CompanyActiveInterviewDetail,
+      HttpApiError.Forbidden | HttpApiError.NotFound
+    >;
+    readonly getCurrentCompanyInterviewCvDownloadUrl: (input: {
+      readonly actor: AuthenticatedActor;
+      readonly interviewId: string;
+    }) => Effect.Effect<
+      CvProfileDownloadUrl,
+      HttpApiError.Forbidden | HttpApiError.NotFound
+    >;
     readonly exportCurrentCompanyCompletedInterviews: (input: {
       readonly actor: AuthenticatedActor;
       readonly includeCvFiles: boolean;
@@ -63,11 +78,17 @@ export class InterviewService extends ServiceMap.Service<
       CompanyCompletedInterviewExportFile,
       HttpApiError.Forbidden | HttpApiError.NotFound
     >;
-    readonly completeInterview: (input: {
+    readonly startInterview: (input: {
       readonly actor: AuthenticatedActor;
       readonly recruiterId: string;
-      readonly studentId: string;
-      readonly cvProfileId: string;
+      readonly presentationCode: string;
+    }) => Effect.Effect<
+      Interview,
+      HttpApiError.Forbidden | HttpApiError.NotFound
+    >;
+    readonly completeInterview: (input: {
+      readonly actor: AuthenticatedActor;
+      readonly interviewId: string;
       readonly score: number;
       readonly globalTagIds: ReadonlyArray<string>;
       readonly companyTagLabels: ReadonlyArray<string>;
@@ -78,9 +99,7 @@ export class InterviewService extends ServiceMap.Service<
     >;
     readonly cancelInterview: (input: {
       readonly actor: AuthenticatedActor;
-      readonly recruiterId: string;
-      readonly studentId: string;
-      readonly cvProfileId: string;
+      readonly interviewId: string;
       readonly notes: string;
     }) => Effect.Effect<
       Interview,
@@ -94,13 +113,11 @@ export class InterviewService extends ServiceMap.Service<
       const companyRepository = yield* CompanyRepository;
       const cvProfileRepository = yield* CvProfileRepository;
       const interviewRepository = yield* InterviewRepository;
-      const studentRepository = yield* StudentRepository;
 
-      const resolveInterviewContext = (input: {
+      const resolveStartInterviewContext = (input: {
         readonly actor: AuthenticatedActor;
         readonly recruiterId: string;
-        readonly studentId: string;
-        readonly cvProfileId: string;
+        readonly presentationCode: string;
       }) =>
         Effect.gen(function*() {
           const companyActor = yield* requireCompanyActor(input.actor);
@@ -118,27 +135,44 @@ export class InterviewService extends ServiceMap.Service<
             return yield* Effect.fail(new HttpApiError.NotFound({}));
           }
 
-          const student = yield* studentRepository.getById(input.studentId);
+          const preview =
+            yield* cvProfileRepository.resolvePresentedPreviewByPresentationCode(
+              input.presentationCode,
+            );
 
-          if (!student) {
-            return yield* Effect.fail(new HttpApiError.NotFound({}));
-          }
-
-          const cvProfiles = yield* cvProfileRepository.listByStudentId(student.id);
-          const selectedCvProfile = cvProfiles.find(
-            (cvProfile) => cvProfile.id === input.cvProfileId,
-          );
-
-          if (!selectedCvProfile) {
+          if (!preview) {
             return yield* Effect.fail(new HttpApiError.NotFound({}));
           }
 
           return {
             company,
             recruiter,
-            student,
-            selectedCvProfile,
+            preview,
           };
+        });
+
+      const resolveCurrentCompanyInterviewDetail = (input: {
+        readonly actor: AuthenticatedActor;
+        readonly interviewId: string;
+      }) =>
+        Effect.gen(function*() {
+          const companyActor = yield* requireCompanyActor(input.actor);
+          const company = yield* companyRepository.getByOwnerUserId(companyActor.id);
+
+          if (!company) {
+            return yield* Effect.fail(new HttpApiError.NotFound({}));
+          }
+
+          const detail = yield* interviewRepository.getActiveDetailByCompanyId({
+            companyId: company.id,
+            interviewId: input.interviewId,
+          });
+
+          if (!detail) {
+            return yield* Effect.fail(new HttpApiError.NotFound({}));
+          }
+
+          return detail;
         });
 
       return InterviewService.of({
@@ -163,6 +197,28 @@ export class InterviewService extends ServiceMap.Service<
             }
 
             return yield* interviewRepository.listCompletedLedgerByCompanyId(company.id);
+          }),
+        getCurrentCompanyInterviewDetail: ({ actor, interviewId }) =>
+          resolveCurrentCompanyInterviewDetail({
+            actor,
+            interviewId,
+          }),
+        getCurrentCompanyInterviewCvDownloadUrl: ({ actor, interviewId }) =>
+          Effect.gen(function*() {
+            const detail = yield* resolveCurrentCompanyInterviewDetail({
+              actor,
+              interviewId,
+            });
+            const downloadUrl = yield* cvProfileRepository.getDownloadUrlForStudent({
+              studentId: detail.student.id,
+              cvProfileId: detail.cvProfile.id,
+            });
+
+            if (!downloadUrl) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            return downloadUrl;
           }),
         exportCurrentCompanyCompletedInterviews: ({ actor, includeCvFiles }) =>
           Effect.gen(function*() {
@@ -231,30 +287,40 @@ export class InterviewService extends ServiceMap.Service<
               contentsBase64: Buffer.from(contents, "utf8").toString("base64"),
             });
           }),
+        startInterview: ({ actor, recruiterId, presentationCode }) =>
+          Effect.gen(function*() {
+            const { company, recruiter, preview } = yield* resolveStartInterviewContext({
+              actor,
+              recruiterId,
+              presentationCode,
+            });
+
+            return yield* interviewRepository.createStarted({
+              companyId: company.id,
+              studentId: preview.student.id,
+              cvProfileId: preview.cvProfile.id,
+              recruiterName: recruiter.name,
+            });
+          }),
         completeInterview: ({
           actor,
-          recruiterId,
-          studentId,
-          cvProfileId,
+          interviewId,
           score,
           globalTagIds,
           companyTagLabels,
           notes,
         }) =>
           Effect.gen(function*() {
-            const { company, recruiter, student, selectedCvProfile } =
-              yield* resolveInterviewContext({
-                actor,
-                recruiterId,
-                studentId,
-                cvProfileId,
-              });
+            const companyActor = yield* requireCompanyActor(actor);
+            const company = yield* companyRepository.getByOwnerUserId(companyActor.id);
 
-            const completedInterview = yield* interviewRepository.createCompleted({
+            if (!company) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            const completedInterview = yield* interviewRepository.completeActive({
               companyId: company.id,
-              studentId: student.id,
-              cvProfileId: selectedCvProfile.id,
-              recruiterName: recruiter.name,
+              interviewId,
               score,
               globalTagIds: uniqueValues(globalTagIds),
               companyTagLabels: uniqueValues(companyTagLabels),
@@ -267,23 +333,26 @@ export class InterviewService extends ServiceMap.Service<
 
             return completedInterview;
           }),
-        cancelInterview: ({ actor, recruiterId, studentId, cvProfileId, notes }) =>
+        cancelInterview: ({ actor, interviewId, notes }) =>
           Effect.gen(function*() {
-            const { company, recruiter, student, selectedCvProfile } =
-              yield* resolveInterviewContext({
-                actor,
-                recruiterId,
-                studentId,
-                cvProfileId,
-              });
+            const companyActor = yield* requireCompanyActor(actor);
+            const company = yield* companyRepository.getByOwnerUserId(companyActor.id);
 
-            return yield* interviewRepository.createCancelled({
+            if (!company) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            const cancelledInterview = yield* interviewRepository.cancelActive({
               companyId: company.id,
-              studentId: student.id,
-              cvProfileId: selectedCvProfile.id,
-              recruiterName: recruiter.name,
+              interviewId,
               notes,
             });
+
+            if (!cancelledInterview) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            return cancelledInterview;
           }),
       });
     }),
@@ -291,6 +360,5 @@ export class InterviewService extends ServiceMap.Service<
     Layer.provide(CompanyRepository.layer),
     Layer.provideMerge(CvProfileRepository.layer),
     Layer.provideMerge(InterviewRepository.layer),
-    Layer.provideMerge(StudentRepository.layer),
   );
 }

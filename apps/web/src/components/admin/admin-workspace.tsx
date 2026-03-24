@@ -33,6 +33,7 @@ import {
   TableRow,
 } from "@project/ui/components/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@project/ui/components/tabs";
+import { useNavigate } from "@tanstack/react-router";
 import type {
   AdminAccessLedgerEntry,
   AdminCompanyLedgerEntry,
@@ -62,12 +63,10 @@ import {
   startTransition,
   useDeferredValue,
   useEffect,
-  useEffectEvent,
   useState,
 } from "react";
 
 import { authClient } from "@/lib/auth-client";
-import { getRoleHomePath } from "@/lib/auth-routing";
 import { adminWorkspaceAtoms, adminWorkspaceReactivity } from "@/lib/admin-atoms";
 import {
   buildVenueMapRoomRows,
@@ -217,7 +216,7 @@ function FailureCard(props: {
 }
 
 export function AdminWorkspace(): React.ReactElement {
-  const session = authClient.useSession();
+  const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
@@ -294,33 +293,12 @@ export function AdminWorkspace(): React.ReactElement {
     mode: "promise",
   });
 
-  const redirectTo = useEffectEvent((role: UserRoleValue | undefined | null) => {
-    window.location.replace(role ? getRoleHomePath(role) : "/");
-  });
-
-  const currentRole = (session.data?.user as { role?: UserRoleValue } | undefined)?.role;
-
-  useEffect(() => {
-    if (session.isPending) {
-      return;
-    }
-
-    if (!currentRole) {
-      redirectTo(null);
-      return;
-    }
-
-    if (currentRole !== "admin") {
-      redirectTo(currentRole);
-    }
-  }, [currentRole, redirectTo, session.isPending]);
-
   const handleSignOut = async () => {
     setIsSigningOut(true);
 
     try {
       await authClient.signOut();
-      redirectTo(null);
+      await navigate({ replace: true, to: "/" });
     } finally {
       setIsSigningOut(false);
     }
@@ -1848,7 +1826,7 @@ export function AdminWorkspace(): React.ReactElement {
                                 </div>
                                 <p className="text-sm text-muted-foreground">
                                   Student: {entry.student.firstName} {entry.student.lastName} ·{" "}
-                                  {entry.student.course}
+                                  {entry.student.academicYear} · {entry.student.major}
                                 </p>
                               </div>
                               <div className="space-y-1 text-sm text-muted-foreground">

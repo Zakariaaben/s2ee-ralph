@@ -11,7 +11,11 @@ export class UpsertStudentOnboardingInput extends Schema.Class<UpsertStudentOnbo
 )({
   firstName: RequiredText,
   lastName: RequiredText,
-  course: RequiredText,
+  phoneNumber: RequiredText,
+  academicYear: RequiredText,
+  major: RequiredText,
+  institution: RequiredText,
+  image: Schema.NullOr(RequiredText),
 }) {}
 
 export class ResolveStudentQrIdentityInput extends Schema.Class<ResolveStudentQrIdentityInput>(

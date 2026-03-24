@@ -48,6 +48,26 @@ describe("cv profile rpc input schemas", () => {
     ).toThrow();
   });
 
+  it("rejects non-pdf file names and content types", () => {
+    expect(() =>
+      Schema.decodeUnknownSync(CreateStudentCvProfileInput)({
+        profileTypeId: "software-engineering",
+        fileName: "ada-software.docx",
+        contentType: "application/pdf",
+        contentsBase64: "Zm9v",
+      })
+    ).toThrow();
+
+    expect(() =>
+      Schema.decodeUnknownSync(CreateStudentCvProfileInput)({
+        profileTypeId: "software-engineering",
+        fileName: "ada-software.pdf",
+        contentType: "application/msword",
+        contentsBase64: "Zm9v",
+      })
+    ).toThrow();
+  });
+
   it("rejects blank or malformed base64 file contents", () => {
     expect(() =>
       Schema.decodeUnknownSync(CreateStudentCvProfileInput)({

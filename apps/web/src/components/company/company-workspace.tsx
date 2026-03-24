@@ -2,120 +2,79 @@
 
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
-import { Badge } from "@project/ui/components/badge";
+import { Alert, AlertDescription, AlertTitle } from "@project/ui/components/alert";
 import { Button } from "@project/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@project/ui/components/card";
 import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@project/ui/components/empty";
+  Drawer,
+  DrawerClose,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerPanel,
+  DrawerPopup,
+  DrawerTitle,
+} from "@project/ui/components/drawer";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@project/ui/components/input-otp";
 import { Input } from "@project/ui/components/input";
 import { Skeleton } from "@project/ui/components/skeleton";
 import type {
-  CompanyCompletedInterviewLedgerEntry,
-  Interview,
+  PresentedCvProfilePreview,
   Recruiter,
-  UserRoleValue,
 } from "@project/domain";
+import QrScanner from "qr-scanner";
+import qrScannerWorkerUrl from "qr-scanner/qr-scanner-worker.min.js?url";
+import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowRightIcon,
-  BriefcaseBusinessIcon,
+  CameraIcon,
   CircleAlertIcon,
-  ClipboardListIcon,
   LogOutIcon,
-  RefreshCwIcon,
-  SparklesIcon,
-  UsersRoundIcon,
+  MenuIcon,
+  QrCodeIcon,
+  ScanLineIcon,
+  Settings2Icon,
 } from "lucide-react";
 import type React from "react";
 import {
   startTransition,
+  useCallback,
   useEffect,
-  useEffectEvent,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 
 import { authClient } from "@/lib/auth-client";
+import { companyWorkspaceAtoms, companyWorkspaceReactivity } from "@/lib/company-atoms";
 import {
-  companyWorkspaceAtoms,
-  companyWorkspaceReactivity,
-} from "@/lib/company-atoms";
-import { CompanyInterviewStartPanel } from "@/components/company/company-interview-start-panel";
-import { CompanyInterviewExecutionPanel } from "@/components/company/company-interview-execution-panel";
-import {
-  describeInterviewNotes,
-  type CompanyInterviewDraft,
-} from "@/lib/company-interview-execution";
-import {
-  selectRecentCompletedInterviews,
-  summarizeCompanyWorkspace,
-} from "@/lib/company-workspace";
-import { getRoleHomePath } from "@/lib/auth-routing";
-
-const formatMutationError = (error: unknown): string => {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
-  }
-
-  return "The workspace update did not complete. Refresh the surface and try again.";
-};
-
-const averageScoreLabel = (value: number | null): string =>
-  value == null ? "No scored interviews yet" : `${value.toFixed(1)} / 5`;
-
-const describeInterview = (interview: Interview): string => {
-  const tags = interview.globalTags.length + interview.companyTags.length;
-  const hasNotes = interview.notes.trim().length > 0;
-
-  if (interview.status === "cancelled") {
-    if (tags === 0 && !hasNotes) {
-      return "Cancelled before scoring";
-    }
-
-    const details = [
-      tags === 0 ? null : `${tags} tags captured`,
-      hasNotes ? "notes captured" : null,
-    ].filter((value) => value != null);
-
-    return `Cancelled with ${details.join(" and ")}`;
-  }
-
-  if (interview.score == null) {
-    if (tags === 0 && !hasNotes) {
-      return "Awaiting scoring";
-    }
-
-    const details = [
-      tags === 0 ? null : `${tags} tags captured`,
-      hasNotes ? "notes captured" : null,
-    ].filter((value) => value != null);
-
-    return details.join(" and ");
-  }
-
-  if (tags === 0 && !hasNotes) {
-    return `Scored ${interview.score} / 5`;
-  }
-
-  const details = [
-    tags === 0 ? null : `${tags} tags`,
-    hasNotes ? "notes captured" : null,
-  ].filter((value) => value != null);
-
-  return `${interview.score} / 5 with ${details.join(" and ")}`;
-};
+  canConfirmInterviewStart,
+  companyPreferredRecruiterStorageKey,
+  normalizeStudentQrIdentityInput,
+  resolveInterviewStartRecruiterId,
+  resolvePreferredRecruiter,
+} from "@/lib/company-interview-start";
 
 type AsyncPanelState<Value> =
   | { readonly kind: "loading" }
   | { readonly kind: "failure"; readonly message: string }
   | { readonly kind: "success"; readonly value: Value };
 
+type SessionLike = {
+  readonly user?: {
+    readonly name?: string | null;
+  } | null;
+};
+
+const companySetupDrawerStorageKey = "company:setup-drawer-dismissed:v1";
+
+QrScanner.WORKER_PATH = qrScannerWorkerUrl;
+
 const toAsyncPanelState = <Value,>(
   result: AsyncResult.AsyncResult<Value, unknown>,
+  failureMessage: string,
 ): AsyncPanelState<Value> => {
   if (AsyncResult.isInitial(result)) {
     return { kind: "loading" };
@@ -124,7 +83,7 @@ const toAsyncPanelState = <Value,>(
   if (AsyncResult.isFailure(result)) {
     return {
       kind: "failure",
-      message: "This panel could not load from the RPC contract.",
+      message: failureMessage,
     };
   }
 
@@ -134,695 +93,768 @@ const toAsyncPanelState = <Value,>(
   };
 };
 
+const formatMutationError = (error: unknown): string => {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return "The update did not complete. Refresh and try again.";
+};
+
 export function CompanyWorkspace(): React.ReactElement {
-  const session = authClient.useSession();
+  const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [companyNameDraft, setCompanyNameDraft] = useState("");
   const [newRecruiterName, setNewRecruiterName] = useState("");
   const [editingRecruiterId, setEditingRecruiterId] = useState<Recruiter["id"] | null>(null);
   const [editingRecruiterName, setEditingRecruiterName] = useState("");
-  const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
-  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
-  const [stagedInterview, setStagedInterview] = useState<CompanyInterviewDraft | null>(null);
+  const [submittedCode, setSubmittedCode] = useState<string | null>(null);
+  const [codeDraft, setCodeDraft] = useState("");
+  const [preferredRecruiterId, setPreferredRecruiterId] = useState<Recruiter["id"] | null>(null);
+  const [selectedRecruiterId, setSelectedRecruiterId] = useState<Recruiter["id"] | null>(null);
+  const [accountName, setAccountName] = useState<string>("Company account");
+  const [pageMessage, setPageMessage] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [isStartingInterview, setIsStartingInterview] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const currentCompanyResult = useAtomValue(companyWorkspaceAtoms.currentCompany);
-  const activeInterviewsResult = useAtomValue(companyWorkspaceAtoms.activeInterviews);
-  const completedInterviewsResult = useAtomValue(companyWorkspaceAtoms.completedInterviews);
-
   const refreshCompany = useAtomRefresh(companyWorkspaceAtoms.currentCompany);
-  const refreshActiveInterviews = useAtomRefresh(companyWorkspaceAtoms.activeInterviews);
-  const refreshCompletedInterviews = useAtomRefresh(companyWorkspaceAtoms.completedInterviews);
-
-  const saveCompanyProfile = useAtomSet(companyWorkspaceAtoms.upsertCompanyProfile, {
-    mode: "promise",
-  });
   const addRecruiter = useAtomSet(companyWorkspaceAtoms.addRecruiter, {
     mode: "promise",
   });
   const renameRecruiter = useAtomSet(companyWorkspaceAtoms.renameRecruiter, {
     mode: "promise",
   });
-
-  const redirectTo = useEffectEvent((role: UserRoleValue | undefined | null) => {
-    window.location.replace(role ? getRoleHomePath(role) : "/");
+  const startInterview = useAtomSet(companyWorkspaceAtoms.startInterview, {
+    mode: "promise",
   });
 
-  const currentRole = (session.data?.user as { role?: UserRoleValue } | undefined)?.role;
+  const companyState = toAsyncPanelState(
+    currentCompanyResult,
+    "The company setup could not be loaded.",
+  );
+  const company = companyState.kind === "success" ? companyState.value : null;
+  const recruiters = company?.recruiters ?? [];
+  const selectedRecruiter =
+    recruiters.find((recruiter) => recruiter.id === selectedRecruiterId) ?? null;
+  const companyLabel = company?.name ?? accountName;
 
   useEffect(() => {
-    if (session.isPending) {
+    void authClient.getSession().then((session) => {
+      const name =
+        (session.data as SessionLike | null)?.user?.name?.trim() ?? "";
+
+      if (name.length > 0) {
+        setAccountName(name);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
       return;
     }
 
-    if (!currentRole) {
-      redirectTo(null);
-      return;
-    }
+    setPreferredRecruiterId(
+      (window.localStorage.getItem(companyPreferredRecruiterStorageKey) as Recruiter["id"] | null),
+    );
 
-    if (currentRole !== "company") {
-      redirectTo(currentRole);
+    if (window.localStorage.getItem(companySetupDrawerStorageKey) !== "dismissed") {
+      setIsDrawerOpen(true);
     }
-  }, [currentRole, redirectTo, session.isPending]);
+  }, []);
+
+  useEffect(() => {
+    const recruiterId = resolveInterviewStartRecruiterId({
+      recruiters,
+      preferredRecruiterId,
+      selectedRecruiterId,
+    });
+
+    if (recruiterId !== selectedRecruiterId) {
+      setSelectedRecruiterId(recruiterId);
+    }
+  }, [preferredRecruiterId, recruiters, selectedRecruiterId]);
+
+  const rememberRecruiter = (recruiterId: Recruiter["id"]) => {
+    startTransition(() => {
+      setSelectedRecruiterId(recruiterId);
+      setPreferredRecruiterId(recruiterId);
+      setPageError(null);
+    });
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(companyPreferredRecruiterStorageKey, recruiterId);
+    }
+  };
+
+  const handleDrawerOpenChange = (open: boolean) => {
+    setIsDrawerOpen(open);
+
+    if (!open && typeof window !== "undefined") {
+      window.localStorage.setItem(companySetupDrawerStorageKey, "dismissed");
+    }
+  };
+
+  const resetCandidate = () => {
+    setSubmittedCode(null);
+    setCodeDraft("");
+    setPageError(null);
+    setPageMessage(null);
+  };
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
 
     try {
       await authClient.signOut();
-      redirectTo(null);
+      await navigate({ replace: true, to: "/" });
     } finally {
       setIsSigningOut(false);
     }
   };
 
-  const companyState = toAsyncPanelState(currentCompanyResult);
-  const activeInterviewsState = toAsyncPanelState(activeInterviewsResult);
-  const completedInterviewsState = toAsyncPanelState(completedInterviewsResult);
-
-  const company = companyState.kind === "success" ? companyState.value : null;
-  const activeInterviews =
-    activeInterviewsState.kind === "success" ? activeInterviewsState.value : [];
-  const completedInterviews =
-    completedInterviewsState.kind === "success" ? completedInterviewsState.value : [];
-
-  useEffect(() => {
-    if (company != null) {
-      setCompanyNameDraft(company.name);
-      return;
-    }
-
-    setCompanyNameDraft("");
-  }, [company]);
-
-  const summary = summarizeCompanyWorkspace({
-    company,
-    activeInterviews,
-    completedInterviews,
-  });
-
-  const recentCompleted = selectRecentCompletedInterviews(completedInterviews);
-
-  const refreshWorkspace = () => {
-    refreshCompany();
-    refreshActiveInterviews();
-    refreshCompletedInterviews();
-  };
-
-  const submitCompanyName = async (event: React.FormEvent<HTMLFormElement>) => {
+  const submitRecruiter = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const name = companyNameDraft.trim();
-
-    if (name.length === 0) {
-      setWorkspaceError("Company name cannot be blank.");
+    if (company == null) {
+      setPageError("This account has not been linked to a company by admin yet.");
       return;
     }
-
-    setWorkspaceError(null);
-    setWorkspaceMessage(null);
-
-    try {
-      await saveCompanyProfile({
-        payload: { name },
-        reactivityKeys: companyWorkspaceReactivity.currentCompany,
-      });
-      startTransition(() => {
-        setWorkspaceMessage(company == null ? "Company profile created." : "Company profile updated.");
-      });
-    } catch (error) {
-      setWorkspaceError(formatMutationError(error));
-    }
-  };
-
-  const submitNewRecruiter = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
 
     const name = newRecruiterName.trim();
 
     if (name.length === 0) {
-      setWorkspaceError("Recruiter name cannot be blank.");
+      setPageError("Recruiter name cannot be blank.");
       return;
     }
 
-    setWorkspaceError(null);
-    setWorkspaceMessage(null);
+    setPageError(null);
+    setPageMessage(null);
 
     try {
       await addRecruiter({
         payload: { name },
         reactivityKeys: companyWorkspaceReactivity.currentCompany,
       });
-      startTransition(() => {
-        setNewRecruiterName("");
-        setWorkspaceMessage(`Recruiter ${name} added.`);
-      });
+      setNewRecruiterName("");
+      setPageMessage(`Recruiter ${name} added.`);
+      refreshCompany();
     } catch (error) {
-      setWorkspaceError(formatMutationError(error));
+      setPageError(formatMutationError(error));
     }
-  };
-
-  const startRecruiterEdit = (recruiter: Recruiter) => {
-    startTransition(() => {
-      setEditingRecruiterId(recruiter.id);
-      setEditingRecruiterName(recruiter.name);
-      setWorkspaceError(null);
-      setWorkspaceMessage(null);
-    });
   };
 
   const submitRecruiterRename = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (editingRecruiterId == null) {
+    if (company == null || editingRecruiterId == null) {
       return;
     }
 
     const name = editingRecruiterName.trim();
 
     if (name.length === 0) {
-      setWorkspaceError("Recruiter name cannot be blank.");
+      setPageError("Recruiter name cannot be blank.");
       return;
     }
 
-    setWorkspaceError(null);
-    setWorkspaceMessage(null);
+    setPageError(null);
+    setPageMessage(null);
 
     try {
       await renameRecruiter({
-        payload: {
-          recruiterId: editingRecruiterId,
-          name,
-        },
+        payload: { recruiterId: editingRecruiterId, name },
         reactivityKeys: companyWorkspaceReactivity.currentCompany,
       });
-      startTransition(() => {
-        setEditingRecruiterId(null);
-        setEditingRecruiterName("");
-        setWorkspaceMessage(`Recruiter renamed to ${name}.`);
+      setEditingRecruiterId(null);
+      setEditingRecruiterName("");
+      setPageMessage("Recruiter updated.");
+      refreshCompany();
+    } catch (error) {
+      setPageError(formatMutationError(error));
+    }
+  };
+
+  const submitCandidateCode = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const normalizedCode = normalizeStudentQrIdentityInput(codeDraft);
+
+    if (normalizedCode.length === 0) {
+      setPageError("Scan or enter a 6-character CV code first.");
+      return;
+    }
+
+    setPageError(null);
+    setPageMessage(null);
+    setSubmittedCode(normalizedCode);
+    setCodeDraft(normalizedCode);
+  };
+
+  const applyDetectedCode = useCallback((value: string) => {
+    const normalizedCode = normalizeStudentQrIdentityInput(value);
+
+    if (normalizedCode.length === 0) {
+      return;
+    }
+
+    setPageError(null);
+    setPageMessage(null);
+    setCodeDraft(normalizedCode);
+    setSubmittedCode(normalizedCode);
+  }, []);
+
+  const beginInterview = async (candidatePreview: PresentedCvProfilePreview) => {
+    if (company == null) {
+      setPageError("This account has not been linked to a company by admin yet.");
+      return;
+    }
+
+    if (!selectedRecruiter) {
+      setPageError("Choose a recruiter in the drawer before starting the interview.");
+      return;
+    }
+
+    setIsStartingInterview(true);
+    setPageError(null);
+    setPageMessage(null);
+
+    try {
+      const interview = await startInterview({
+        payload: {
+          recruiterId: selectedRecruiter.id,
+          presentationIdentity: candidatePreview.cvProfile.presentationCode,
+        },
+        reactivityKeys: {
+          activeInterviews: companyWorkspaceReactivity.activeInterviews,
+          completedInterviews: companyWorkspaceReactivity.completedInterviews,
+        },
+      });
+
+      await navigate({
+        to: "/company/interviews/$interviewId",
+        params: { interviewId: interview.id },
       });
     } catch (error) {
-      setWorkspaceError(formatMutationError(error));
+      setPageError(formatMutationError(error));
+    } finally {
+      setIsStartingInterview(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-background px-5 py-6 text-foreground sm:px-8 sm:py-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="relative overflow-hidden rounded-[2rem] border border-border/70 bg-card/92 p-6 shadow-xs/5 sm:p-8">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,_hsl(var(--warning)/0.18),_transparent_32%),radial-gradient(circle_at_bottom_right,_hsl(var(--primary)/0.12),_transparent_28%),linear-gradient(135deg,_hsl(var(--card)),_transparent_60%)]"
-          />
+    <main className="min-h-[100dvh] bg-white font-mono text-[color:var(--s2ee-soft-foreground)]">
+      <Drawer onOpenChange={handleDrawerOpenChange} open={isDrawerOpen} position="right">
+        <DrawerPopup className="rounded-none" position="right" showCloseButton>
+          <DrawerHeader className="border-b border-[var(--s2ee-border)]">
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
+                Company setup
+              </p>
+              <DrawerTitle className="font-mono text-2xl font-black tracking-[-0.06em]">
+                {companyLabel}
+              </DrawerTitle>
+              <DrawerDescription className="font-mono text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                Keep recruiter selection and navigation here so the scan surface stays narrow.
+              </DrawerDescription>
+            </div>
+          </DrawerHeader>
 
-          <div className="relative flex flex-col gap-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-4">
-                <Badge variant="warning" size="lg" className="rounded-full px-4">
-                  Company workspace
-                </Badge>
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="font-heading text-4xl tracking-tight sm:text-5xl">
-                      {company?.name ?? "Recruiter operations"}
-                    </h1>
-                    <Badge variant="outline" size="lg" className="rounded-full px-4">
-                      /company
-                    </Badge>
+          <DrawerPanel className="grid gap-6 overflow-y-auto">
+            <div className="grid gap-2">
+              <Button
+                className="justify-start rounded-none"
+                onClick={() => navigate({ to: "/company" })}
+                type="button"
+                variant="outline"
+              >
+                <ScanLineIcon />
+                Scanner
+              </Button>
+              <Button
+                className="justify-start rounded-none"
+                onClick={() => navigate({ to: "/company/interviews" })}
+                type="button"
+                variant="outline"
+              >
+                <ArrowRightIcon />
+                Interviews
+              </Button>
+            </div>
+
+            {companyState.kind === "loading" ? (
+              <div className="grid gap-3">
+                <Skeleton className="h-20 rounded-none" />
+                <Skeleton className="h-20 rounded-none" />
+              </div>
+            ) : company == null ? (
+              <Alert variant="warning">
+                <CircleAlertIcon className="size-4" />
+                <AlertTitle>Company missing</AlertTitle>
+                <AlertDescription>
+                  This account has no provisioned company record yet. Admin needs to link it before
+                  recruiters can be managed here.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="grid gap-6">
+                <section className="grid gap-3">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
+                      Recruiter
+                    </p>
+                    <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                      The selected recruiter becomes the default for this device.
+                    </p>
                   </div>
-                  <p className="max-w-3xl text-muted-foreground text-sm sm:text-base">
-                    This route now demonstrates the app’s shared Effect Atom pattern: RPC-backed
-                    query atoms for workspace reads, RPC-backed mutation atoms for writes, and
-                    reactivity-key invalidation instead of bespoke local cache plumbing.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" onClick={refreshWorkspace}>
-                  Refresh workspace
-                  <RefreshCwIcon />
-                </Button>
-                <Button loading={isSigningOut} variant="outline" onClick={handleSignOut}>
-                  Sign out
-                  <LogOutIcon />
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <WorkspaceMetricCard
-                description="Recruiters attached to the signed-in company account."
-                icon={UsersRoundIcon}
-                label="Recruiter bench"
-                value={summary.recruiterCount.toString()}
-              />
-              <WorkspaceMetricCard
-                description="Interviews still active on the floor."
-                icon={SparklesIcon}
-                label="Active interviews"
-                value={summary.activeInterviewCount.toString()}
-              />
-              <WorkspaceMetricCard
-                description="Completed interview ledger entries available for export or review."
-                icon={ClipboardListIcon}
-                label="Completed ledger"
-                value={summary.completedInterviewCount.toString()}
-              />
-              <WorkspaceMetricCard
-                description={`${summary.distinctTagCount} distinct tags in play across the current ledger.`}
-                icon={BriefcaseBusinessIcon}
-                label="Average score"
-                value={averageScoreLabel(summary.averageCompletedScore)}
-              />
-            </div>
-
-            {(workspaceMessage != null || workspaceError != null) && (
-              <div className="flex flex-wrap gap-3">
-                {workspaceMessage != null && (
-                  <Badge variant="success" size="lg" className="rounded-full px-4">
-                    {workspaceMessage}
-                  </Badge>
-                )}
-                {workspaceError != null && (
-                  <Badge variant="error" size="lg" className="rounded-full px-4">
-                    {workspaceError}
-                  </Badge>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-
-        <CompanyInterviewStartPanel
-          company={company}
-          companyErrorMessage={companyState.kind === "failure" ? companyState.message : null}
-          companyStatus={
-            companyState.kind === "loading"
-              ? "loading"
-              : companyState.kind === "failure"
-                ? "failure"
-                : "ready"
-          }
-          onInterviewDraftChange={setStagedInterview}
-          startedInterview={stagedInterview}
-        />
-
-        <CompanyInterviewExecutionPanel
-          activeInterviews={activeInterviews}
-          completedInterviews={completedInterviews}
-          draft={stagedInterview}
-          onClearDraft={() => setStagedInterview(null)}
-        />
-
-        <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <Card className="overflow-hidden border-border/70">
-            <CardHeader className="gap-3 border-b border-border/60 bg-muted/36">
-              <CardTitle>Company profile</CardTitle>
-              <CardDescription>
-                The profile form is backed by a mutation atom and invalidates only the current-company query.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-6">
-              {companyState.kind === "loading" && <ProfileSkeleton />}
-              {companyState.kind === "failure" && (
-                <WorkspacePanelFailure
-                  message={companyState.message}
-                  onRefresh={refreshCompany}
-                />
-              )}
-              {companyState.kind === "success" && (
-                <form className="grid gap-4" onSubmit={submitCompanyName}>
                   <div className="grid gap-2">
-                    <label className="font-medium text-sm" htmlFor="company-name">
-                      Company name
-                    </label>
-                    <Input
-                      id="company-name"
-                      value={companyNameDraft}
-                      onChange={(event) => setCompanyNameDraft(event.currentTarget.value)}
-                      placeholder="North Ridge Labs"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Button type="submit">
-                      {company == null ? "Create profile" : "Save profile"}
-                      <ArrowRightIcon />
-                    </Button>
-                    {company != null && (
-                      <Badge variant="outline" size="lg" className="rounded-full px-4">
-                        {company.recruiters.length} recruiters attached
-                      </Badge>
+                    {recruiters.length === 0 ? (
+                      <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                        No recruiter is available yet.
+                      </p>
+                    ) : (
+                      recruiters.map((recruiter) =>
+                        editingRecruiterId === recruiter.id ? (
+                          <form className="grid gap-2 border border-[var(--s2ee-border)] p-3" key={recruiter.id} onSubmit={submitRecruiterRename}>
+                            <Input
+                              className="rounded-none border-0 border-b border-[var(--s2ee-border)] bg-transparent px-0 py-2 text-sm shadow-none focus-visible:ring-0"
+                              onChange={(event) => {
+                                const { value } = event.currentTarget;
+                                setEditingRecruiterName(value);
+                              }}
+                              value={editingRecruiterName}
+                            />
+                            <div className="flex gap-2">
+                              <Button className="flex-1 rounded-none" type="submit">
+                                Save
+                              </Button>
+                              <Button
+                                className="flex-1 rounded-none"
+                                onClick={() => {
+                                  setEditingRecruiterId(null);
+                                  setEditingRecruiterName("");
+                                }}
+                                type="button"
+                                variant="outline"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </form>
+                        ) : (
+                          <div className="grid gap-3 border border-[var(--s2ee-border)] p-3" key={recruiter.id}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <p className="text-sm font-bold uppercase tracking-[0.16em]">
+                                  {recruiter.name}
+                                </p>
+                                <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                                  {resolvePreferredRecruiter(recruiters, preferredRecruiterId)?.id === recruiter.id
+                                    ? "Default on this device"
+                                    : "Available"}
+                                </p>
+                              </div>
+                              <button
+                                className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary"
+                                onClick={() => {
+                                  setEditingRecruiterId(recruiter.id);
+                                  setEditingRecruiterName(recruiter.name);
+                                }}
+                                type="button"
+                              >
+                                Rename
+                              </button>
+                            </div>
+                            <Button
+                              className="rounded-none"
+                              onClick={() => rememberRecruiter(recruiter.id)}
+                              type="button"
+                              variant={selectedRecruiterId === recruiter.id ? "default" : "outline"}
+                            >
+                              {selectedRecruiterId === recruiter.id ? "Selected" : "Select"}
+                            </Button>
+                          </div>
+                        ),
+                      )
                     )}
                   </div>
-                </form>
-              )}
-            </CardContent>
-          </Card>
+                </section>
 
-          <Card className="overflow-hidden border-border/70">
-            <CardHeader className="gap-3 border-b border-border/60 bg-muted/36">
-              <CardTitle>Recruiter roster</CardTitle>
-              <CardDescription>
-                Recruiter add and rename flows use the same mutation-atom pattern the rest of the app can follow.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-5 p-6">
-              {companyState.kind === "loading" && <RecruiterSkeleton />}
-              {companyState.kind === "failure" && (
-                <WorkspacePanelFailure
-                  message={companyState.message}
-                  onRefresh={refreshCompany}
-                />
-              )}
-              {companyState.kind === "success" && (
-                <>
-                  {company == null ? (
-                    <Empty className="rounded-[1.5rem] border border-dashed border-border/70 bg-background/72 py-10">
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <BriefcaseBusinessIcon />
-                        </EmptyMedia>
-                        <EmptyTitle>Create the company profile first</EmptyTitle>
-                        <EmptyDescription>
-                          The recruiter roster becomes writable as soon as the current company profile exists.
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
-                  ) : (
-                    <>
-                      <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={submitNewRecruiter}>
-                        <Input
-                          value={newRecruiterName}
-                          onChange={(event) => setNewRecruiterName(event.currentTarget.value)}
-                          placeholder="Add a recruiter"
-                        />
-                        <Button type="submit">Add recruiter</Button>
-                      </form>
+                <section className="grid gap-3 border-t border-[var(--s2ee-border)] pt-6">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
+                      Add recruiter
+                    </p>
+                    <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                      Recruiters are the only mutable setup item here.
+                    </p>
+                  </div>
+                  <form className="grid gap-3" onSubmit={submitRecruiter}>
+                    <Input
+                      className="rounded-none border-0 border-b border-[var(--s2ee-border)] bg-transparent px-0 py-2 text-sm shadow-none focus-visible:ring-0"
+                      onChange={(event) => {
+                        const { value } = event.currentTarget;
+                        setNewRecruiterName(value);
+                      }}
+                      placeholder="Recruiter name"
+                      value={newRecruiterName}
+                    />
+                    <Button className="rounded-none" type="submit">
+                      Add recruiter
+                    </Button>
+                  </form>
+                </section>
+              </div>
+            )}
 
-                      {company.recruiters.length ? (
-                    <div className="grid gap-3">
-                      {company.recruiters.map((recruiter) => {
-                        const isEditing = editingRecruiterId === recruiter.id;
+            <div className="grid gap-2 border-t border-[var(--s2ee-border)] pt-6">
+              <DrawerClose render={<Button className="rounded-none justify-start" variant="outline" />}>
+                <Settings2Icon />
+                Close
+              </DrawerClose>
+              <Button
+                className="justify-start rounded-none"
+                loading={isSigningOut}
+                onClick={handleSignOut}
+                type="button"
+                variant="outline"
+              >
+                <LogOutIcon />
+                Sign out
+              </Button>
+            </div>
+          </DrawerPanel>
+        </DrawerPopup>
+      </Drawer>
 
-                        return (
-                          <Card
-                            key={recruiter.id}
-                            className="border-border/60 bg-background/72"
-                          >
-                            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                              {isEditing ? (
-                                <form
-                                  className="flex flex-1 flex-col gap-3 sm:flex-row"
-                                  onSubmit={submitRecruiterRename}
-                                >
-                                  <Input
-                                    value={editingRecruiterName}
-                                    onChange={(event) =>
-                                      setEditingRecruiterName(event.currentTarget.value)
-                                    }
-                                    placeholder="Recruiter name"
-                                  />
-                                  <div className="flex gap-2">
-                                    <Button size="sm" type="submit">
-                                      Save
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => setEditingRecruiterId(null)}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </form>
-                              ) : (
-                                <>
-                                  <div className="space-y-1">
-                                    <p className="font-medium text-sm">{recruiter.name}</p>
-                                    <p className="text-muted-foreground text-xs">
-                                      Recruiter id: {recruiter.id}
-                                    </p>
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => startRecruiterEdit(recruiter)}
-                                  >
-                                    Rename
-                                  </Button>
-                                </>
-                              )}
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                      ) : (
-                        <Empty className="rounded-[1.5rem] border border-dashed border-border/70 bg-background/72 py-10">
-                          <EmptyHeader>
-                            <EmptyMedia variant="icon">
-                              <UsersRoundIcon />
-                            </EmptyMedia>
-                            <EmptyTitle>No recruiters yet</EmptyTitle>
-                            <EmptyDescription>
-                              This company account is live, but no recruiters have been added to the working roster.
-                            </EmptyDescription>
-                          </EmptyHeader>
-                        </Empty>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+      <div className="mx-auto grid max-w-[1600px] gap-8 px-5 py-6 sm:px-8 sm:py-8">
+        <header className="flex flex-col gap-4 border-b border-[var(--s2ee-border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em]">
+              <span className="text-primary">S2EE Company</span>
+              <span className="text-[color:var(--s2ee-muted-foreground)]">{companyLabel}</span>
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-[clamp(2rem,4vw,3.4rem)] font-black tracking-[-0.08em]">
+                Interview scanner
+              </h1>
+              <p className="max-w-3xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                Scan the presented QR code or type the 6-character code. Recruiter selection and
+                navigation live in the drawer, not in the main scan surface.
+              </p>
+            </div>
+          </div>
 
-        <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          <Card className="overflow-hidden border-border/70">
-            <CardHeader className="gap-3 border-b border-border/60 bg-muted/36">
-              <CardTitle>Active interview queue</CardTitle>
-              <CardDescription>
-                Read-only query atom showing current company interview activity.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 p-6">
-              {activeInterviewsState.kind === "loading" && <InterviewListSkeleton />}
-              {activeInterviewsState.kind === "failure" && (
-                <WorkspacePanelFailure
-                  message={activeInterviewsState.message}
-                  onRefresh={refreshActiveInterviews}
-                />
-              )}
-              {activeInterviewsState.kind === "success" &&
-                (activeInterviews.length > 0 ? (
-                  activeInterviews.map((interview) => (
-                    <InterviewCard key={interview.id} interview={interview} />
-                  ))
-                ) : (
-                  <Empty className="rounded-[1.5rem] border border-dashed border-border/70 bg-background/72 py-10">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <SparklesIcon />
-                      </EmptyMedia>
-                      <EmptyTitle>No active interviews</EmptyTitle>
-                      <EmptyDescription>
-                        The queue is clear. Persisted interview activity will appear here as soon as interview execution moves beyond start confirmation.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                ))}
-            </CardContent>
-          </Card>
+          <div className="flex flex-wrap gap-2">
+            <Button className="rounded-none" onClick={() => setIsDrawerOpen(true)} type="button" variant="outline">
+              <MenuIcon />
+              Menu
+            </Button>
+            <Button className="rounded-none" onClick={() => navigate({ to: "/company/interviews" })} type="button" variant="outline">
+              <ArrowRightIcon />
+              Interviews
+            </Button>
+          </div>
+        </header>
 
-          <Card className="overflow-hidden border-border/70">
-            <CardHeader className="gap-3 border-b border-border/60 bg-muted/36">
-              <CardTitle>Completed interview ledger</CardTitle>
-              <CardDescription>
-                Recent entries from the completed ledger query, reversed locally because the repository returns oldest-first history.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 p-6">
-              {completedInterviewsState.kind === "loading" && <CompletedListSkeleton />}
-              {completedInterviewsState.kind === "failure" && (
-                <WorkspacePanelFailure
-                  message={completedInterviewsState.message}
-                  onRefresh={refreshCompletedInterviews}
-                />
-              )}
-              {completedInterviewsState.kind === "success" &&
-                (recentCompleted.length > 0 ? (
-                  recentCompleted.map((entry) => (
-                    <CompletedInterviewCard key={entry.interview.id} entry={entry} />
-                  ))
-                ) : (
-                  <Empty className="rounded-[1.5rem] border border-dashed border-border/70 bg-background/72 py-10">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <ClipboardListIcon />
-                      </EmptyMedia>
-                      <EmptyTitle>No completed interviews yet</EmptyTitle>
-                      <EmptyDescription>
-                        Completed interviews will appear here as soon as the interview execution workflow starts persisting results.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                ))}
-            </CardContent>
-          </Card>
+        {pageMessage != null ? (
+          <Alert>
+            <AlertTitle>Updated</AlertTitle>
+            <AlertDescription>{pageMessage}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {pageError != null ? (
+          <Alert variant="error">
+            <CircleAlertIcon className="size-4" />
+            <AlertTitle>Update failed</AlertTitle>
+            <AlertDescription>{pageError}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <div className="grid border border-[var(--s2ee-border)] lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]">
+          <section className="grid gap-4 border-b border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 lg:border-r lg:border-b-0">
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
+                Camera
+              </p>
+              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                The scanner starts the camera automatically when supported, and falls back to manual
+                code entry when it is not.
+              </p>
+            </div>
+            <CameraScanner
+              onDetected={applyDetectedCode}
+            />
+            <form className="grid gap-3 border-t border-[var(--s2ee-border)] pt-4" onSubmit={submitCandidateCode}>
+              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                Manual code
+              </label>
+              <InputOTP
+                containerClassName="justify-center"
+                inputMode="text"
+                maxLength={6}
+                onChange={(value) => {
+                  setCodeDraft(value.toUpperCase());
+                }}
+                pattern="[A-Za-z0-9]*"
+                value={codeDraft}
+              >
+                <InputOTPGroup size="lg">
+                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={0} />
+                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={1} />
+                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={2} />
+                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={3} />
+                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={4} />
+                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button className="rounded-none" type="submit">
+                  Resolve candidate
+                </Button>
+                <Button className="rounded-none" onClick={resetCandidate} type="button" variant="outline">
+                  Clear
+                </Button>
+              </div>
+            </form>
+          </section>
+
+          <section className="grid gap-4 p-6">
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
+                Candidate preview
+              </p>
+              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                Resolve one presented CV, confirm the recruiter, then move into the interview route.
+              </p>
+            </div>
+
+            {submittedCode == null ? (
+              <EmptyPreview message="Awaiting QR scan or 6-character code." />
+            ) : (
+              <CandidatePreviewPanel
+                companyMissing={company == null}
+                isStartingInterview={isStartingInterview}
+                onStartInterview={beginInterview}
+                presentationCode={submittedCode}
+                selectedRecruiter={selectedRecruiter}
+              />
+            )}
+          </section>
         </div>
       </div>
     </main>
   );
 }
 
-function WorkspaceMetricCard(props: {
-  readonly description: string;
-  readonly icon: typeof BriefcaseBusinessIcon;
+function CameraScanner(props: {
+  readonly onDetected: (value: string) => void;
+}): React.ReactElement {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const scannerRef = useRef<QrScanner | null>(null);
+  const [cameraState, setCameraState] = useState<"idle" | "ready" | "error" | "unsupported">("idle");
+  const [cameraMessage, setCameraMessage] = useState<string | null>(null);
+
+  const stopCamera = useCallback(() => {
+    scannerRef.current?.stop();
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    stopCamera();
+
+    if (
+      typeof window === "undefined" ||
+      typeof navigator === "undefined" ||
+      navigator.mediaDevices?.getUserMedia == null
+    ) {
+      setCameraState("unsupported");
+      setCameraMessage("Camera scanning is not available in this browser. Use the manual code field below.");
+      return;
+    }
+
+    try {
+      const video = videoRef.current;
+
+      if (video == null) {
+        setCameraState("error");
+        setCameraMessage("Camera preview could not be initialized.");
+        return;
+      }
+
+      const scanner = new QrScanner(video, (result) => {
+        stopCamera();
+        props.onDetected(result.data);
+      }, {
+        highlightCodeOutline: false,
+        highlightScanRegion: false,
+        onDecodeError: () => {
+          // ignore transient decode misses while scanning
+        },
+        preferredCamera: "environment",
+        returnDetailedScanResult: true,
+      });
+      scannerRef.current = scanner;
+      await scanner.start();
+
+      setCameraState("ready");
+      setCameraMessage(null);
+    } catch {
+      setCameraState("error");
+      setCameraMessage("Camera access was denied or unavailable. Use the manual code field below.");
+    }
+  }, [props, stopCamera]);
+
+  useEffect(() => {
+    void startCamera();
+
+    return () => {
+      stopCamera();
+      scannerRef.current?.destroy();
+      scannerRef.current = null;
+    };
+  }, [startCamera, stopCamera]);
+
+  return (
+    <div className="grid gap-3">
+      <div className="relative overflow-hidden border border-[var(--s2ee-border)] bg-white">
+        <video
+          className="aspect-[4/3] w-full object-cover"
+          muted
+          playsInline
+          ref={videoRef}
+        />
+        {cameraState !== "ready" ? (
+          <div className="absolute inset-0 grid place-items-center bg-[color:rgba(255,255,255,0.92)] p-6 text-center">
+            <div className="grid gap-3">
+              <div className="mx-auto flex size-14 items-center justify-center border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)]">
+                <CameraIcon className="size-6 text-primary" />
+              </div>
+              <p className="max-w-sm text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                {cameraMessage ?? "Starting camera…"}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="pointer-events-none absolute inset-x-6 inset-y-6 border border-primary/80" />
+        )}
+      </div>
+      <Button className="rounded-none" onClick={() => void startCamera()} type="button" variant="outline">
+        <QrCodeIcon />
+        Retry camera
+      </Button>
+    </div>
+  );
+}
+
+function CandidatePreviewPanel(props: {
+  readonly companyMissing: boolean;
+  readonly isStartingInterview: boolean;
+  readonly onStartInterview: (preview: PresentedCvProfilePreview) => Promise<void>;
+  readonly presentationCode: string;
+  readonly selectedRecruiter: Recruiter | null;
+}): React.ReactElement {
+  const previewAtom = useMemo(
+    () => companyWorkspaceAtoms.resolvePresentedCvProfile(props.presentationCode),
+    [props.presentationCode],
+  );
+  const previewResult = useAtomValue(previewAtom);
+  const previewState = toAsyncPanelState(
+    previewResult,
+    "That code did not resolve to a presented CV.",
+  );
+
+  if (previewState.kind === "loading") {
+    return (
+      <div className="grid gap-3">
+        <Skeleton className="h-14 rounded-none" />
+        <Skeleton className="h-40 rounded-none" />
+        <Skeleton className="h-14 rounded-none" />
+      </div>
+    );
+  }
+
+  if (previewState.kind === "failure") {
+    return (
+      <Alert variant="error">
+        <CircleAlertIcon className="size-4" />
+        <AlertTitle>Candidate unavailable</AlertTitle>
+        <AlertDescription>{previewState.message}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  const candidatePreview = previewState.value;
+  const canStartInterview =
+    !props.companyMissing &&
+    canConfirmInterviewStart({
+      preview: candidatePreview,
+      selectedRecruiterId: props.selectedRecruiter?.id ?? null,
+    });
+
+  return (
+    <div className="grid gap-4">
+      {props.companyMissing ? (
+        <Alert variant="warning">
+          <CircleAlertIcon className="size-4" />
+          <AlertTitle>Provisioning incomplete</AlertTitle>
+          <AlertDescription>
+            This account still needs its company record from admin before interviews can start.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="grid gap-4 border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-5">
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">Candidate</p>
+          <h3 className="text-2xl font-black tracking-[-0.06em]">
+            {candidatePreview.student.firstName} {candidatePreview.student.lastName}
+          </h3>
+          <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+            {candidatePreview.student.institution} · {candidatePreview.student.academicYear} ·{" "}
+            {candidatePreview.student.major}
+          </p>
+        </div>
+        <div className="grid gap-3 border-t border-[var(--s2ee-border)] pt-4 text-sm">
+          <DetailRow label="Presented code" value={candidatePreview.cvProfile.presentationCode} />
+          <DetailRow label="CV file" value={candidatePreview.cvProfile.fileName} />
+          <DetailRow label="Recruiter" value={props.selectedRecruiter?.name ?? "Select one in the drawer"} />
+        </div>
+      </div>
+
+      <Button
+        className="h-14 rounded-none text-base font-black uppercase tracking-[0.18em]"
+        disabled={!canStartInterview}
+        loading={props.isStartingInterview}
+        onClick={() => props.onStartInterview(candidatePreview)}
+        type="button"
+      >
+        Start interview
+        <ArrowRightIcon />
+      </Button>
+    </div>
+  );
+}
+
+function DetailRow(props: {
   readonly label: string;
   readonly value: string;
 }): React.ReactElement {
-  const Icon = props.icon;
-
   return (
-    <Card className="border-border/70 bg-background/72">
-      <CardContent className="grid gap-3 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <Badge variant="outline" size="lg" className="rounded-full px-4">
-            {props.label}
-          </Badge>
-          <div className="rounded-2xl border border-border/70 bg-card p-2.5">
-            <Icon className="size-4" />
-          </div>
-        </div>
-        <div className="space-y-1">
-          <p className="font-heading text-3xl tracking-tight">{props.value}</p>
-          <p className="text-muted-foreground text-xs leading-5">{props.description}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function InterviewCard({ interview }: { readonly interview: Interview }): React.ReactElement {
-  const notes = describeInterviewNotes(interview.notes);
-
-  return (
-    <Card className="border-border/60 bg-background/72">
-      <CardContent className="grid gap-3 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="font-medium text-sm">{interview.recruiterName}</p>
-            <p className="text-muted-foreground text-xs">Student {interview.studentId}</p>
-          </div>
-          <Badge variant="info" size="lg" className="rounded-full px-4">
-            {interview.status}
-          </Badge>
-        </div>
-        <p className="text-muted-foreground text-sm">{describeInterview(interview)}</p>
-        {notes != null && <p className="text-sm leading-6">{notes}</p>}
-      </CardContent>
-    </Card>
-  );
-}
-
-function CompletedInterviewCard({
-  entry,
-}: {
-  readonly entry: CompanyCompletedInterviewLedgerEntry;
-}): React.ReactElement {
-  const score = entry.interview.score;
-  const notes = describeInterviewNotes(entry.interview.notes);
-
-  return (
-    <Card className="border-border/60 bg-background/72">
-      <CardContent className="grid gap-3 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="font-medium text-sm">
-              {entry.student.firstName} {entry.student.lastName}
-            </p>
-            <p className="text-muted-foreground text-xs">{entry.cvProfile.fileName}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge
-              variant={score == null ? "outline" : "success"}
-              size="lg"
-              className="rounded-full px-4"
-            >
-              {score == null ? "No score" : `${score} / 5`}
-            </Badge>
-            <Badge variant="outline" size="lg" className="rounded-full px-4">
-              {entry.interview.recruiterName}
-            </Badge>
-          </div>
-        </div>
-        <p className="text-muted-foreground text-sm">{describeInterview(entry.interview)}</p>
-        {notes != null && <p className="text-sm leading-6">{notes}</p>}
-      </CardContent>
-    </Card>
-  );
-}
-
-function WorkspacePanelFailure(props: {
-  readonly message: string;
-  readonly onRefresh: () => void;
-}): React.ReactElement {
-  return (
-    <Empty className="rounded-[1.5rem] border border-dashed border-border/70 bg-background/72 py-10">
-      <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <CircleAlertIcon />
-        </EmptyMedia>
-        <EmptyTitle>Panel unavailable</EmptyTitle>
-        <EmptyDescription>{props.message}</EmptyDescription>
-      </EmptyHeader>
-      <EmptyContent>
-        <Button variant="outline" onClick={props.onRefresh}>
-          Retry panel
-          <RefreshCwIcon />
-        </Button>
-      </EmptyContent>
-    </Empty>
-  );
-}
-
-function ProfileSkeleton(): React.ReactElement {
-  return (
-    <div className="grid gap-4">
-      <Skeleton className="h-4 w-24" />
-      <Skeleton className="h-10 w-full rounded-lg" />
-      <Skeleton className="h-9 w-32 rounded-lg" />
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--s2ee-border)] pb-2 last:border-b-0 last:pb-0">
+      <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+        {props.label}
+      </span>
+      <span className="text-right text-sm font-bold uppercase tracking-[0.14em]">{props.value}</span>
     </div>
   );
 }
 
-function RecruiterSkeleton(): React.ReactElement {
+function EmptyPreview(props: { readonly message: string }): React.ReactElement {
   return (
-    <div className="grid gap-3">
-      <Skeleton className="h-10 w-full rounded-lg" />
-      <Skeleton className="h-20 w-full rounded-2xl" />
-      <Skeleton className="h-20 w-full rounded-2xl" />
-    </div>
-  );
-}
-
-function InterviewListSkeleton(): React.ReactElement {
-  return (
-    <div className="grid gap-3">
-      <Skeleton className="h-24 w-full rounded-2xl" />
-      <Skeleton className="h-24 w-full rounded-2xl" />
-    </div>
-  );
-}
-
-function CompletedListSkeleton(): React.ReactElement {
-  return (
-    <div className="grid gap-3">
-      <Skeleton className="h-28 w-full rounded-2xl" />
-      <Skeleton className="h-28 w-full rounded-2xl" />
-      <Skeleton className="h-28 w-full rounded-2xl" />
+    <div className="grid min-h-[320px] place-items-center border border-dashed border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 text-center">
+      <p className="max-w-sm text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">{props.message}</p>
     </div>
   );
 }

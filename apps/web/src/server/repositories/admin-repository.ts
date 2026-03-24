@@ -24,6 +24,7 @@ import {
   Room,
   Student,
   User,
+  encodeCvProfilePresentationCode,
   type UserRoleValue,
 } from "@project/domain";
 import { asc, eq, inArray } from "drizzle-orm";
@@ -56,7 +57,11 @@ const toStudent = (studentRow: typeof student.$inferSelect) =>
     id: studentRow.id as Student["id"],
     firstName: studentRow.firstName,
     lastName: studentRow.lastName,
-    course: studentRow.course,
+    phoneNumber: studentRow.phoneNumber,
+    academicYear: studentRow.academicYear,
+    major: studentRow.major,
+    institution: studentRow.institution,
+    image: null,
   });
 
 const toUser = (userRow: typeof user.$inferSelect) =>
@@ -75,6 +80,7 @@ const toCvProfile = (cvProfileRow: typeof cvProfile.$inferSelect) =>
   new CvProfile({
     id: cvProfileRow.id as CvProfile["id"],
     studentId: cvProfileRow.studentId as CvProfile["studentId"],
+    presentationCode: encodeCvProfilePresentationCode(cvProfileRow.id),
     profileType: new CvProfileType({
       id: cvProfileRow.profileTypeId as CvProfileType["id"],
       label: cvProfileRow.profileTypeLabel,

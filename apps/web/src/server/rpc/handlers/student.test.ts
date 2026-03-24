@@ -41,7 +41,7 @@ describeWithPostgres("student rpc", () => {
   });
 
   it.effect(
-    "student actors can create and read back their onboarding record and issue a QR identity after transport decoding",
+    "student actors can create, update, and read back onboarding including optional profile image state",
     () =>
       Effect.gen(function*() {
         const headers = yield* provisionSessionHeaders("student");
@@ -55,12 +55,20 @@ describeWithPostgres("student rpc", () => {
         const student = yield* client.upsertStudentOnboarding({
           firstName: "Ada",
           lastName: "Lovelace",
-          course: "Computer Science",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: "https://example.com/ada.png",
         }).pipe(RpcClient.withHeaders(headers));
 
         expect(student.firstName).toBe("Ada");
         expect(student.lastName).toBe("Lovelace");
-        expect(student.course).toBe("Computer Science");
+        expect(student.phoneNumber).toBe("+213 555 12 34");
+        expect(student.academicYear).toBe("5th year");
+        expect(student.major).toBe("Computer Science");
+        expect(student.institution).toBe("ESI");
+        expect(student.image).toBe("https://example.com/ada.png");
 
         const after = yield* client.currentStudent().pipe(
           RpcClient.withHeaders(headers),
@@ -68,11 +76,28 @@ describeWithPostgres("student rpc", () => {
 
         expect(after).toEqual(student);
 
+        const updatedStudent = yield* client.upsertStudentOnboarding({
+          firstName: "Ada",
+          lastName: "Lovelace",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5th year",
+          major: "Software Engineering",
+          institution: "ESI",
+          image: null,
+        }).pipe(RpcClient.withHeaders(headers));
+        const afterImageClear = yield* client.currentStudent().pipe(
+          RpcClient.withHeaders(headers),
+        );
+
+        expect(updatedStudent.image).toBeNull();
+        expect(updatedStudent.major).toBe("Software Engineering");
+        expect(afterImageClear).toEqual(updatedStudent);
+
         const qrIdentity = yield* client.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(headers),
         );
 
-        expect(qrIdentity).toBe(`student:v1:${student.id}`);
+        expect(qrIdentity).toBe(`student:v1:${updatedStudent.id}`);
       }).pipe(Effect.provide(Layer.fresh(StudentTestLive))),
   );
 
@@ -86,7 +111,11 @@ describeWithPostgres("student rpc", () => {
         const student = yield* client.upsertStudentOnboarding({
           firstName: "Grace",
           lastName: "Hopper",
-          course: "Computer Science",
+          phoneNumber: "+213 555 00 99",
+          academicYear: "4th year",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
         }).pipe(RpcClient.withHeaders(studentHeaders));
         const qrIdentity = yield* client.issueStudentQrIdentity().pipe(
           RpcClient.withHeaders(studentHeaders),
@@ -117,7 +146,11 @@ describeWithPostgres("student rpc", () => {
           client.upsertStudentOnboarding({
             firstName: "  ",
             lastName: "Hopper",
-            course: "Computer Science",
+            phoneNumber: "+213 555 00 99",
+            academicYear: "4th year",
+            major: "Computer Science",
+            institution: "ESI",
+            image: null,
           }).pipe(RpcClient.withHeaders(studentHeaders)),
         );
 

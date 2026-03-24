@@ -60,11 +60,16 @@ const makeCompletedEntry = (id: string, score: number) =>
       id: asId<Student["id"]>(`student-${id}`),
       firstName: "Ada",
       lastName: `Student ${id}`,
-      course: "Software engineering",
+      phoneNumber: "+213 555 12 34",
+      academicYear: "5th year",
+      major: "Software engineering",
+      institution: "ESI",
+      image: null,
     }),
     cvProfile: new CvProfile({
       id: asId<CvProfile["id"]>(`cv-${id}`),
       studentId: asId<CvProfile["studentId"]>(`student-${id}`),
+      presentationCode: `profile:v1:cv-${id}`,
       profileType: {
         id: asId<CvProfile["profileType"]["id"]>("cv-type"),
         label: "General CV",

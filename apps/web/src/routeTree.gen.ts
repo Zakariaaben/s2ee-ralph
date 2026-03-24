@@ -13,9 +13,17 @@ import { Route as StudentRouteImport } from './routes/student'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as CompanyRouteImport } from './routes/company'
 import { Route as CheckInRouteImport } from './routes/check-in'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StudentIndexRouteImport } from './routes/student/index'
+import { Route as CompanyIndexRouteImport } from './routes/company/index'
+import { Route as AuthSignUpRouteImport } from './routes/auth/sign-up'
+import { Route as AuthSignInRouteImport } from './routes/auth/sign-in'
 import { Route as ApiRpcRouteImport } from './routes/api/rpc'
+import { Route as CompanyInterviewsIndexRouteImport } from './routes/company/interviews/index'
+import { Route as StudentProfilesProfileIdRouteImport } from './routes/student/profiles/$profileId'
+import { Route as CompanyInterviewsInterviewIdRouteImport } from './routes/company/interviews/$interviewId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const StudentRoute = StudentRouteImport.update({
@@ -38,6 +46,11 @@ const CheckInRoute = CheckInRouteImport.update({
   path: '/check-in',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -48,11 +61,48 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudentIndexRoute = StudentIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => StudentRoute,
+} as any)
+const CompanyIndexRoute = CompanyIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CompanyRoute,
+} as any)
+const AuthSignUpRoute = AuthSignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthSignInRoute = AuthSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => AuthRoute,
+} as any)
 const ApiRpcRoute = ApiRpcRouteImport.update({
   id: '/api/rpc',
   path: '/api/rpc',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompanyInterviewsIndexRoute = CompanyInterviewsIndexRouteImport.update({
+  id: '/interviews/',
+  path: '/interviews/',
+  getParentRoute: () => CompanyRoute,
+} as any)
+const StudentProfilesProfileIdRoute =
+  StudentProfilesProfileIdRouteImport.update({
+    id: '/profiles/$profileId',
+    path: '/profiles/$profileId',
+    getParentRoute: () => StudentRoute,
+  } as any)
+const CompanyInterviewsInterviewIdRoute =
+  CompanyInterviewsInterviewIdRouteImport.update({
+    id: '/interviews/$interviewId',
+    path: '/interviews/$interviewId',
+    getParentRoute: () => CompanyRoute,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -62,74 +112,119 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/auth': typeof AuthRouteWithChildren
   '/check-in': typeof CheckInRoute
-  '/company': typeof CompanyRoute
+  '/company': typeof CompanyRouteWithChildren
   '/map': typeof MapRoute
-  '/student': typeof StudentRoute
+  '/student': typeof StudentRouteWithChildren
   '/api/rpc': typeof ApiRpcRoute
+  '/auth/sign-in': typeof AuthSignInRoute
+  '/auth/sign-up': typeof AuthSignUpRoute
+  '/company/': typeof CompanyIndexRoute
+  '/student/': typeof StudentIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/company/interviews/$interviewId': typeof CompanyInterviewsInterviewIdRoute
+  '/student/profiles/$profileId': typeof StudentProfilesProfileIdRoute
+  '/company/interviews/': typeof CompanyInterviewsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/auth': typeof AuthRouteWithChildren
   '/check-in': typeof CheckInRoute
-  '/company': typeof CompanyRoute
   '/map': typeof MapRoute
-  '/student': typeof StudentRoute
   '/api/rpc': typeof ApiRpcRoute
+  '/auth/sign-in': typeof AuthSignInRoute
+  '/auth/sign-up': typeof AuthSignUpRoute
+  '/company': typeof CompanyIndexRoute
+  '/student': typeof StudentIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/company/interviews/$interviewId': typeof CompanyInterviewsInterviewIdRoute
+  '/student/profiles/$profileId': typeof StudentProfilesProfileIdRoute
+  '/company/interviews': typeof CompanyInterviewsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/auth': typeof AuthRouteWithChildren
   '/check-in': typeof CheckInRoute
-  '/company': typeof CompanyRoute
+  '/company': typeof CompanyRouteWithChildren
   '/map': typeof MapRoute
-  '/student': typeof StudentRoute
+  '/student': typeof StudentRouteWithChildren
   '/api/rpc': typeof ApiRpcRoute
+  '/auth/sign-in': typeof AuthSignInRoute
+  '/auth/sign-up': typeof AuthSignUpRoute
+  '/company/': typeof CompanyIndexRoute
+  '/student/': typeof StudentIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/company/interviews/$interviewId': typeof CompanyInterviewsInterviewIdRoute
+  '/student/profiles/$profileId': typeof StudentProfilesProfileIdRoute
+  '/company/interviews/': typeof CompanyInterviewsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/admin'
+    | '/auth'
     | '/check-in'
     | '/company'
     | '/map'
     | '/student'
     | '/api/rpc'
+    | '/auth/sign-in'
+    | '/auth/sign-up'
+    | '/company/'
+    | '/student/'
     | '/api/auth/$'
+    | '/company/interviews/$interviewId'
+    | '/student/profiles/$profileId'
+    | '/company/interviews/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
+    | '/auth'
     | '/check-in'
-    | '/company'
     | '/map'
-    | '/student'
     | '/api/rpc'
+    | '/auth/sign-in'
+    | '/auth/sign-up'
+    | '/company'
+    | '/student'
     | '/api/auth/$'
+    | '/company/interviews/$interviewId'
+    | '/student/profiles/$profileId'
+    | '/company/interviews'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/auth'
     | '/check-in'
     | '/company'
     | '/map'
     | '/student'
     | '/api/rpc'
+    | '/auth/sign-in'
+    | '/auth/sign-up'
+    | '/company/'
+    | '/student/'
     | '/api/auth/$'
+    | '/company/interviews/$interviewId'
+    | '/student/profiles/$profileId'
+    | '/company/interviews/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AuthRoute: typeof AuthRouteWithChildren
   CheckInRoute: typeof CheckInRoute
-  CompanyRoute: typeof CompanyRoute
+  CompanyRoute: typeof CompanyRouteWithChildren
   MapRoute: typeof MapRoute
-  StudentRoute: typeof StudentRoute
+  StudentRoute: typeof StudentRouteWithChildren
   ApiRpcRoute: typeof ApiRpcRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -164,6 +259,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckInRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -178,12 +280,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/student/': {
+      id: '/student/'
+      path: '/'
+      fullPath: '/student/'
+      preLoaderRoute: typeof StudentIndexRouteImport
+      parentRoute: typeof StudentRoute
+    }
+    '/company/': {
+      id: '/company/'
+      path: '/'
+      fullPath: '/company/'
+      preLoaderRoute: typeof CompanyIndexRouteImport
+      parentRoute: typeof CompanyRoute
+    }
+    '/auth/sign-up': {
+      id: '/auth/sign-up'
+      path: '/sign-up'
+      fullPath: '/auth/sign-up'
+      preLoaderRoute: typeof AuthSignUpRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/auth/sign-in': {
+      id: '/auth/sign-in'
+      path: '/sign-in'
+      fullPath: '/auth/sign-in'
+      preLoaderRoute: typeof AuthSignInRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/api/rpc': {
       id: '/api/rpc'
       path: '/api/rpc'
       fullPath: '/api/rpc'
       preLoaderRoute: typeof ApiRpcRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/company/interviews/': {
+      id: '/company/interviews/'
+      path: '/interviews'
+      fullPath: '/company/interviews/'
+      preLoaderRoute: typeof CompanyInterviewsIndexRouteImport
+      parentRoute: typeof CompanyRoute
+    }
+    '/student/profiles/$profileId': {
+      id: '/student/profiles/$profileId'
+      path: '/profiles/$profileId'
+      fullPath: '/student/profiles/$profileId'
+      preLoaderRoute: typeof StudentProfilesProfileIdRouteImport
+      parentRoute: typeof StudentRoute
+    }
+    '/company/interviews/$interviewId': {
+      id: '/company/interviews/$interviewId'
+      path: '/interviews/$interviewId'
+      fullPath: '/company/interviews/$interviewId'
+      preLoaderRoute: typeof CompanyInterviewsInterviewIdRouteImport
+      parentRoute: typeof CompanyRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -195,13 +346,54 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthRouteChildren {
+  AuthSignInRoute: typeof AuthSignInRoute
+  AuthSignUpRoute: typeof AuthSignUpRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthSignInRoute: AuthSignInRoute,
+  AuthSignUpRoute: AuthSignUpRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
+interface CompanyRouteChildren {
+  CompanyIndexRoute: typeof CompanyIndexRoute
+  CompanyInterviewsInterviewIdRoute: typeof CompanyInterviewsInterviewIdRoute
+  CompanyInterviewsIndexRoute: typeof CompanyInterviewsIndexRoute
+}
+
+const CompanyRouteChildren: CompanyRouteChildren = {
+  CompanyIndexRoute: CompanyIndexRoute,
+  CompanyInterviewsInterviewIdRoute: CompanyInterviewsInterviewIdRoute,
+  CompanyInterviewsIndexRoute: CompanyInterviewsIndexRoute,
+}
+
+const CompanyRouteWithChildren =
+  CompanyRoute._addFileChildren(CompanyRouteChildren)
+
+interface StudentRouteChildren {
+  StudentIndexRoute: typeof StudentIndexRoute
+  StudentProfilesProfileIdRoute: typeof StudentProfilesProfileIdRoute
+}
+
+const StudentRouteChildren: StudentRouteChildren = {
+  StudentIndexRoute: StudentIndexRoute,
+  StudentProfilesProfileIdRoute: StudentProfilesProfileIdRoute,
+}
+
+const StudentRouteWithChildren =
+  StudentRoute._addFileChildren(StudentRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AuthRoute: AuthRouteWithChildren,
   CheckInRoute: CheckInRoute,
-  CompanyRoute: CompanyRoute,
+  CompanyRoute: CompanyRouteWithChildren,
   MapRoute: MapRoute,
-  StudentRoute: StudentRoute,
+  StudentRoute: StudentRouteWithChildren,
   ApiRpcRoute: ApiRpcRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

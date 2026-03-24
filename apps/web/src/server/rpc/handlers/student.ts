@@ -21,7 +21,11 @@ export const makeStudentRpcHandlers = Effect.gen(function*() {
           actor,
           firstName: input.firstName,
           lastName: input.lastName,
-          course: input.course,
+          phoneNumber: input.phoneNumber,
+          academicYear: input.academicYear,
+          major: input.major,
+          institution: input.institution,
+          image: input.image,
         });
       }),
     issueStudentQrIdentity: () =>

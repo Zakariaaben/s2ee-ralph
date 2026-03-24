@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getRoleHomePath, isRoleHomePath, roleHomePaths } from "@/lib/auth-routing";
+import { authPaths, getRoleHomePath, isRoleHomePath, roleHomePaths } from "@/lib/auth-routing";
 
 describe("auth-routing", () => {
   it("maps each platform role to one stable home path", () => {
@@ -23,5 +23,11 @@ describe("auth-routing", () => {
     expect(isRoleHomePath("/company")).toBe(true);
     expect(isRoleHomePath("/")).toBe(false);
     expect(isRoleHomePath("/auth")).toBe(false);
+    expect(isRoleHomePath("/auth/sign-in")).toBe(false);
+    expect(authPaths).toEqual({
+      root: "/auth",
+      signIn: "/auth/sign-in",
+      signUp: "/auth/sign-up",
+    });
   });
 });
