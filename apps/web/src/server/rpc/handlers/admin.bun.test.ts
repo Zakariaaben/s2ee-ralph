@@ -358,6 +358,60 @@ describeWithStorage("admin rpc", () => {
   );
 
   it(
+    "admin actors can provision a company account with a linked company record",
+    runLayerEffect(AdminTestLive, () =>
+      Effect.gen(function*() {
+        const adminHeaders = yield* provisionSessionHeaders("admin");
+        const adminClient = yield* makeAdminClient;
+
+        const createdEntry = yield* adminClient.createAdminCompanyAccount({
+          companyName: "Atlas Systems",
+          accountName: "Nora Recruiter",
+          email: "atlas@example.com",
+          password: "temporary-password-123",
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+
+        expect(createdEntry).toMatchObject({
+          user: {
+            role: "company",
+            email: "atlas@example.com",
+            name: "Nora Recruiter",
+          },
+          student: null,
+          company: {
+            name: "Atlas Systems",
+            recruiters: [],
+          },
+        });
+
+        const accessLedger = yield* adminClient.listAdminAccessLedger().pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
+        const companyLedger = yield* adminClient.listAdminCompanyLedger().pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
+        const createdAccessEntry = accessLedger.find(
+          (entry) => entry.user.email === "atlas@example.com",
+        );
+        const createdCompanyEntry = companyLedger.find(
+          (entry) => entry.company.name === "Atlas Systems",
+        );
+
+        expect(createdAccessEntry).toBeDefined();
+        expect(createdCompanyEntry).toMatchObject({
+          room: null,
+          standNumber: null,
+          arrivalStatus: "not-arrived",
+          company: {
+            name: "Atlas Systems",
+            recruiters: [],
+          },
+        });
+      }),
+    ),
+  );
+
+  it(
     "non-admin actors cannot manage access and changed sessions immediately observe their new role",
     runLayerEffect(AdminTestLive, () =>
       Effect.gen(function*() {

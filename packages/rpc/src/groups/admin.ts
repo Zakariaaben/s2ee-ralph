@@ -10,6 +10,7 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
+import { RequiredText } from "../request-schemas";
 
 export const AdminRpcAccessError = Schema.Union([
   HttpApiError.Unauthorized,
@@ -21,6 +22,15 @@ export class ChangeAdminUserRoleInput extends Schema.Class<ChangeAdminUserRoleIn
 )({
   userId: UserId,
   role: UserRole,
+}) {}
+
+export class CreateAdminCompanyAccountInput extends Schema.Class<CreateAdminCompanyAccountInput>(
+  "CreateAdminCompanyAccountInput",
+)({
+  companyName: RequiredText,
+  accountName: RequiredText,
+  email: RequiredText,
+  password: RequiredText,
 }) {}
 
 export const AdminRpcGroup = RpcGroup.make(
@@ -40,5 +50,10 @@ export const AdminRpcGroup = RpcGroup.make(
     success: AdminAccessLedgerEntry,
     error: Schema.Union([AdminRpcAccessError, HttpApiError.NotFound]),
     payload: ChangeAdminUserRoleInput,
+  }),
+  Rpc.make("createAdminCompanyAccount", {
+    success: AdminAccessLedgerEntry,
+    error: Schema.Union([AdminRpcAccessError, HttpApiError.BadRequest]),
+    payload: CreateAdminCompanyAccountInput,
   }),
 ).middleware(CurrentActorRpcMiddleware);

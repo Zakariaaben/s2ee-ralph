@@ -34,6 +34,7 @@ export const adminWorkspaceAtoms = {
   upsertVenueMapRoomPin: AppRpcClient.mutation("upsertVenueMapRoomPin"),
   deleteVenueMapRoomPin: AppRpcClient.mutation("deleteVenueMapRoomPin"),
   changeUserRole: AppRpcClient.mutation("changeAdminUserRole"),
+  createCompanyAccount: AppRpcClient.mutation("createAdminCompanyAccount"),
   createRoom: AppRpcClient.mutation("createRoom"),
   updateRoom: AppRpcClient.mutation("updateRoom"),
   deleteRoom: AppRpcClient.mutation("deleteRoom"),

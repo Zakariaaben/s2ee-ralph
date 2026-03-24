@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildVenueMapRoomRows,
+  buildVenueMapPinDraftRecord,
   calculateVenueMapPinCoordinates,
+  countVenueMapPinDraftChanges,
+  diffVenueMapPinDraftRecord,
   formatVenueMapPinPosition,
 } from "@/lib/admin-map";
 
@@ -84,5 +87,53 @@ describe("admin map helper", () => {
 
   it("formats stored pin positions for compact operator labels", () => {
     expect(formatVenueMapPinPosition(publishedVenueMap.pins[0]!)).toBe("75.55% x, 20.20% y");
+  });
+
+  it("builds editable pin drafts from the published map", () => {
+    expect(buildVenueMapPinDraftRecord(publishedVenueMap)).toEqual({
+      [roomB.id]: {
+        xPercent: 75.55,
+        yPercent: 20.2,
+      },
+    });
+  });
+
+  it("diffs draft pins into upserts and deletes for save-on-commit editors", () => {
+    const roomRows = buildVenueMapRoomRows([roomA, roomB], publishedVenueMap);
+
+    expect(
+      diffVenueMapPinDraftRecord({
+        roomRows,
+        publishedVenueMap,
+        draftPins: {
+          [roomA.id]: {
+            xPercent: 15,
+            yPercent: 25,
+          },
+        },
+      }),
+    ).toEqual({
+      upserts: [
+        {
+          roomId: roomA.id,
+          xPercent: 15,
+          yPercent: 25,
+        },
+      ],
+      deletes: [roomB.id],
+    });
+
+    expect(
+      countVenueMapPinDraftChanges({
+        roomRows,
+        publishedVenueMap,
+        draftPins: {
+          [roomB.id]: {
+            xPercent: 75.55,
+            yPercent: 20.2,
+          },
+        },
+      }),
+    ).toBe(0);
   });
 });

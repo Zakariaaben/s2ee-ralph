@@ -10,7 +10,7 @@ import { appMemoMap } from "../runtime";
 
 const HttpProtocol = RpcServer.layerProtocolHttp({
   path: "/api/rpc",
-}).pipe(Layer.provide(HttpRouter.layer));
+});
 
 const RpcServerLive = RpcServer.layer(AppRpc, {
   disableFatalDefects: true,

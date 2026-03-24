@@ -21,6 +21,12 @@ import { Route as CompanyIndexRouteImport } from './routes/company/index'
 import { Route as AuthSignUpRouteImport } from './routes/auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/auth/sign-in'
 import { Route as ApiRpcRouteImport } from './routes/api/rpc'
+import { Route as AdminVenueRouteImport } from './routes/admin/venue'
+import { Route as AdminOverviewRouteImport } from './routes/admin/overview'
+import { Route as AdminMapRouteImport } from './routes/admin/map'
+import { Route as AdminInterviewsRouteImport } from './routes/admin/interviews'
+import { Route as AdminCompaniesRouteImport } from './routes/admin/companies'
+import { Route as AdminAccessRouteImport } from './routes/admin/access'
 import { Route as CompanyInterviewsIndexRouteImport } from './routes/company/interviews/index'
 import { Route as StudentProfilesProfileIdRouteImport } from './routes/student/profiles/$profileId'
 import { Route as CompanyInterviewsInterviewIdRouteImport } from './routes/company/interviews/$interviewId'
@@ -86,6 +92,36 @@ const ApiRpcRoute = ApiRpcRouteImport.update({
   path: '/api/rpc',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminVenueRoute = AdminVenueRouteImport.update({
+  id: '/venue',
+  path: '/venue',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOverviewRoute = AdminOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMapRoute = AdminMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInterviewsRoute = AdminInterviewsRouteImport.update({
+  id: '/interviews',
+  path: '/interviews',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCompaniesRoute = AdminCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAccessRoute = AdminAccessRouteImport.update({
+  id: '/access',
+  path: '/access',
+  getParentRoute: () => AdminRoute,
+} as any)
 const CompanyInterviewsIndexRoute = CompanyInterviewsIndexRouteImport.update({
   id: '/interviews/',
   path: '/interviews/',
@@ -111,12 +147,18 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/check-in': typeof CheckInRoute
   '/company': typeof CompanyRouteWithChildren
   '/map': typeof MapRoute
   '/student': typeof StudentRouteWithChildren
+  '/admin/access': typeof AdminAccessRoute
+  '/admin/companies': typeof AdminCompaniesRoute
+  '/admin/interviews': typeof AdminInterviewsRoute
+  '/admin/map': typeof AdminMapRoute
+  '/admin/overview': typeof AdminOverviewRoute
+  '/admin/venue': typeof AdminVenueRoute
   '/api/rpc': typeof ApiRpcRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
@@ -129,10 +171,16 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/check-in': typeof CheckInRoute
   '/map': typeof MapRoute
+  '/admin/access': typeof AdminAccessRoute
+  '/admin/companies': typeof AdminCompaniesRoute
+  '/admin/interviews': typeof AdminInterviewsRoute
+  '/admin/map': typeof AdminMapRoute
+  '/admin/overview': typeof AdminOverviewRoute
+  '/admin/venue': typeof AdminVenueRoute
   '/api/rpc': typeof ApiRpcRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
@@ -146,12 +194,18 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
   '/check-in': typeof CheckInRoute
   '/company': typeof CompanyRouteWithChildren
   '/map': typeof MapRoute
   '/student': typeof StudentRouteWithChildren
+  '/admin/access': typeof AdminAccessRoute
+  '/admin/companies': typeof AdminCompaniesRoute
+  '/admin/interviews': typeof AdminInterviewsRoute
+  '/admin/map': typeof AdminMapRoute
+  '/admin/overview': typeof AdminOverviewRoute
+  '/admin/venue': typeof AdminVenueRoute
   '/api/rpc': typeof ApiRpcRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
@@ -172,6 +226,12 @@ export interface FileRouteTypes {
     | '/company'
     | '/map'
     | '/student'
+    | '/admin/access'
+    | '/admin/companies'
+    | '/admin/interviews'
+    | '/admin/map'
+    | '/admin/overview'
+    | '/admin/venue'
     | '/api/rpc'
     | '/auth/sign-in'
     | '/auth/sign-up'
@@ -188,6 +248,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/check-in'
     | '/map'
+    | '/admin/access'
+    | '/admin/companies'
+    | '/admin/interviews'
+    | '/admin/map'
+    | '/admin/overview'
+    | '/admin/venue'
     | '/api/rpc'
     | '/auth/sign-in'
     | '/auth/sign-up'
@@ -206,6 +272,12 @@ export interface FileRouteTypes {
     | '/company'
     | '/map'
     | '/student'
+    | '/admin/access'
+    | '/admin/companies'
+    | '/admin/interviews'
+    | '/admin/map'
+    | '/admin/overview'
+    | '/admin/venue'
     | '/api/rpc'
     | '/auth/sign-in'
     | '/auth/sign-up'
@@ -219,7 +291,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
   CheckInRoute: typeof CheckInRoute
   CompanyRoute: typeof CompanyRouteWithChildren
@@ -315,6 +387,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRpcRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/venue': {
+      id: '/admin/venue'
+      path: '/venue'
+      fullPath: '/admin/venue'
+      preLoaderRoute: typeof AdminVenueRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/overview': {
+      id: '/admin/overview'
+      path: '/overview'
+      fullPath: '/admin/overview'
+      preLoaderRoute: typeof AdminOverviewRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/map': {
+      id: '/admin/map'
+      path: '/map'
+      fullPath: '/admin/map'
+      preLoaderRoute: typeof AdminMapRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/interviews': {
+      id: '/admin/interviews'
+      path: '/interviews'
+      fullPath: '/admin/interviews'
+      preLoaderRoute: typeof AdminInterviewsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/companies': {
+      id: '/admin/companies'
+      path: '/companies'
+      fullPath: '/admin/companies'
+      preLoaderRoute: typeof AdminCompaniesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/access': {
+      id: '/admin/access'
+      path: '/access'
+      fullPath: '/admin/access'
+      preLoaderRoute: typeof AdminAccessRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/company/interviews/': {
       id: '/company/interviews/'
       path: '/interviews'
@@ -345,6 +459,26 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminAccessRoute: typeof AdminAccessRoute
+  AdminCompaniesRoute: typeof AdminCompaniesRoute
+  AdminInterviewsRoute: typeof AdminInterviewsRoute
+  AdminMapRoute: typeof AdminMapRoute
+  AdminOverviewRoute: typeof AdminOverviewRoute
+  AdminVenueRoute: typeof AdminVenueRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAccessRoute: AdminAccessRoute,
+  AdminCompaniesRoute: AdminCompaniesRoute,
+  AdminInterviewsRoute: AdminInterviewsRoute,
+  AdminMapRoute: AdminMapRoute,
+  AdminOverviewRoute: AdminOverviewRoute,
+  AdminVenueRoute: AdminVenueRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AuthRouteChildren {
   AuthSignInRoute: typeof AuthSignInRoute
@@ -388,7 +522,7 @@ const StudentRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
   CheckInRoute: CheckInRoute,
   CompanyRoute: CompanyRouteWithChildren,

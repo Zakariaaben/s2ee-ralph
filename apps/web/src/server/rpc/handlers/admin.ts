@@ -35,5 +35,17 @@ export const makeAdminRpcHandlers = Effect.gen(function*() {
           role,
         });
       }),
+    createAdminCompanyAccount: ({ accountName, companyName, email, password }) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* adminService.createAdminCompanyAccount({
+          actor,
+          accountName,
+          companyName,
+          email,
+          password,
+        });
+      }),
   });
 });

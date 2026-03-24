@@ -1,3 +1,4 @@
+import { makeAuth } from "@project/auth";
 import { DB } from "@project/db";
 import { user } from "@project/db/schema/auth";
 import { company, recruiter } from "@project/db/schema/company";
@@ -29,6 +30,8 @@ import {
 } from "@project/domain";
 import { asc, eq, inArray } from "drizzle-orm";
 import { DateTime, Effect, Layer, ServiceMap } from "effect";
+
+const makeCompanyId = () => crypto.randomUUID();
 
 const toRoom = (roomRow: typeof room.$inferSelect) =>
   new Room({
@@ -100,6 +103,12 @@ export class AdminRepository extends ServiceMap.Service<
       readonly userId: string;
       readonly role: UserRoleValue;
     }) => Effect.Effect<AdminAccessLedgerEntry | null>;
+    readonly createCompanyAccount: (input: {
+      readonly companyName: string;
+      readonly accountName: string;
+      readonly email: string;
+      readonly password: string;
+    }) => Effect.Effect<AdminAccessLedgerEntry, Error>;
     readonly listCompanyLedger: () => Effect.Effect<
       ReadonlyArray<AdminCompanyLedgerEntry>
     >;
@@ -112,6 +121,7 @@ export class AdminRepository extends ServiceMap.Service<
     AdminRepository,
     Effect.gen(function*() {
       const db = yield* DB;
+      const auth = yield* makeAuth;
 
       const getRecruitersByCompanyIds = (companyIds: ReadonlyArray<string>) =>
         Effect.gen(function*() {
@@ -231,6 +241,60 @@ export class AdminRepository extends ServiceMap.Service<
             }
 
             return yield* loadAccessEntryByUserId(userId);
+          }),
+        createCompanyAccount: ({ accountName, companyName, email, password }) =>
+          Effect.promise(async () => {
+            let createdUserId: string | null = null;
+
+            try {
+              const signUpResult = await auth.api.signUpEmail({
+                body: {
+                  email,
+                  password,
+                  name: accountName,
+                },
+              });
+              const nextUserId =
+                (signUpResult as { user?: { id?: string } } | null)?.user?.id ?? null;
+
+              if (nextUserId == null) {
+                throw new Error("Company account signup did not return a user.");
+              }
+
+              createdUserId = nextUserId;
+
+              await db.transaction(async (tx) => {
+                await tx
+                  .update(user)
+                  .set({
+                    role: "company",
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(user.id, nextUserId));
+
+                await tx.insert(company).values({
+                  id: makeCompanyId(),
+                  ownerUserId: nextUserId,
+                  name: companyName,
+                });
+              });
+
+              const accessEntry = await Effect.runPromise(loadAccessEntryByUserId(nextUserId));
+
+              if (!accessEntry) {
+                throw new Error("Created company account could not be loaded.");
+              }
+
+              return accessEntry;
+            } catch (error) {
+              if (createdUserId != null) {
+                await db.delete(user).where(eq(user.id, createdUserId));
+              }
+
+              throw error instanceof Error
+                ? error
+                : new Error("Company account creation failed.");
+            }
           }),
         listCompanyLedger: () =>
           Effect.gen(function*() {
