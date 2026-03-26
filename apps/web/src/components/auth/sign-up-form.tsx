@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type React from "react";
 import { useState } from "react";
 
+import { deriveStudentAccountName } from "@/lib/auth-account-name";
 import { authClient } from "@/lib/auth-client";
 import { getRoleHomePath } from "@/lib/auth-routing";
 import { getSessionRole } from "@/lib/route-auth";
@@ -12,7 +13,6 @@ import { getSessionRole } from "@/lib/route-auth";
 type SignUpState = {
   readonly email: string;
   readonly password: string;
-  readonly name: string;
 };
 
 export function SignUpForm(): React.ReactElement {
@@ -20,7 +20,6 @@ export function SignUpForm(): React.ReactElement {
   const [signUpState, setSignUpState] = useState<SignUpState>({
     email: "",
     password: "",
-    name: "",
   });
   const [signUpError, setSignUpError] = useState<string | null>(null);
   const [isSigningUp, setIsSigningUp] = useState(false);
@@ -29,13 +28,13 @@ export function SignUpForm(): React.ReactElement {
     const currentSession = await authClient.getSession();
 
     if (currentSession.error) {
-      return currentSession.error.message ?? "Account created but session resolution failed.";
+      return currentSession.error.message ?? "Compte cree, mais session introuvable.";
     }
 
     const role = getSessionRole(currentSession.data);
 
     if (role == null) {
-      return "Account created but the session role could not be resolved.";
+      return "Compte cree, mais le role n'a pas pu etre determine.";
     }
 
     await navigate({
@@ -52,14 +51,15 @@ export function SignUpForm(): React.ReactElement {
     setIsSigningUp(true);
 
     try {
+      const email = signUpState.email.trim();
       const result = await authClient.signUp.email({
-        email: signUpState.email,
-        name: signUpState.name,
+        email,
+        name: deriveStudentAccountName(email),
         password: signUpState.password,
       });
 
       if (result.error) {
-        setSignUpError(result.error.message ?? "Unable to create the student account.");
+        setSignUpError(result.error.message ?? "Impossible de creer le compte etudiant.");
         return;
       }
 
@@ -75,39 +75,20 @@ export function SignUpForm(): React.ReactElement {
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-primary shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-primary)_10%,transparent)]" />
           <h2 className="text-2xl font-black uppercase tracking-[-0.05em] text-[color:var(--s2ee-soft-foreground)] sm:text-3xl">
-            Student access
+            Creer un compte etudiant
           </h2>
         </div>
         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary">
-          Create student account
+          Inscription
         </p>
       </header>
 
       <div className="border-l-2 pl-4 text-sm leading-7 text-[color:var(--s2ee-soft-foreground)] [border-color:var(--color-primary)]">
-        Student registration is available here. If your account already exists, continue through sign in instead of creating a second account.
+        La creation de compte est reservee aux etudiants.
       </div>
 
       <form className="space-y-8" onSubmit={handleSignUp}>
         <div className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="sign-up-name">
-              Full name
-            </label>
-            <Input
-              id="sign-up-name"
-              autoComplete="name"
-              className="rounded-none border-0 border-b px-0 py-3 shadow-none focus-visible:ring-0 [border-color:var(--s2ee-border)]"
-              nativeInput
-              unstyled
-              placeholder="Your full name"
-              value={signUpState.name}
-              onChange={(event) => {
-                const { value } = event.currentTarget;
-                setSignUpState((current) => ({ ...current, name: value }));
-              }}
-            />
-          </div>
-
           <div className="space-y-2">
             <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="sign-up-email">
               Email
@@ -131,7 +112,7 @@ export function SignUpForm(): React.ReactElement {
 
           <div className="space-y-2">
             <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="sign-up-password">
-              Password
+              Mot de passe
             </label>
             <Input
               id="sign-up-password"
@@ -139,7 +120,7 @@ export function SignUpForm(): React.ReactElement {
               className="rounded-none border-0 border-b px-0 py-3 shadow-none focus-visible:ring-0 [border-color:var(--s2ee-border)]"
               nativeInput
               unstyled
-              placeholder="Create a password"
+              placeholder="Choisissez un mot de passe"
               type="password"
               value={signUpState.password}
               onChange={(event) => {
@@ -161,7 +142,7 @@ export function SignUpForm(): React.ReactElement {
           disabled={isSigningUp}
           type="submit"
         >
-          <span>{isSigningUp ? "Creating..." : "Create student account"}</span>
+          <span>{isSigningUp ? "Creation..." : "Creer un compte etudiant"}</span>
           <span aria-hidden="true" className="text-base leading-none">
             {"->"}
           </span>
@@ -170,13 +151,13 @@ export function SignUpForm(): React.ReactElement {
 
       <div className="flex flex-wrap gap-x-5 gap-y-2 border-t pt-5 text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)] [border-color:var(--s2ee-border)]">
         <a className="transition-colors hover:text-foreground" href="/auth/sign-in">
-          Sign in instead
+          Se connecter
         </a>
         <a className="transition-colors hover:text-foreground" href="/map">
-          Public map
+          Plan du salon
         </a>
         <a className="transition-colors hover:text-foreground" href="/">
-          Home
+          Accueil
         </a>
       </div>
     </div>

@@ -28,7 +28,6 @@ export class CreateAdminCompanyAccountInput extends Schema.Class<CreateAdminComp
   "CreateAdminCompanyAccountInput",
 )({
   companyName: RequiredText,
-  accountName: RequiredText,
   email: RequiredText,
   password: RequiredText,
 }) {}

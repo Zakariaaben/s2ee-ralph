@@ -52,6 +52,12 @@ export class MarkCompanyArrivedInput extends Schema.Class<MarkCompanyArrivedInpu
   companyId: Schema.String,
 }) {}
 
+export class ResetCompanyArrivalInput extends Schema.Class<ResetCompanyArrivalInput>(
+  "ResetCompanyArrivalInput",
+)({
+  companyId: Schema.String,
+}) {}
+
 export class PublishVenueMapInput extends Schema.Class<PublishVenueMapInput>(
   "PublishVenueMapInput",
 )({
@@ -138,6 +144,11 @@ export const VenueRpcGroup = RpcGroup.make(
     success: VenueCompany,
     error: Schema.Union([VenueRpcAccessError, HttpApiError.NotFound]),
     payload: MarkCompanyArrivedInput,
+  }),
+  Rpc.make("resetCompanyArrival", {
+    success: VenueCompany,
+    error: Schema.Union([VenueRpcAccessError, HttpApiError.NotFound]),
+    payload: ResetCompanyArrivalInput,
   }),
 ).middleware(CurrentActorRpcMiddleware);
 

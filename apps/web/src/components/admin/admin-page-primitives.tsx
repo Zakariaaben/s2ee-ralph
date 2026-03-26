@@ -21,9 +21,11 @@ export function AdminPageHeader(props: {
           <h1 className="text-3xl font-black tracking-[-0.08em] text-slate-900 sm:text-4xl">
             {props.title}
           </h1>
-          <p className="max-w-3xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-            {props.description}
-          </p>
+          {props.description.length > 0 ? (
+            <p className="max-w-3xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+              {props.description}
+            </p>
+          ) : null}
         </div>
       </div>
       {props.actions ? <div className="flex flex-wrap items-center gap-3">{props.actions}</div> : null}
@@ -60,4 +62,3 @@ export function AdminFailurePanel(props: {
     </div>
   );
 }
-

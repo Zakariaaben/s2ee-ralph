@@ -10,4 +10,5 @@ export const checkInWorkspaceAtoms = {
     timeToLive: "15 seconds",
   }),
   markCompanyArrived: AppRpcClient.mutation("markCompanyArrived"),
+  resetCompanyArrival: AppRpcClient.mutation("resetCompanyArrival"),
 } as const;

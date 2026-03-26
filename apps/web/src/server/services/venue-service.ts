@@ -28,6 +28,15 @@ const requireCheckInActor = (actor: AuthenticatedActor) =>
     return actor;
   });
 
+const requireAdminOrCheckInActor = (actor: AuthenticatedActor) =>
+  Effect.gen(function*() {
+    if (actor.role !== "admin" && actor.role !== "check-in") {
+      yield* new HttpApiError.Forbidden({});
+    }
+
+    return actor;
+  });
+
 export class VenueService extends ServiceMap.Service<
   VenueService,
   {
@@ -106,6 +115,12 @@ export class VenueService extends ServiceMap.Service<
       },
     ) => Effect.Effect<void, HttpApiError.Forbidden | HttpApiError.NotFound>;
     readonly markCompanyArrived: (
+      input: {
+        readonly actor: AuthenticatedActor;
+        readonly companyId: string;
+      },
+    ) => Effect.Effect<VenueCompany, HttpApiError.Forbidden | HttpApiError.NotFound>;
+    readonly resetCompanyArrival: (
       input: {
         readonly actor: AuthenticatedActor;
         readonly companyId: string;
@@ -256,6 +271,20 @@ export class VenueService extends ServiceMap.Service<
             }
 
             return arrivedCompany;
+          }),
+        resetCompanyArrival: ({ actor, companyId }) =>
+          Effect.gen(function*() {
+            yield* requireAdminOrCheckInActor(actor);
+
+            const resetCompany = yield* venueRepository.resetCompanyArrival({
+              companyId,
+            });
+
+            if (!resetCompany) {
+              return yield* Effect.fail(new HttpApiError.NotFound({}));
+            }
+
+            return resetCompany;
           }),
       });
     }),

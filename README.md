@@ -44,6 +44,23 @@ cp apps/web/.env.example apps/web/.env
 bun run db:push
 ```
 
+4. Seed local loginable users, companies, and rooms:
+
+```bash
+bun run --filter web db:seed
+```
+
+The seed creates Better Auth accounts you can use to sign in locally:
+
+- `admin.seed@project.local` / `SeedPass123!` (`admin`)
+- `acme.seed@project.local` / `SeedPass123!` (`company`)
+- `globex.seed@project.local` / `SeedPass123!` (`company`)
+- `initech.seed@project.local` / `SeedPass123!` (`company`)
+- `student.one.seed@project.local` / `SeedPass123!` (`student`)
+- `student.two.seed@project.local` / `SeedPass123!` (`student`)
+
+The seed intentionally creates users, companies, rooms, and company placements only. It does not create interviews.
+
 Then, run the development server:
 
 ```bash

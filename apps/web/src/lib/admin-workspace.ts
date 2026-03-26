@@ -50,20 +50,20 @@ export const summarizeAdminWorkspace = (input: {
     (entry) => entry.room != null && entry.arrivalStatus === "not-arrived",
   ).length;
 
-  let nextOperationalLabel = "Operational ledgers are in a steady state.";
+  let nextOperationalLabel = "Aucune action immediate.";
 
   if (pendingPlacementCount > 0) {
     nextOperationalLabel =
       pendingPlacementCount === 1
-        ? "1 company still needs a room placement."
-        : `${pendingPlacementCount} companies still need room placements.`;
+        ? "1 entreprise doit encore etre placee."
+        : `${pendingPlacementCount} entreprises doivent encore etre placees.`;
   } else if (pendingArrivalCount > 0) {
     nextOperationalLabel =
       pendingArrivalCount === 1
-        ? "1 placed company is still waiting for arrival confirmation."
-        : `${pendingArrivalCount} placed companies are still waiting for arrival confirmation.`;
+        ? "1 entreprise attend encore sa confirmation d'arrivee."
+        : `${pendingArrivalCount} entreprises attendent encore leur confirmation d'arrivee.`;
   } else if (checkInCount === 0) {
-    nextOperationalLabel = "No check-in accounts are provisioned yet.";
+    nextOperationalLabel = "Aucun compte accueil n'a encore ete cree.";
   }
 
   return {
@@ -143,7 +143,7 @@ export const filterAdminAccessLedger = (
     }
 
     return [
-      entry.user.name,
+      describeAdminAccessAccount(entry),
       entry.user.email,
       entry.user.role,
       entry.student == null ? "" : `${entry.student.firstName} ${entry.student.lastName}`,
@@ -199,12 +199,24 @@ export const describeAdminAccessSubject = (entry: AdminAccessLedgerEntry): strin
     return `${entry.student.firstName} ${entry.student.lastName}`;
   }
 
-  return "No linked profile";
+  return "Aucun profil lie";
+};
+
+export const describeAdminAccessAccount = (entry: AdminAccessLedgerEntry): string => {
+  if (entry.company != null) {
+    return entry.company.name;
+  }
+
+  if (entry.student != null) {
+    return `${entry.student.firstName} ${entry.student.lastName}`;
+  }
+
+  return entry.user.email;
 };
 
 export const describeAdminPlacement = (entry: AdminCompanyLedgerEntry): string =>
   entry.room == null
-    ? "Unplaced"
+    ? "Non placee"
     : entry.standNumber == null
-      ? `Room ${entry.room.code}`
-      : `Room ${entry.room.code} / Stand ${entry.standNumber}`;
+      ? `Salle ${entry.room.code}`
+      : `Salle ${entry.room.code} / Stand ${entry.standNumber}`;

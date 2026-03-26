@@ -16,6 +16,7 @@ import { DateTime } from "effect";
 import { describe, expect, it } from "vitest";
 
 import {
+  describeAdminAccessAccount,
   describeAdminAccessSubject,
   describeAdminPlacement,
   filterAdminAccessLedger,
@@ -255,7 +256,7 @@ describe("admin workspace helper", () => {
     expect(summary.adminCount).toBe(1);
     expect(summary.studentCount).toBe(1);
     expect(summary.companyAccountCount).toBe(1);
-    expect(summary.nextOperationalLabel).toBe("1 company still needs a room placement.");
+    expect(summary.nextOperationalLabel).toBe("1 entreprise doit encore etre placee.");
   });
 
   it("filters company oversight entries by placement, arrival state, and search fields", () => {
@@ -308,10 +309,13 @@ describe("admin workspace helper", () => {
   });
 
   it("formats oversight labels for linked subjects, placement, and recent previews", () => {
+    expect(describeAdminAccessAccount(accessLedger[2]!)).toBe("Atlas Systems");
+    expect(describeAdminAccessAccount(accessLedger[1]!)).toBe("Ada Lovelace");
+    expect(describeAdminAccessAccount(accessLedger[0]!)).toBe("admin@example.com");
     expect(describeAdminAccessSubject(accessLedger[2]!)).toBe("Atlas Systems");
     expect(describeAdminAccessSubject(accessLedger[1]!)).toBe("Ada Lovelace");
-    expect(describeAdminPlacement(companyLedger[0]!)).toBe("Room A1 / Stand 12");
-    expect(describeAdminPlacement(companyLedger[1]!)).toBe("Unplaced");
+    expect(describeAdminPlacement(companyLedger[0]!)).toBe("Salle A1 / Stand 12");
+    expect(describeAdminPlacement(companyLedger[1]!)).toBe("Non placee");
     expect(selectRecentAdminInterviews(interviewLedger, 1).map((entry) => entry.interview.id)).toEqual([
       "interview_2",
     ]);

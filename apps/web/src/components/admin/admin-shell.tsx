@@ -20,7 +20,7 @@ export function AdminShell(): React.ReactElement {
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary">
-                  S2EE edition 16
+                  S2EE 16e edition
                 </span>
                 <span className="border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
                   Admin
@@ -28,12 +28,8 @@ export function AdminShell(): React.ReactElement {
               </div>
               <div className="space-y-1">
                 <h1 className="text-2xl font-black tracking-[-0.08em] text-slate-900 sm:text-3xl">
-                  Event control
+                  Administration
                 </h1>
-                <p className="max-w-2xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                  Split operational pages for overview, companies, venue logistics, map publication,
-                  access control, and interview review.
-                </p>
               </div>
             </div>
 
@@ -46,13 +42,13 @@ export function AdminShell(): React.ReactElement {
               variant="outline"
             >
               <LogOutIcon className="size-4" />
-              {isSigningOut ? "Signing out..." : "Sign out"}
+              {isSigningOut ? "Deconnexion..." : "Se deconnecter"}
             </Button>
           </header>
 
           <div className="grid lg:grid-cols-[260px_minmax(0,1fr)]">
             <aside className="border-b border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] lg:border-r lg:border-b-0">
-              <nav aria-label="Admin sections" className="grid lg:min-h-[calc(100dvh-180px)]">
+              <nav aria-label="Sections admin" className="grid lg:min-h-[calc(100dvh-180px)]">
                 {adminSections.map((section) => {
                   const isActive =
                     location.pathname === section.to ||
@@ -72,9 +68,11 @@ export function AdminShell(): React.ReactElement {
                     >
                       <div className="space-y-1">
                         <p className="text-sm font-bold uppercase tracking-[0.08em]">{section.label}</p>
-                        <p className="text-[11px] leading-5 text-[color:var(--s2ee-muted-foreground)]">
-                          {section.description}
-                        </p>
+                        {section.description.length > 0 ? (
+                          <p className="text-[11px] leading-5 text-[color:var(--s2ee-muted-foreground)]">
+                            {section.description}
+                          </p>
+                        ) : null}
                       </div>
                     </Link>
                   );

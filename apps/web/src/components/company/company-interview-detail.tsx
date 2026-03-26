@@ -67,7 +67,7 @@ const formatMutationError = (error: unknown): string => {
     return error.message;
   }
 
-  return "The interview action did not complete. Refresh and try again.";
+  return "L'action n'a pas pu etre terminee. Reessayez.";
 };
 
 export function CompanyInterviewDetail({
@@ -103,15 +103,15 @@ export function CompanyInterviewDetail({
     mode: "promise",
   });
 
-  const detailState = toAsyncPanelState(detailResult, "This interview could not be loaded.");
-  const cvUrlState = toAsyncPanelState(cvUrlResult, "The presented PDF could not be loaded.");
+  const detailState = toAsyncPanelState(detailResult, "Cet entretien n'a pas pu etre charge.");
+  const cvUrlState = toAsyncPanelState(cvUrlResult, "Le PDF n'a pas pu etre charge.");
   const completedInterviewsState = toAsyncPanelState(
     completedInterviewsResult,
-    "The interview history could not be loaded.",
+    "L'historique des entretiens n'a pas pu etre charge.",
   );
   const globalTagsState = toAsyncPanelState(
     globalInterviewTagsResult,
-    "Interview tags could not be loaded.",
+    "Les tags n'ont pas pu etre charges.",
   );
 
   const detail = detailState.kind === "success" ? detailState.value : null;
@@ -156,7 +156,7 @@ export function CompanyInterviewDetail({
     }
 
     if (decision === "complete" && score < 1) {
-      setPanelError("Choose a score before completing the interview.");
+      setPanelError("Choisissez une note avant de terminer l'entretien.");
       return;
     }
 
@@ -225,17 +225,17 @@ export function CompanyInterviewDetail({
           <div className="flex flex-wrap gap-2">
             <Button className="rounded-none" onClick={() => navigate({ to: "/company/interviews" })} variant="outline">
               <ArrowLeftIcon />
-              Back to interviews
+              Retour
             </Button>
             <Button className="rounded-none" loading={isSigningOut} onClick={handleSignOut} variant="outline">
               <LogOutIcon />
-              Sign out
+              Se deconnecter
             </Button>
           </div>
           <Alert variant="error">
             <CircleAlertIcon className="size-4" />
-            <AlertTitle>Interview unavailable</AlertTitle>
-            <AlertDescription>{detailState.kind === "failure" ? detailState.message : "The interview no longer exists."}</AlertDescription>
+            <AlertTitle>Entretien indisponible</AlertTitle>
+            <AlertDescription>{detailState.kind === "failure" ? detailState.message : "Cet entretien n'existe plus."}</AlertDescription>
           </Alert>
         </div>
       </main>
@@ -248,8 +248,8 @@ export function CompanyInterviewDetail({
         <header className="flex flex-col gap-4 border-b border-[var(--s2ee-border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em]">
-              <span className="text-primary">S2EE Company</span>
-              <span className="text-[color:var(--s2ee-muted-foreground)]">Interview</span>
+              <span className="text-primary">S2EE Entreprise</span>
+              <span className="text-[color:var(--s2ee-muted-foreground)]">Entretien</span>
               <span className="text-[color:var(--s2ee-muted-foreground)]">{detail.interview.id.slice(0, 8)}</span>
             </div>
             <div className="space-y-1">
@@ -257,7 +257,7 @@ export function CompanyInterviewDetail({
                 {detail.student.firstName} {detail.student.lastName}
               </h1>
               <p className="max-w-3xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                {detail.student.institution} · {detail.student.academicYear} · {detail.student.major} · Recruiter{" "}
+                {detail.student.institution} · {detail.student.academicYear} · {detail.student.major} · Recruteur{" "}
                 {detail.interview.recruiterName}
               </p>
             </div>
@@ -266,14 +266,14 @@ export function CompanyInterviewDetail({
           <div className="flex flex-wrap gap-2">
             <Button className="rounded-none" onClick={() => navigate({ to: "/company/interviews" })} variant="outline">
               <ArrowLeftIcon />
-              Back to interviews
+              Retour
             </Button>
             <Button className="rounded-none" onClick={() => navigate({ to: "/company" })} variant="outline">
-              Scanner
+              Scan
             </Button>
             <Button className="rounded-none" loading={isSigningOut} onClick={handleSignOut} variant="outline">
               <LogOutIcon />
-              Sign out
+              Se deconnecter
             </Button>
           </div>
         </header>
@@ -288,7 +288,7 @@ export function CompanyInterviewDetail({
               <div className="p-4">
                 <Alert variant="error">
                   <CircleAlertIcon className="size-4" />
-                  <AlertTitle>PDF unavailable</AlertTitle>
+                  <AlertTitle>PDF indisponible</AlertTitle>
                   <AlertDescription>{cvUrlState.message}</AlertDescription>
                 </Alert>
               </div>
@@ -296,7 +296,7 @@ export function CompanyInterviewDetail({
               <iframe
                 className="min-h-[72vh] w-full bg-white"
                 src={cvUrlState.value.url}
-                title={`Presented CV for ${detail.student.firstName} ${detail.student.lastName}`}
+                title={`CV de ${detail.student.firstName} ${detail.student.lastName}`}
               />
             )}
           </section>
@@ -305,17 +305,13 @@ export function CompanyInterviewDetail({
             <div className="grid gap-4 border border-[var(--s2ee-border)] bg-white p-5">
               <div className="space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                  Interview decision
-                </p>
-                <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                  Keep the PDF visible, score with stars, and attach tags from one aggregated
-                  picker.
+                  Evaluation
                 </p>
               </div>
 
               <div className="grid gap-3 border-t border-[var(--s2ee-border)] pt-4">
                 <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                  Score
+                  Note
                 </label>
                 <div className="grid gap-3 border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-4">
                   <Rating
@@ -327,7 +323,7 @@ export function CompanyInterviewDetail({
                     value={score}
                   />
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
-                    {score === 0 ? "No score selected" : `${score}/5`}
+                    {score === 0 ? "Aucune note" : `${score}/5`}
                   </p>
                 </div>
               </div>
@@ -342,8 +338,8 @@ export function CompanyInterviewDetail({
                   }>
                     <span className="truncate text-left">
                       {selectedTagLabels.length === 0
-                        ? "Select tags"
-                        : `${selectedTagLabels.length} selected`}
+                        ? "Selectionner"
+                        : `${selectedTagLabels.length} selectionnes`}
                     </span>
                     <ChevronDownIcon />
                   </PopoverTrigger>
@@ -355,7 +351,7 @@ export function CompanyInterviewDetail({
                           const { value } = event.currentTarget;
                           setTagQuery(value);
                         }}
-                        placeholder="Search or add a tag"
+                        placeholder="Rechercher ou ajouter un tag"
                         value={tagQuery}
                       />
                       <div className="grid max-h-72 gap-2 overflow-y-auto">
@@ -378,16 +374,16 @@ export function CompanyInterviewDetail({
                             }}
                             type="button"
                           >
-                            <span>Add {customTagLabel}</span>
+                            <span>Ajouter {customTagLabel}</span>
                             <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
-                              Custom
+                              Personnalise
                             </span>
                           </button>
                         ) : null}
 
                         {visibleTagOptions.length === 0 ? (
                           <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                            No tags match this query.
+                            Aucun tag ne correspond.
                           </p>
                         ) : (
                           visibleTagOptions.map((option) => {
@@ -406,7 +402,7 @@ export function CompanyInterviewDetail({
                                     {option.label}
                                   </span>
                                   <span className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
-                                    {option.kind === "global" ? "Shared tag" : "Existing company tag"}
+                                    {option.kind === "global" ? "Tag partage" : "Tag entreprise"}
                                   </span>
                                 </div>
                                 <Checkbox
@@ -455,7 +451,7 @@ export function CompanyInterviewDetail({
                     const { value } = event.currentTarget;
                     setNotes(value);
                   }}
-                  placeholder="Capture the actual interview signal."
+                  placeholder="Notes"
                   value={notes}
                 />
               </div>
@@ -463,7 +459,7 @@ export function CompanyInterviewDetail({
               {panelError != null ? (
                 <Alert variant="error">
                   <CircleAlertIcon className="size-4" />
-                  <AlertTitle>Update failed</AlertTitle>
+                  <AlertTitle>Echec de mise a jour</AlertTitle>
                   <AlertDescription>{panelError}</AlertDescription>
                 </Alert>
               ) : null}
@@ -475,7 +471,7 @@ export function CompanyInterviewDetail({
                   onClick={() => submitInterview("complete")}
                   type="button"
                 >
-                  Complete interview
+                  Terminer l'entretien
                 </Button>
                 <Button
                   className="h-12 rounded-none text-sm font-black uppercase tracking-[0.18em]"
@@ -484,17 +480,17 @@ export function CompanyInterviewDetail({
                   type="button"
                   variant="outline"
                 >
-                  Cancel interview
+                  Annuler l'entretien
                   <OctagonXIcon />
                 </Button>
               </div>
             </div>
 
             <div className="grid gap-3 border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-5 text-sm">
-              <MetaRow label="Candidate" value={`${detail.student.firstName} ${detail.student.lastName}`} />
-              <MetaRow label="Institution" value={detail.student.institution} />
-              <MetaRow label="Academic" value={`${detail.student.academicYear} · ${detail.student.major}`} />
-              <MetaRow label="Recruiter" value={detail.interview.recruiterName} />
+              <MetaRow label="Candidat" value={`${detail.student.firstName} ${detail.student.lastName}`} />
+              <MetaRow label="Etablissement" value={detail.student.institution} />
+              <MetaRow label="Parcours" value={`${detail.student.academicYear} · ${detail.student.major}`} />
+              <MetaRow label="Recruteur" value={detail.interview.recruiterName} />
               <MetaRow label="Code" value={detail.cvProfile.presentationCode} />
             </div>
           </section>

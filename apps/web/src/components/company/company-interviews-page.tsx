@@ -68,11 +68,11 @@ export function CompanyInterviewsPage(): React.ReactElement {
   const completedInterviewsResult = useAtomValue(companyWorkspaceAtoms.completedInterviews);
   const activeInterviewsState = toAsyncPanelState(
     activeInterviewsResult,
-    "The active interview list could not be loaded.",
+    "La liste des entretiens en cours n'a pas pu etre chargee.",
   );
   const completedInterviewsState = toAsyncPanelState(
     completedInterviewsResult,
-    "The completed interview list could not be loaded.",
+    "La liste des entretiens termines n'a pas pu etre chargee.",
   );
 
   if (activeInterviewsState.kind === "loading" || completedInterviewsState.kind === "loading") {
@@ -106,22 +106,18 @@ export function CompanyInterviewsPage(): React.ReactElement {
         <header className="flex flex-col gap-4 border-b border-[var(--s2ee-border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-              Company interviews
+              Entreprise
             </p>
             <div className="space-y-1">
               <h1 className="text-[clamp(2rem,4vw,3.2rem)] font-black tracking-[-0.08em]">
-                Interview list
+                Entretiens
               </h1>
-              <p className="max-w-3xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                Filter the active and completed interview history, then open the specific item you
-                want to continue or inspect.
-              </p>
             </div>
           </div>
 
           <Button className="rounded-none" onClick={() => navigate({ to: "/company" })} variant="outline">
             <ArrowLeftIcon />
-            Back to scanner
+            Retour
           </Button>
         </header>
 
@@ -132,7 +128,7 @@ export function CompanyInterviewsPage(): React.ReactElement {
               const { value } = event.currentTarget;
               setQuery(value);
             }}
-            placeholder="Search by candidate, recruiter, institution, or score"
+            placeholder="Rechercher un candidat, un recruteur ou un score"
             value={query}
           />
           <Select onValueChange={(value) => setStatus(value as "all" | "active" | "completed")} value={status}>
@@ -140,9 +136,9 @@ export function CompanyInterviewsPage(): React.ReactElement {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All interviews</SelectItem>
-              <SelectItem value="active">Active only</SelectItem>
-              <SelectItem value="completed">Completed only</SelectItem>
+              <SelectItem value="all">Tous les entretiens</SelectItem>
+              <SelectItem value="active">En cours</SelectItem>
+              <SelectItem value="completed">Termines</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -151,18 +147,18 @@ export function CompanyInterviewsPage(): React.ReactElement {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Candidate / Interview</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Recruiter</TableHead>
-                <TableHead>Academic</TableHead>
-                <TableHead>Score</TableHead>
+                <TableHead>Candidat / Entretien</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead>Recruteur</TableHead>
+                <TableHead>Parcours</TableHead>
+                <TableHead>Note</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow>
                   <TableCell className="py-8 text-sm text-[color:var(--s2ee-muted-foreground)]" colSpan={5}>
-                    No interviews match these filters.
+                    Aucun entretien ne correspond.
                   </TableCell>
                 </TableRow>
               ) : (
@@ -184,7 +180,7 @@ export function CompanyInterviewsPage(): React.ReactElement {
                     </TableCell>
                     <TableCell>{row.status}</TableCell>
                     <TableCell>{row.recruiterName}</TableCell>
-                    <TableCell>{row.institution.length === 0 ? "Active session" : `${row.institution} · ${row.major}`}</TableCell>
+                    <TableCell>{row.institution.length === 0 ? "En cours" : `${row.institution} · ${row.major}`}</TableCell>
                     <TableCell>{row.scoreLabel}</TableCell>
                   </TableRow>
                 ))

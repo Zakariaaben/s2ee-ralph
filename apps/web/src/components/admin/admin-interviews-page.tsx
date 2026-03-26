@@ -29,9 +29,9 @@ import { useAdminInterviewLedgerState } from "@/lib/admin-page-data";
 import { filterAdminInterviewLedger } from "@/lib/admin-workspace";
 
 const interviewStatusOptions = [
-  { value: "all", label: "All interview states" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "all", label: "Tous les etats" },
+  { value: "completed", label: "Termines" },
+  { value: "cancelled", label: "Annules" },
 ] as const;
 
 const interviewStatusBadgeVariant = (
@@ -56,9 +56,9 @@ export function AdminInterviewsPage(): React.ReactElement {
   return (
     <div className="space-y-8">
       <AdminPageHeader
-        description="Review interview history separately from setup workflows and narrow the ledger by relevant operational filters."
-        eyebrow="Admin interviews"
-        title="Interview review"
+        description=""
+        eyebrow="Admin"
+        title="Entretiens"
       />
 
       <section className="space-y-6 border border-[var(--s2ee-border)] bg-white p-5 sm:p-6">
@@ -70,7 +70,7 @@ export function AdminInterviewsPage(): React.ReactElement {
               onChange={(event) => {
                 setInterviewQuery(event.target.value);
               }}
-              placeholder="Search company, student, recruiter, or CV"
+              placeholder="Rechercher une entreprise, un etudiant, un recruteur ou un CV"
               value={interviewQuery}
             />
           </div>
@@ -97,7 +97,7 @@ export function AdminInterviewsPage(): React.ReactElement {
         {interviewLedgerState.kind === "failure" ? (
           <AdminFailurePanel
             description={interviewLedgerState.message}
-            title="Interview ledger unavailable"
+            title="Entretiens indisponibles"
           />
         ) : null}
         {interviewLedgerState.kind === "success" && visibleInterviews.length === 0 ? (
@@ -106,9 +106,9 @@ export function AdminInterviewsPage(): React.ReactElement {
               <EmptyMedia className="rounded-none" variant="icon">
                 <ClipboardListIcon className="size-5" />
               </EmptyMedia>
-              <EmptyTitle>No interviews match these filters</EmptyTitle>
+              <EmptyTitle>Aucun entretien ne correspond</EmptyTitle>
               <EmptyDescription>
-                Adjust the query or status filter to inspect the full interview ledger.
+                Modifiez les filtres pour afficher plus de resultats.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -133,14 +133,14 @@ export function AdminInterviewsPage(): React.ReactElement {
                     </p>
                   </div>
                   <div className="space-y-1 text-sm text-[color:var(--s2ee-muted-foreground)]">
-                    <p>Recruiter: {entry.interview.recruiterName}</p>
+                    <p>Recruteur : {entry.interview.recruiterName}</p>
                     <p>
                       CV: {entry.cvProfile.profileType.label} · {entry.cvProfile.fileName}
                     </p>
                   </div>
                   <div className="text-sm font-medium text-slate-900">
                     {entry.interview.score == null
-                      ? "No score"
+                      ? "Sans note"
                       : `${entry.interview.score.toFixed(1)} / 5`}
                   </div>
                 </div>

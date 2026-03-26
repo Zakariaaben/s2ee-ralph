@@ -52,8 +52,8 @@ export const summarizeCheckInWorkspace = (
     pendingCount,
     nextArrivalLabel:
       nextPendingCompany == null
-        ? "All placed companies are marked arrived."
-        : `${nextPendingCompany.companyName} is next for arrival check-in.`,
+        ? "Toutes les entreprises placees sont marquees arrivees."
+        : `${nextPendingCompany.companyName} est la prochaine entreprise a accueillir.`,
   };
 };
 
@@ -61,12 +61,17 @@ export const filterCheckInCompanies = (
   companies: ReadonlyArray<CheckInCompanyEntry>,
   input: {
     readonly query: string;
+    readonly roomId: VenueRoom["id"] | null;
     readonly status: "all" | "arrived" | "pending";
   },
 ): ReadonlyArray<CheckInCompanyEntry> => {
   const normalizedQuery = normalizeQuery(input.query);
 
   return companies.filter((company) => {
+    if (input.roomId != null && company.roomId !== input.roomId) {
+      return false;
+    }
+
     if (input.status === "arrived" && company.arrivalStatus !== "arrived") {
       return false;
     }

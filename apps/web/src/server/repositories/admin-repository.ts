@@ -105,7 +105,6 @@ export class AdminRepository extends ServiceMap.Service<
     }) => Effect.Effect<AdminAccessLedgerEntry | null>;
     readonly createCompanyAccount: (input: {
       readonly companyName: string;
-      readonly accountName: string;
       readonly email: string;
       readonly password: string;
     }) => Effect.Effect<AdminAccessLedgerEntry, Error>;
@@ -242,7 +241,7 @@ export class AdminRepository extends ServiceMap.Service<
 
             return yield* loadAccessEntryByUserId(userId);
           }),
-        createCompanyAccount: ({ accountName, companyName, email, password }) =>
+        createCompanyAccount: ({ companyName, email, password }) =>
           Effect.promise(async () => {
             let createdUserId: string | null = null;
 
@@ -251,7 +250,7 @@ export class AdminRepository extends ServiceMap.Service<
                 body: {
                   email,
                   password,
-                  name: accountName,
+                  name: companyName,
                 },
               });
               const nextUserId =

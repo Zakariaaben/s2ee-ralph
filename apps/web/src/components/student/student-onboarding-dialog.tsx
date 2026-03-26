@@ -4,7 +4,6 @@ import { Alert, AlertDescription, AlertTitle } from "@project/ui/components/aler
 import { Button } from "@project/ui/components/button";
 import {
   Dialog,
-  DialogDescription,
   DialogHeader,
   DialogPanel,
   DialogPopup,
@@ -39,12 +38,12 @@ const readFileAsDataUrl = (file: File): Promise<string> =>
     const reader = new FileReader();
 
     reader.onerror = () => {
-      reject(new Error("The selected image could not be read."));
+      reject(new Error("Impossible de lire l'image selectionnee."));
     };
 
     reader.onload = () => {
       if (typeof reader.result !== "string") {
-        reject(new Error("The selected image could not be encoded."));
+        reject(new Error("Impossible de traiter l'image selectionnee."));
         return;
       }
 
@@ -97,7 +96,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
       major.length === 0 ||
       institution.length === 0
     ) {
-      setLocalError("Complete every required field before continuing.");
+      setLocalError("Completez tous les champs obligatoires.");
       return;
     }
 
@@ -121,7 +120,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
         return;
       }
 
-      setLocalError("The onboarding profile could not be saved. Try again.");
+      setLocalError("Impossible d'enregistrer le profil. Reessayez.");
     }
   };
 
@@ -134,11 +133,8 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
       >
         <DialogHeader className="border-b bg-[var(--s2ee-surface-soft)] px-5 py-5 sm:px-8 sm:py-6 [border-color:var(--s2ee-border)]">
           <DialogTitle className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
-            Complete student onboarding
+            Completer votre profil
           </DialogTitle>
-          <DialogDescription className="max-w-2xl text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
-            This setup step is required once before the CV profile library can be used.
-          </DialogDescription>
         </DialogHeader>
 
         <DialogPanel className="p-0" scrollFade={false}>
@@ -147,16 +143,13 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
               <div className="space-y-6">
                 <div className="space-y-2">
                   <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                    Setup gate
+                    Profil
                   </p>
-                  <p className="text-2xl font-black tracking-[-0.06em] text-primary">Required</p>
+                  <p className="text-2xl font-black tracking-[-0.06em] text-primary">Obligatoire</p>
                 </div>
 
                 <div className="space-y-4 text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
-                  <p>Enter the core identity and academic fields required for recruiter-facing CV presentation.</p>
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--s2ee-muted-foreground)]">
-                    CV upload remains blocked until this step is completed.
-                  </p>
+                  <p>Renseignez vos informations avant d'ajouter un CV.</p>
                 </div>
               </div>
             </section>
@@ -169,13 +162,13 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-first-name"
                     >
-                      First name
+                      Prenom
                     </label>
                     <Input
                       id="student-onboarding-first-name"
                       className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
                       name="firstName"
-                      placeholder="First name"
+                      placeholder="Prenom"
                       value={firstNameDraft}
                       onChange={(event) => {
                         const { value } = event.currentTarget;
@@ -189,13 +182,13 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-last-name"
                     >
-                      Last name
+                      Nom
                     </label>
                     <Input
                       id="student-onboarding-last-name"
                       className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
                       name="lastName"
-                      placeholder="Last name"
+                      placeholder="Nom"
                       value={lastNameDraft}
                       onChange={(event) => {
                         const { value } = event.currentTarget;
@@ -209,7 +202,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-phone-number"
                     >
-                      Phone number
+                      Telephone
                     </label>
                     <Input
                       id="student-onboarding-phone-number"
@@ -229,13 +222,13 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-academic-year"
                     >
-                      Academic year
+                      Annee
                     </label>
                     <Input
                       id="student-onboarding-academic-year"
                       className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
                       name="academicYear"
-                      placeholder="Academic year"
+                      placeholder="Annee"
                       value={academicYearDraft}
                       onChange={(event) => {
                         const { value } = event.currentTarget;
@@ -249,13 +242,13 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-major"
                     >
-                      Major
+                      Specialite
                     </label>
                     <Input
                       id="student-onboarding-major"
                       className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
                       name="major"
-                      placeholder="Major"
+                      placeholder="Specialite"
                       value={majorDraft}
                       onChange={(event) => {
                         const { value } = event.currentTarget;
@@ -290,7 +283,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                     className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                     htmlFor="student-onboarding-image"
                   >
-                    Optional profile image
+                    Photo de profil
                   </label>
                   <div className="border bg-[var(--s2ee-surface-soft)] p-4 [border-color:var(--s2ee-border)]">
                     <Input
@@ -307,7 +300,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       }}
                     />
                     <p className="mt-3 text-[11px] uppercase tracking-[0.16em] text-[color:var(--s2ee-muted-foreground)]">
-                      Optional. Reused in recruiter-facing candidate previews.
+                      Optionnel. Reutilisee dans l'apercu candidat.
                     </p>
                   </div>
                 </div>
@@ -315,14 +308,14 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                 {localError || props.mutationError ? (
                   <Alert variant="error">
                     <CircleAlertIcon className="size-4" />
-                    <AlertTitle>Onboarding not saved</AlertTitle>
+                    <AlertTitle>Profil non enregistre</AlertTitle>
                     <AlertDescription>{localError ?? props.mutationError}</AlertDescription>
                   </Alert>
                 ) : null}
 
                 <div className="flex justify-end border-t pt-5 [border-color:var(--s2ee-border)]">
                   <Button className="rounded-none px-6 py-4 text-sm uppercase tracking-[0.2em]" loading={props.isSaving} size="lg" type="submit">
-                    Save and continue
+                    Enregistrer et continuer
                   </Button>
                 </div>
               </form>

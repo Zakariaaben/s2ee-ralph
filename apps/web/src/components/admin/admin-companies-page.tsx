@@ -49,15 +49,15 @@ import {
 } from "@/lib/admin-workspace";
 
 const companyArrivalOptions = [
-  { value: "pending", label: "Pending arrival" },
-  { value: "arrived", label: "Arrived" },
-  { value: "all", label: "All arrival states" },
+  { value: "pending", label: "Arrivee en attente" },
+  { value: "arrived", label: "Arrivee" },
+  { value: "all", label: "Tous les etats" },
 ] as const;
 
 const companyPlacementOptions = [
-  { value: "placed", label: "Placed" },
-  { value: "unplaced", label: "Unplaced" },
-  { value: "all", label: "All placements" },
+  { value: "placed", label: "Placees" },
+  { value: "unplaced", label: "Non placees" },
+  { value: "all", label: "Tous les placements" },
 ] as const;
 
 const arrivalBadgeVariant = (status: "arrived" | "not-arrived"): React.ComponentProps<typeof Badge>["variant"] =>
@@ -78,7 +78,6 @@ export function AdminCompaniesPage(): React.ReactElement {
     useState<(typeof companyPlacementOptions)[number]["value"]>("all");
   const [createState, setCreateState] = useState({
     companyName: "",
-    accountName: "",
     email: "",
     password: "",
   });
@@ -109,16 +108,14 @@ export function AdminCompaniesPage(): React.ReactElement {
   const handleCreateCompanyAccount = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextCompanyName = createState.companyName.trim();
-    const nextAccountName = createState.accountName.trim();
     const nextEmail = createState.email.trim();
 
     if (
       nextCompanyName.length === 0 ||
-      nextAccountName.length === 0 ||
       nextEmail.length === 0 ||
       createState.password.length === 0
     ) {
-      setCreateError("Complete all company account fields before creating the account.");
+      setCreateError("Renseignez tous les champs avant de creer le compte entreprise.");
       setCreateMessage(null);
       return;
     }
@@ -131,7 +128,6 @@ export function AdminCompaniesPage(): React.ReactElement {
       await createCompanyAccount({
         payload: {
           companyName: nextCompanyName,
-          accountName: nextAccountName,
           email: nextEmail,
           password: createState.password,
         },
@@ -144,12 +140,11 @@ export function AdminCompaniesPage(): React.ReactElement {
       refreshCompanyLedger();
       setCreateState({
         companyName: "",
-        accountName: "",
         email: "",
         password: "",
       });
       startTransition(() => {
-        setCreateMessage(`Company account created for ${nextCompanyName}.`);
+        setCreateMessage(`Compte entreprise cree pour ${nextCompanyName}.`);
       });
     } catch (error) {
       setCreateError(formatAdminMutationError(error));
@@ -161,15 +156,15 @@ export function AdminCompaniesPage(): React.ReactElement {
   return (
     <div className="space-y-8">
       <AdminPageHeader
-        description="Inspect company records, provision company access, and review recruiter rosters without mixing in venue, map, or access controls."
-        eyebrow="Admin companies"
-        title="Companies and recruiter rosters"
+        description=""
+        eyebrow="Admin"
+        title="Entreprises"
       />
 
       {createMessage ? (
         <Alert>
           <BadgeCheckIcon className="size-4" />
-          <AlertTitle>Company account created</AlertTitle>
+          <AlertTitle>Compte entreprise cree</AlertTitle>
           <AlertDescription>{createMessage}</AlertDescription>
         </Alert>
       ) : null}
@@ -177,16 +172,16 @@ export function AdminCompaniesPage(): React.ReactElement {
       {createError ? (
         <Alert variant="error">
           <CircleAlertIcon className="size-4" />
-          <AlertTitle>Company account creation failed</AlertTitle>
+          <AlertTitle>Echec de creation</AlertTitle>
           <AlertDescription>{createError}</AlertDescription>
         </Alert>
       ) : null}
 
       <section className="grid gap-px border border-[var(--s2ee-border)] bg-[var(--s2ee-border)] md:grid-cols-3">
         {[
-          ["Companies", companyLedger.length],
-          ["Placed", placedCount],
-          ["Arrived", arrivedCount],
+          ["Entreprises", companyLedger.length],
+          ["Placees", placedCount],
+          ["Arrivees", arrivedCount],
         ].map(([label, value]) => (
           <div className="bg-white p-5" key={label}>
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
@@ -201,17 +196,13 @@ export function AdminCompaniesPage(): React.ReactElement {
         <section className="space-y-6 border border-[var(--s2ee-border)] bg-white p-5 sm:p-6">
           <div className="space-y-2 border-b border-[var(--s2ee-border)] pb-5">
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-              Provision company access
-            </p>
-            <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-              Create the company login and the linked company record in one admin action. Recruiter
-              roster edits still stay with the company account after first sign-in.
+              Nouveau compte
             </p>
           </div>
 
           <form className="space-y-5" onSubmit={handleCreateCompanyAccount}>
             <div className="space-y-2">
-              <Label htmlFor="company-name">Company name</Label>
+              <Label htmlFor="company-name">Nom de l'entreprise</Label>
               <Input
                 className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                 id="company-name"
@@ -223,19 +214,7 @@ export function AdminCompaniesPage(): React.ReactElement {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="account-name">Account contact name</Label>
-              <Input
-                className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
-                id="account-name"
-                onChange={(event) => {
-                  setCreateState((current) => ({ ...current, accountName: event.target.value }));
-                }}
-                placeholder="Nora Recruiter"
-                value={createState.accountName}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="account-email">Account email</Label>
+              <Label htmlFor="account-email">Email</Label>
               <Input
                 className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                 id="account-email"
@@ -249,21 +228,21 @@ export function AdminCompaniesPage(): React.ReactElement {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="account-password">Temporary password</Label>
+              <Label htmlFor="account-password">Mot de passe temporaire</Label>
               <Input
                 className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                 id="account-password"
                 onChange={(event) => {
                   setCreateState((current) => ({ ...current, password: event.target.value }));
                 }}
-                placeholder="Set an initial password"
+                placeholder="Definir un mot de passe temporaire"
                 type="password"
                 value={createState.password}
               />
             </div>
 
             <Button className="w-full" disabled={isCreatingCompanyAccount} type="submit">
-              {isCreatingCompanyAccount ? "Creating..." : "Create company account"}
+              {isCreatingCompanyAccount ? "Creation..." : "Creer le compte entreprise"}
             </Button>
           </form>
         </section>
@@ -277,7 +256,7 @@ export function AdminCompaniesPage(): React.ReactElement {
                 onChange={(event) => {
                   setCompanyQuery(event.target.value);
                 }}
-                placeholder="Search company, room, stand, recruiter"
+                placeholder="Rechercher une entreprise, une salle, un stand ou un recruteur"
                 value={companyQuery}
               />
             </div>
@@ -323,13 +302,13 @@ export function AdminCompaniesPage(): React.ReactElement {
           {companyLedgerState.kind === "failure" ? (
             <AdminFailurePanel
               description={companyLedgerState.message}
-              title="Company records unavailable"
+              title="Entreprises indisponibles"
             />
           ) : null}
           {accessLedgerState.kind === "failure" ? (
             <AdminFailurePanel
               description={accessLedgerState.message}
-              title="Account records unavailable"
+              title="Comptes indisponibles"
             />
           ) : null}
           {companyLedgerState.kind === "success" && visibleCompanies.length === 0 ? (
@@ -338,9 +317,9 @@ export function AdminCompaniesPage(): React.ReactElement {
                 <EmptyMedia className="rounded-none" variant="icon">
                   <Building2Icon className="size-5" />
                 </EmptyMedia>
-                <EmptyTitle>No companies match these filters</EmptyTitle>
+                <EmptyTitle>Aucune entreprise ne correspond</EmptyTitle>
                 <EmptyDescription>
-                  Adjust the placement or arrival filters to inspect the full company ledger.
+                  Modifiez les filtres d'arrivee ou de placement.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -351,11 +330,11 @@ export function AdminCompaniesPage(): React.ReactElement {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Account</TableHead>
+                      <TableHead>Entreprise</TableHead>
+                      <TableHead>Email</TableHead>
                       <TableHead>Placement</TableHead>
-                      <TableHead>Arrival</TableHead>
-                      <TableHead>Recruiters</TableHead>
+                      <TableHead>Arrivee</TableHead>
+                      <TableHead>Recruteurs</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -368,19 +347,16 @@ export function AdminCompaniesPage(): React.ReactElement {
                             <div className="space-y-1">
                               <p className="font-medium text-slate-900">{entry.company.name}</p>
                               <p className="text-sm text-[color:var(--s2ee-muted-foreground)]">
-                                {entry.company.recruiters.length} recruiter
+                                {entry.company.recruiters.length} recruteur
                                 {entry.company.recruiters.length === 1 ? "" : "s"}
                               </p>
                             </div>
                           </TableCell>
                           <TableCell className="align-top text-sm text-[color:var(--s2ee-muted-foreground)]">
                             {owner == null ? (
-                              "No linked account"
+                              "Aucun compte lie"
                             ) : (
-                              <div className="space-y-1">
-                                <p className="font-medium text-slate-900">{owner.name}</p>
-                                <p>{owner.email}</p>
-                              </div>
+                              owner.email
                             )}
                           </TableCell>
                           <TableCell className="align-top text-sm text-[color:var(--s2ee-muted-foreground)]">
@@ -388,13 +364,13 @@ export function AdminCompaniesPage(): React.ReactElement {
                           </TableCell>
                           <TableCell className="align-top">
                             <Badge variant={arrivalBadgeVariant(entry.arrivalStatus)}>
-                              {entry.arrivalStatus === "arrived" ? "Arrived" : "Pending"}
+                              {entry.arrivalStatus === "arrived" ? "Arrivee" : "En attente"}
                             </Badge>
                           </TableCell>
                           <TableCell className="align-top">
                             <div className="flex flex-wrap gap-2">
                               {entry.company.recruiters.length === 0 ? (
-                                <Badge variant="outline">No recruiters</Badge>
+                                <Badge variant="outline">Aucun recruteur</Badge>
                               ) : (
                                 entry.company.recruiters.map((recruiter) => (
                                   <Badge key={recruiter.id} variant="outline">
@@ -427,17 +403,17 @@ export function AdminCompaniesPage(): React.ReactElement {
                           </p>
                           {owner ? (
                             <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                              {owner.name} · {owner.email}
+                              {owner.email}
                             </p>
                           ) : null}
                         </div>
                         <Badge variant={arrivalBadgeVariant(entry.arrivalStatus)}>
-                          {entry.arrivalStatus === "arrived" ? "Arrived" : "Pending"}
+                          {entry.arrivalStatus === "arrived" ? "Arrivee" : "En attente"}
                         </Badge>
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2">
                         {entry.company.recruiters.length === 0 ? (
-                          <Badge variant="outline">No recruiters</Badge>
+                          <Badge variant="outline">Aucun recruteur</Badge>
                         ) : (
                           entry.company.recruiters.map((recruiter) => (
                             <Badge key={recruiter.id} variant="outline">

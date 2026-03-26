@@ -23,11 +23,11 @@ export const buildCompanyInterviewListRows = (input: {
   ...input.activeInterviews.map((interview) => ({
     id: interview.id,
     kind: "active" as const,
-    label: `Interview ${interview.id.slice(0, 8)}`,
+    label: `Entretien ${interview.id.slice(0, 8)}`,
     recruiterName: interview.recruiterName,
     institution: "",
     major: "",
-    scoreLabel: "In progress",
+    scoreLabel: "En cours",
     status: "active" as const,
   })),
   ...input.completedInterviews.map((entry) => ({
@@ -38,7 +38,7 @@ export const buildCompanyInterviewListRows = (input: {
     institution: entry.student.institution,
     major: entry.student.major,
     scoreLabel:
-      entry.interview.score == null ? "No score" : `${entry.interview.score.toFixed(1)} / 5`,
+      entry.interview.score == null ? "Sans note" : `${entry.interview.score.toFixed(1)} / 5`,
     status: "completed" as const,
   })),
 ];

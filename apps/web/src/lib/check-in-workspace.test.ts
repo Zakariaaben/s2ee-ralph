@@ -112,6 +112,7 @@ describe("check-in workspace helper", () => {
     expect(
       filterCheckInCompanies(companies, {
         query: "",
+        roomId: null,
         status: "pending",
       }).map((company) => company.companyName),
     ).toEqual(["Atlas Systems", "Northwind Works"]);
@@ -119,6 +120,7 @@ describe("check-in workspace helper", () => {
     expect(
       filterCheckInCompanies(companies, {
         query: "b3",
+        roomId: null,
         status: "all",
       }).map((company) => company.companyName),
     ).toEqual(["Northwind Works"]);
@@ -126,8 +128,37 @@ describe("check-in workspace helper", () => {
     expect(
       filterCheckInCompanies(companies, {
         query: "14",
+        roomId: null,
         status: "arrived",
       }).map((company) => company.companyName),
     ).toEqual(["Beacon Labs"]);
+  });
+
+  it("composes room filtering with search and arrival status", () => {
+    const companies = flattenCheckInCompanies(rooms);
+
+    expect(
+      filterCheckInCompanies(companies, {
+        query: "",
+        roomId: "room_a" as VenueRoom["id"],
+        status: "all",
+      }).map((company) => company.companyName),
+    ).toEqual(["Atlas Systems", "Beacon Labs"]);
+
+    expect(
+      filterCheckInCompanies(companies, {
+        query: "atlas",
+        roomId: "room_a" as VenueRoom["id"],
+        status: "pending",
+      }).map((company) => company.companyName),
+    ).toEqual(["Atlas Systems"]);
+
+    expect(
+      filterCheckInCompanies(companies, {
+        query: "atlas",
+        roomId: "room_b" as VenueRoom["id"],
+        status: "pending",
+      }),
+    ).toEqual([]);
   });
 });

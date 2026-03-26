@@ -73,6 +73,11 @@ export class VenueRepository extends ServiceMap.Service<
         readonly companyId: string;
       },
     ) => Effect.Effect<VenueCompany | null>;
+    readonly resetCompanyArrival: (
+      input: {
+        readonly companyId: string;
+      },
+    ) => Effect.Effect<VenueCompany | null>;
   }
 >()("@project/web/VenueRepository") {
   static readonly layer = Layer.effect(
@@ -448,6 +453,25 @@ export class VenueRepository extends ServiceMap.Service<
                 .update(company)
                 .set({
                   arrivalStatus: "arrived",
+                  updatedAt: new Date(),
+                })
+                .where(eq(company.id, companyId))
+                .returning({ id: company.id }),
+            );
+
+            if (updatedCompanies.length === 0) {
+              return null;
+            }
+
+            return yield* loadPlacedCompanyById(companyId);
+          }),
+        resetCompanyArrival: ({ companyId }) =>
+          Effect.gen(function*() {
+            const updatedCompanies = yield* Effect.promise(() =>
+              db
+                .update(company)
+                .set({
+                  arrivalStatus: "not-arrived",
                   updatedAt: new Date(),
                 })
                 .where(eq(company.id, companyId))

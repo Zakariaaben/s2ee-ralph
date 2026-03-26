@@ -262,6 +262,103 @@ describeWithPostgres("venue rpc", () => {
       ]);
     }).pipe(Effect.provide(Layer.fresh(VenueTestLive))));
 
+  it.effect("admin actors can reset an arrived company back to pending", () =>
+    Effect.gen(function*() {
+      const adminHeaders = yield* provisionSessionHeaders("admin");
+      const companyHeaders = yield* provisionSessionHeaders("company");
+      const checkInHeaders = yield* provisionSessionHeaders("check-in");
+      const venueClient = yield* makeVenueClient;
+      const companyClient = yield* makeCompanyClient;
+      const placedRoom = yield* venueClient.createRoom({ code: "B2" }).pipe(
+        RpcClient.withHeaders(adminHeaders),
+      );
+      const companyProfile = yield* companyClient.upsertCompanyProfile({ name: "Northwind Works" }).pipe(
+        RpcClient.withHeaders(companyHeaders),
+      );
+
+      yield* venueClient.assignCompanyPlacement({
+        companyId: companyProfile.id,
+        roomId: placedRoom.id,
+        standNumber: 8,
+      }).pipe(RpcClient.withHeaders(adminHeaders));
+      yield* venueClient.markCompanyArrived({
+        companyId: companyProfile.id,
+      }).pipe(RpcClient.withHeaders(checkInHeaders));
+
+      const wrongRoleExit = yield* Effect.exit(
+        venueClient.resetCompanyArrival({ companyId: companyProfile.id }).pipe(
+          RpcClient.withHeaders(companyHeaders),
+        ),
+      );
+
+      expect(wrongRoleExit._tag).toBe("Failure");
+
+      const resetCompany = yield* venueClient.resetCompanyArrival({
+        companyId: companyProfile.id,
+      }).pipe(RpcClient.withHeaders(adminHeaders));
+
+      expect(resetCompany).toEqual({
+        companyId: companyProfile.id,
+        companyName: "Northwind Works",
+        standNumber: 8,
+        arrivalStatus: "not-arrived",
+      });
+
+      expect(
+        yield* venueClient.listVenueRooms().pipe(
+          RpcClient.withHeaders(adminHeaders),
+        ),
+      ).toEqual([
+        {
+          id: placedRoom.id,
+          code: "B2",
+          companies: [
+            {
+              companyId: companyProfile.id,
+              companyName: "Northwind Works",
+              standNumber: 8,
+              arrivalStatus: "not-arrived",
+            },
+          ],
+        },
+      ]);
+    }).pipe(Effect.provide(Layer.fresh(VenueTestLive))));
+
+  it.effect("check-in actors can undo a recent arrival mark back to pending", () =>
+    Effect.gen(function*() {
+      const adminHeaders = yield* provisionSessionHeaders("admin");
+      const companyHeaders = yield* provisionSessionHeaders("company");
+      const checkInHeaders = yield* provisionSessionHeaders("check-in");
+      const venueClient = yield* makeVenueClient;
+      const companyClient = yield* makeCompanyClient;
+      const placedRoom = yield* venueClient.createRoom({ code: "C4" }).pipe(
+        RpcClient.withHeaders(adminHeaders),
+      );
+      const companyProfile = yield* companyClient.upsertCompanyProfile({ name: "Atlas Systems" }).pipe(
+        RpcClient.withHeaders(companyHeaders),
+      );
+
+      yield* venueClient.assignCompanyPlacement({
+        companyId: companyProfile.id,
+        roomId: placedRoom.id,
+        standNumber: 11,
+      }).pipe(RpcClient.withHeaders(adminHeaders));
+      yield* venueClient.markCompanyArrived({
+        companyId: companyProfile.id,
+      }).pipe(RpcClient.withHeaders(checkInHeaders));
+
+      const resetCompany = yield* venueClient.resetCompanyArrival({
+        companyId: companyProfile.id,
+      }).pipe(RpcClient.withHeaders(checkInHeaders));
+
+      expect(resetCompany).toEqual({
+        companyId: companyProfile.id,
+        companyName: "Atlas Systems",
+        standNumber: 11,
+        arrivalStatus: "not-arrived",
+      });
+    }).pipe(Effect.provide(Layer.fresh(VenueTestLive))));
+
   it.effect(
     "admin actors can rename rooms, clear placements, and delete rooms while venue and admin ledgers stay coherent",
     () =>

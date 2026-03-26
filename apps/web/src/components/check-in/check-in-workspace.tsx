@@ -5,7 +5,13 @@ import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import { Alert, AlertDescription, AlertTitle } from "@project/ui/components/alert";
 import { Badge } from "@project/ui/components/badge";
 import { Button } from "@project/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@project/ui/components/card";
+import {
+  Drawer,
+  DrawerHeader,
+  DrawerPanel,
+  DrawerPopup,
+  DrawerTitle,
+} from "@project/ui/components/drawer";
 import {
   Empty,
   EmptyContent,
@@ -15,24 +21,28 @@ import {
   EmptyTitle,
 } from "@project/ui/components/empty";
 import { Input } from "@project/ui/components/input";
-import { Separator } from "@project/ui/components/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@project/ui/components/select";
 import { Skeleton } from "@project/ui/components/skeleton";
 import { useNavigate } from "@tanstack/react-router";
 import {
   BadgeCheckIcon,
-  Building2Icon,
   CircleAlertIcon,
   ClipboardCheckIcon,
+  ListFilterIcon,
   LoaderCircleIcon,
   LogOutIcon,
   RefreshCwIcon,
+  RotateCcwIcon,
   SearchIcon,
 } from "lucide-react";
 import type React from "react";
-import {
-  startTransition,
-  useState,
-} from "react";
+import { startTransition, useDeferredValue, useEffect, useRef, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
 import { checkInWorkspaceAtoms, checkInWorkspaceReactivity } from "@/lib/check-in-atoms";
@@ -46,6 +56,8 @@ type AsyncPanelState<Value> =
   | { readonly kind: "loading" }
   | { readonly kind: "failure"; readonly message: string }
   | { readonly kind: "success"; readonly value: Value };
+
+const allRoomsValue = "all";
 
 const toAsyncPanelState = <Value,>(
   result: AsyncResult.AsyncResult<Value, unknown>,
@@ -73,29 +85,45 @@ const formatMutationError = (error: unknown): string => {
     return error.message;
   }
 
-  return "The company arrival update did not complete. Refresh the surface and try again.";
+  return "La mise a jour n'a pas pu etre effectuee. Reessayez.";
 };
 
 const arrivalFilterOptions = [
-  { value: "pending", label: "Pending" },
-  { value: "arrived", label: "Arrived" },
-  { value: "all", label: "All" },
+  { value: "pending", label: "En attente" },
+  { value: "arrived", label: "Arrivees" },
+  { value: "all", label: "Toutes" },
 ] as const;
+
+const undoWindowMs = 8_000;
+
+type ArrivalUndoState = {
+  readonly companyId: string;
+  readonly companyName: string;
+};
 
 export function CheckInWorkspace(): React.ReactElement {
   const navigate = useNavigate();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [activeFilter, setActiveFilter] = useState<(typeof arrivalFilterOptions)[number]["value"]>(
     "pending",
   );
+  const [activeRoomId, setActiveRoomId] = useState<string>(allRoomsValue);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [pendingCompanyId, setPendingCompanyId] = useState<string | null>(null);
+  const [pendingUndoCompanyId, setPendingUndoCompanyId] = useState<string | null>(null);
+  const [arrivalUndoState, setArrivalUndoState] = useState<ArrivalUndoState | null>(null);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const undoTimeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 
   const venueRoomsResult = useAtomValue(checkInWorkspaceAtoms.venueRooms);
   const refreshVenueRooms = useAtomRefresh(checkInWorkspaceAtoms.venueRooms);
   const markCompanyArrived = useAtomSet(checkInWorkspaceAtoms.markCompanyArrived, {
+    mode: "promise",
+  });
+  const resetCompanyArrival = useAtomSet(checkInWorkspaceAtoms.resetCompanyArrival, {
     mode: "promise",
   });
 
@@ -112,16 +140,56 @@ export function CheckInWorkspace(): React.ReactElement {
 
   const venueRoomsState = toAsyncPanelState(
     venueRoomsResult,
-    "The venue placement board could not be loaded from the venue contract.",
+    "La liste des arrivees n'a pas pu etre chargee.",
   );
 
   const venueRooms = venueRoomsState.kind === "success" ? venueRoomsState.value : [];
   const summary = summarizeCheckInWorkspace(venueRooms);
   const companies = flattenCheckInCompanies(venueRooms);
+  const roomOptions = [...venueRooms].sort((left, right) => left.code.localeCompare(right.code));
+  const selectedRoom =
+    activeRoomId === allRoomsValue
+      ? null
+      : roomOptions.find((room) => room.id === activeRoomId) ?? null;
   const visibleCompanies = filterCheckInCompanies(companies, {
-    query: searchQuery,
+    query: deferredSearchQuery,
+    roomId: selectedRoom?.id ?? null,
     status: activeFilter,
   });
+  const visiblePendingCount = visibleCompanies.filter((company) => company.arrivalStatus === "not-arrived").length;
+  const visibleArrivedCount = visibleCompanies.length - visiblePendingCount;
+
+  useEffect(() => {
+    if (
+      activeRoomId !== allRoomsValue &&
+      venueRoomsState.kind === "success" &&
+      !venueRooms.some((room) => room.id === activeRoomId)
+    ) {
+      setActiveRoomId(allRoomsValue);
+    }
+  }, [activeRoomId, venueRooms, venueRoomsState.kind]);
+
+  useEffect(() => {
+    if (undoTimeoutRef.current != null) {
+      clearTimeout(undoTimeoutRef.current);
+      undoTimeoutRef.current = null;
+    }
+
+    if (arrivalUndoState == null) {
+      return;
+    }
+
+    undoTimeoutRef.current = globalThis.setTimeout(() => {
+      setArrivalUndoState(null);
+    }, undoWindowMs);
+
+    return () => {
+      if (undoTimeoutRef.current != null) {
+        clearTimeout(undoTimeoutRef.current);
+        undoTimeoutRef.current = null;
+      }
+    };
+  }, [arrivalUndoState]);
 
   const refreshWorkspace = () => {
     refreshVenueRooms();
@@ -131,6 +199,7 @@ export function CheckInWorkspace(): React.ReactElement {
     setPendingCompanyId(companyId);
     setWorkspaceError(null);
     setWorkspaceMessage(null);
+    setArrivalUndoState(null);
 
     try {
       await markCompanyArrived({
@@ -138,7 +207,10 @@ export function CheckInWorkspace(): React.ReactElement {
         reactivityKeys: checkInWorkspaceReactivity.venueRooms,
       });
       startTransition(() => {
-        setWorkspaceMessage(`${companyName} marked as arrived.`);
+        setArrivalUndoState({
+          companyId,
+          companyName,
+        });
       });
     } catch (error) {
       setWorkspaceError(formatMutationError(error));
@@ -147,121 +219,173 @@ export function CheckInWorkspace(): React.ReactElement {
     }
   };
 
-  return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--primary)/0.14),_transparent_42%),linear-gradient(180deg,_hsl(var(--background)),_hsl(var(--muted)/0.55))]">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <section className="overflow-hidden rounded-3xl border bg-card/95 shadow-sm backdrop-blur">
-          <div className="flex flex-col gap-6 p-5 sm:p-6 lg:flex-row lg:items-end lg:justify-between lg:p-8">
-            <div className="max-w-3xl space-y-4">
-              <Badge className="w-fit gap-2 bg-primary/10 text-primary hover:bg-primary/10">
-                <ClipboardCheckIcon className="size-3.5" />
-                Check-in operations
-              </Badge>
-              <div className="space-y-2">
-                <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                  Arrival board for event staff
-                </h1>
-                <p className="max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-                  Keep the arrival flow narrow: find a placed company, confirm its booth context,
-                  and mark it arrived without entering the admin surface.
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Card className="border-dashed bg-background/70 shadow-none">
-                  <CardHeader className="space-y-1 pb-2">
-                    <CardDescription>Pending arrivals</CardDescription>
-                    <CardTitle className="text-3xl">{summary.pendingCount}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card className="border-dashed bg-background/70 shadow-none">
-                  <CardHeader className="space-y-1 pb-2">
-                    <CardDescription>Arrived companies</CardDescription>
-                    <CardTitle className="text-3xl">{summary.arrivedCount}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card className="border-dashed bg-background/70 shadow-none">
-                  <CardHeader className="space-y-1 pb-2">
-                    <CardDescription>Placed companies</CardDescription>
-                    <CardTitle className="text-3xl">{summary.placedCompanyCount}</CardTitle>
-                  </CardHeader>
-                </Card>
-              </div>
-            </div>
+  const undoArrival = async () => {
+    if (arrivalUndoState == null) {
+      return;
+    }
 
-            <div className="flex flex-col gap-3 lg:max-w-sm">
-              <Card className="border-primary/20 bg-primary/5 shadow-none">
-                <CardHeader className="gap-2 pb-4">
-                  <CardDescription className="text-primary">Next focus</CardDescription>
-                  <CardTitle className="text-base leading-6">{summary.nextArrivalLabel}</CardTitle>
-                </CardHeader>
-              </Card>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  className="flex-1"
-                  onClick={refreshWorkspace}
-                  type="button"
-                  variant="outline"
-                >
-                  <RefreshCwIcon className="size-4" />
-                  Refresh board
-                </Button>
-                <Button
-                  className="flex-1"
-                  disabled={isSigningOut}
-                  onClick={() => {
-                    void handleSignOut();
-                  }}
-                  type="button"
-                  variant="ghost"
-                >
-                  <LogOutIcon className="size-4" />
-                  Sign out
-                </Button>
-              </div>
+    setPendingUndoCompanyId(arrivalUndoState.companyId);
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      await resetCompanyArrival({
+        payload: {
+          companyId: arrivalUndoState.companyId,
+        },
+        reactivityKeys: checkInWorkspaceReactivity.venueRooms,
+      });
+      startTransition(() => {
+        setWorkspaceMessage(`${arrivalUndoState.companyName} remise en attente.`);
+        setArrivalUndoState(null);
+      });
+    } catch (error) {
+      setWorkspaceError(formatMutationError(error));
+    } finally {
+      setPendingUndoCompanyId(null);
+    }
+  };
+
+  return (
+    <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-[color:var(--s2ee-soft-foreground)]">
+      <div className="mx-auto grid w-full max-w-[1480px] gap-6 px-5 py-6 sm:px-8 sm:py-8">
+        <header className="grid gap-5 border-b border-[var(--s2ee-border)] pb-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="space-y-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+              Accueil
+            </p>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-black tracking-[-0.08em] text-slate-900 sm:text-4xl">
+                Arrivees
+              </h1>
             </div>
           </div>
-        </section>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button className="rounded-none" onClick={refreshWorkspace} type="button" variant="outline">
+              <RefreshCwIcon className="size-4" />
+              Actualiser
+            </Button>
+            <Button
+              className="rounded-none"
+              disabled={isSigningOut}
+              onClick={() => {
+                void handleSignOut();
+              }}
+              type="button"
+              variant="outline"
+            >
+              <LogOutIcon className="size-4" />
+              Se deconnecter
+            </Button>
+          </div>
+        </header>
+
+        {arrivalUndoState ? (
+          <Alert className="sticky top-4 z-20 border-[var(--s2ee-border)] bg-[var(--s2ee-surface)]">
+            <BadgeCheckIcon className="size-4" />
+            <AlertTitle>Arrivee mise a jour</AlertTitle>
+            <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <span>{arrivalUndoState.companyName} marquee comme arrivee.</span>
+              <Button
+                className="rounded-none sm:min-w-32"
+                disabled={pendingUndoCompanyId === arrivalUndoState.companyId}
+                onClick={() => {
+                  void undoArrival();
+                }}
+                type="button"
+                variant="outline"
+              >
+                <RotateCcwIcon className="size-4" />
+                {pendingUndoCompanyId === arrivalUndoState.companyId ? "Annulation..." : "Annuler"}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         {workspaceMessage ? (
           <Alert>
             <BadgeCheckIcon className="size-4" />
-            <AlertTitle>Arrival updated</AlertTitle>
+            <AlertTitle>Arrivee mise a jour</AlertTitle>
             <AlertDescription>{workspaceMessage}</AlertDescription>
           </Alert>
         ) : null}
 
         {workspaceError ? (
           <Alert variant="error">
-            <CircleAlertIcon className="size-4" />
-            <AlertTitle>Update failed</AlertTitle>
-            <AlertDescription>{workspaceError}</AlertDescription>
-          </Alert>
+          <CircleAlertIcon className="size-4" />
+          <AlertTitle>Echec de mise a jour</AlertTitle>
+          <AlertDescription>{workspaceError}</AlertDescription>
+        </Alert>
         ) : null}
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,0.9fr)]">
-          <Card>
-            <CardHeader className="gap-4">
-              <div className="space-y-1">
-                <CardTitle>Company arrival queue</CardTitle>
-                <CardDescription>
-                  Search by company, room code, or stand number and keep the queue moving.
-                </CardDescription>
+        <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <section className="hidden border border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] xl:block">
+            <div className="border-b border-[var(--s2ee-border)] px-6 py-6">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                Filtres
+              </p>
+              <div className="mt-3 space-y-2">
+                <h2 className="text-xl font-bold tracking-[-0.06em] text-slate-900">Recherche</h2>
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative flex-1">
-                  <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            </div>
+
+            <div className="grid gap-6 px-6 py-6">
+              <div className="grid gap-2">
+                <label
+                  className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]"
+                  htmlFor="check-in-search"
+                >
+                  Recherche
+                </label>
+                <div className="relative">
+                  <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[color:var(--s2ee-muted-foreground)]" />
                   <Input
-                    className="pl-9"
+                    autoComplete="off"
+                    className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] pl-9 shadow-none"
+                    id="check-in-search"
+                    name="check-in-search"
                     onChange={(event) => {
                       setSearchQuery(event.target.value);
                     }}
-                    placeholder="Search company, room, or stand"
+                    placeholder="Entreprise, salle ou stand"
                     value={searchQuery}
                   />
                 </div>
-                <div className="flex flex-wrap gap-2">
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
+                  Salle
+                </label>
+                <Select
+                  onValueChange={(value) => {
+                    setActiveRoomId(value ?? allRoomsValue);
+                  }}
+                  value={activeRoomId}
+                >
+                  <SelectTrigger className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none">
+                    <SelectValue placeholder="Toutes les salles" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={allRoomsValue}>Toutes les salles</SelectItem>
+                    {roomOptions.map((room) => (
+                      <SelectItem key={room.id} value={room.id}>
+                        {room.code} ({room.companies.length})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
+                  Statut
+                </p>
+                <div className="grid grid-cols-3 gap-2">
                   {arrivalFilterOptions.map((option) => (
                     <Button
+                      className="rounded-none"
                       key={option.value}
                       onClick={() => {
                         setActiveFilter(option.value);
@@ -274,46 +398,150 @@ export function CheckInWorkspace(): React.ReactElement {
                   ))}
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
+
+              <div className="grid gap-3 border-t border-[var(--s2ee-border)] pt-5 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[color:var(--s2ee-muted-foreground)]">Entreprises placees</span>
+                  <span className="font-bold text-slate-900">{summary.placedCompanyCount}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[color:var(--s2ee-muted-foreground)]">Resultats visibles</span>
+                  <span className="font-bold text-slate-900">{visibleCompanies.length}</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-[color:var(--s2ee-muted-foreground)]">En attente</span>
+                  <span className="font-bold text-slate-900">{visiblePendingCount}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="border border-[var(--s2ee-border)] bg-[var(--s2ee-surface)]">
+            <div className="grid gap-3 border-b border-[var(--s2ee-border)] px-5 py-5 xl:hidden">
+              <div className="relative">
+                <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[color:var(--s2ee-muted-foreground)]" />
+                <Input
+                  autoComplete="off"
+                  className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] pl-9 shadow-none"
+                  id="check-in-search-mobile"
+                  name="check-in-search-mobile"
+                  onChange={(event) => {
+                    setSearchQuery(event.target.value);
+                  }}
+                  placeholder="Entreprise, salle ou stand"
+                  value={searchQuery}
+                />
+              </div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                <Button
+                  className="rounded-none"
+                  onClick={() => setIsMobileFiltersOpen(true)}
+                  type="button"
+                  variant="outline"
+                >
+                  <ListFilterIcon className="size-4" />
+                  {selectedRoom == null ? "Filtres" : `Salle ${selectedRoom.code}`}
+                </Button>
+                <Button className="rounded-none" onClick={refreshWorkspace} type="button" variant="outline">
+                  <RefreshCwIcon className="size-4" />
+                  Actualiser
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
+                <span>{visibleCompanies.length} resultats</span>
+                <span>{visiblePendingCount} en attente</span>
+                <span>{visibleArrivedCount} arrivees</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4 border-b border-[var(--s2ee-border)] px-6 py-6 sm:flex-row sm:items-end sm:justify-between">
+              <div className="space-y-2">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                  Liste
+                </p>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-black tracking-[-0.08em] text-slate-900">
+                    {selectedRoom == null ? "Toutes les salles" : `Salle ${selectedRoom.code}`}
+                  </h2>
+                  <p className="max-w-3xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                    {summary.placedCompanyCount === 0
+                      ? "Aucune entreprise placee pour le moment."
+                      : `${visibleCompanies.length} entreprises correspondent aux filtres actuels.`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
+                <span>{visiblePendingCount} en attente</span>
+                <span className="text-[var(--s2ee-border-strong)]">/</span>
+                <span>{visibleArrivedCount} arrivees</span>
+              </div>
+            </div>
+
+            <div className="border-b border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] px-6 py-4 text-sm text-[color:var(--s2ee-muted-foreground)]">
+              {selectedRoom == null
+                ? summary.nextArrivalLabel
+                : `Salle ${selectedRoom.code}`}
+            </div>
+
+            <div className="divide-y divide-[var(--s2ee-border)]">
               {venueRoomsState.kind === "loading" ? (
-                <div className="space-y-3">
-                  <Skeleton className="h-24 w-full rounded-2xl" />
-                  <Skeleton className="h-24 w-full rounded-2xl" />
-                  <Skeleton className="h-24 w-full rounded-2xl" />
+                <div className="grid gap-3 p-6">
+                  <Skeleton className="h-28 rounded-none" />
+                  <Skeleton className="h-28 rounded-none" />
+                  <Skeleton className="h-28 rounded-none" />
                 </div>
               ) : null}
 
               {venueRoomsState.kind === "failure" ? (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <CircleAlertIcon className="size-5" />
-                    </EmptyMedia>
-                    <EmptyTitle>Arrival board unavailable</EmptyTitle>
-                    <EmptyDescription>{venueRoomsState.message}</EmptyDescription>
-                  </EmptyHeader>
-                  <EmptyContent>
-                    <Button onClick={refreshWorkspace} type="button" variant="outline">
-                      <RefreshCwIcon className="size-4" />
-                      Try again
-                    </Button>
-                  </EmptyContent>
-                </Empty>
+                <div className="p-6">
+                  <Empty className="items-start text-left">
+                    <EmptyHeader className="items-start text-left">
+                      <EmptyMedia className="rounded-none" variant="icon">
+                        <CircleAlertIcon className="size-5" />
+                      </EmptyMedia>
+                      <EmptyTitle>Liste indisponible</EmptyTitle>
+                      <EmptyDescription>{venueRoomsState.message}</EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button className="rounded-none" onClick={refreshWorkspace} type="button" variant="outline">
+                        <RefreshCwIcon className="size-4" />
+                        Reessayer
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
+                </div>
               ) : null}
 
-              {venueRoomsState.kind === "success" && visibleCompanies.length === 0 ? (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <SearchIcon className="size-5" />
-                    </EmptyMedia>
-                    <EmptyTitle>No matching companies</EmptyTitle>
-                    <EmptyDescription>
-                      Adjust the filter or search query to reveal the next booth to process.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
+              {venueRoomsState.kind === "success" && companies.length === 0 ? (
+                <div className="p-6">
+                  <Empty className="items-start text-left">
+                    <EmptyHeader className="items-start text-left">
+                      <EmptyTitle>Aucune entreprise placee</EmptyTitle>
+                      <EmptyDescription>
+                        Les entreprises apparaitront ici une fois placees.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                </div>
+              ) : null}
+
+              {venueRoomsState.kind === "success" &&
+              companies.length > 0 &&
+              visibleCompanies.length === 0 ? (
+                <div className="p-6">
+                  <Empty className="items-start text-left">
+                    <EmptyHeader className="items-start text-left">
+                      <EmptyMedia className="rounded-none" variant="icon">
+                        <SearchIcon className="size-5" />
+                      </EmptyMedia>
+                      <EmptyTitle>Aucune entreprise ne correspond</EmptyTitle>
+                      <EmptyDescription>
+                        Modifiez la recherche ou les filtres.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                </div>
               ) : null}
 
               {venueRoomsState.kind === "success"
@@ -323,112 +551,162 @@ export function CheckInWorkspace(): React.ReactElement {
 
                     return (
                       <article
+                        className="grid gap-4 px-6 py-5 [content-visibility:auto] [contain-intrinsic-size:180px] lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center"
                         key={company.companyId}
-                        className="rounded-2xl border bg-background/70 p-4 shadow-sm"
                       >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="space-y-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant={isArrived ? "secondary" : "default"}>
-                                {isArrived ? "Arrived" : "Pending arrival"}
-                              </Badge>
-                              <Badge variant="outline">{company.roomCode}</Badge>
-                              <Badge variant="outline">Stand {company.standNumber}</Badge>
-                            </div>
-                            <div className="space-y-1">
-                              <h2 className="text-lg font-semibold text-foreground">
-                                {company.companyName}
-                              </h2>
-                              <p className="text-sm text-muted-foreground">
-                                Room {company.roomCode} • Stand {company.standNumber}
-                              </p>
-                            </div>
+                        <div className="grid gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge className="rounded-none" variant={isArrived ? "secondary" : "default"}>
+                            {isArrived ? "Arrivee" : "En attente"}
+                          </Badge>
+                            <Badge className="rounded-none" variant="outline">
+                              Salle {company.roomCode}
+                            </Badge>
+                            <Badge className="rounded-none" variant="outline">
+                              Stand {company.standNumber}
+                            </Badge>
                           </div>
-
-                          <Button
-                            disabled={isArrived || isPendingAction}
-                            onClick={() => {
-                              void submitArrival(company.companyId, company.companyName);
-                            }}
-                            type="button"
-                          >
-                            {isPendingAction ? (
-                              <>
-                                <LoaderCircleIcon className="size-4 animate-spin" />
-                                Saving
-                              </>
-                            ) : isArrived ? (
-                              <>
-                                <BadgeCheckIcon className="size-4" />
-                                Already arrived
-                              </>
-                            ) : (
-                              <>
-                                <ClipboardCheckIcon className="size-4" />
-                                Mark arrived
-                              </>
-                            )}
-                          </Button>
+                          <div className="space-y-1">
+                            <h3 className="text-lg font-bold tracking-[-0.05em] text-slate-900">
+                              {company.companyName}
+                            </h3>
+                            <p className="text-sm text-[color:var(--s2ee-muted-foreground)]">
+                              Salle {company.roomCode} · stand {company.standNumber}
+                            </p>
+                          </div>
                         </div>
+
+                        <Button
+                          className="rounded-none"
+                          disabled={isArrived || isPendingAction}
+                          onClick={() => {
+                            void submitArrival(company.companyId, company.companyName);
+                          }}
+                          type="button"
+                        >
+                          {isPendingAction ? (
+                            <>
+                              <LoaderCircleIcon className="size-4 animate-spin" />
+                              Enregistrement
+                            </>
+                          ) : isArrived ? (
+                            <>
+                              <BadgeCheckIcon className="size-4" />
+                              Deja arrivee
+                            </>
+                          ) : (
+                            <>
+                              <ClipboardCheckIcon className="size-4" />
+                              Marquer l'arrivee
+                            </>
+                          )}
+                        </Button>
                       </article>
                     );
                   })
                 : null}
-            </CardContent>
-          </Card>
-
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Venue coverage</CardTitle>
-                <CardDescription>
-                  Quick context for the staff member currently handling arrivals.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm text-muted-foreground">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="inline-flex items-center gap-2">
-                    <Building2Icon className="size-4" />
-                    Rooms in venue board
-                  </span>
-                  <span className="font-medium text-foreground">{summary.roomCount}</span>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between gap-3">
-                  <span>Remaining arrivals</span>
-                  <span className="font-medium text-foreground">{summary.pendingCount}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span>Completed arrivals</span>
-                  <span className="font-medium text-foreground">{summary.arrivedCount}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Operating notes</CardTitle>
-                <CardDescription>
-                  This surface stays intentionally narrower than admin.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm leading-6 text-muted-foreground">
-                <p>
-                  Use this board only to confirm that a placed company has arrived on site.
-                </p>
-                <p>
-                  Placement management stays in admin, but the check-in team still sees room and
-                  stand context to avoid wrong-booth updates.
-                </p>
-                <p>
-                  Search works across company names, room codes, and stand numbers for fast on-site
-                  lookup from a phone or laptop.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
+            </div>
+          </section>
+        </div>
       </div>
+
+      <Drawer onOpenChange={setIsMobileFiltersOpen} open={isMobileFiltersOpen} position="bottom">
+        <DrawerPopup
+          className="max-h-[85dvh] border bg-[var(--s2ee-surface)] p-0 font-mono [border-color:var(--s2ee-border)] xl:hidden"
+          showBar
+        >
+          <DrawerHeader className="border-b bg-[var(--s2ee-surface-soft)] px-5 py-5 [border-color:var(--s2ee-border)]">
+            <DrawerTitle className="text-xl font-black tracking-[-0.06em] text-slate-900">
+              Filtres
+            </DrawerTitle>
+          </DrawerHeader>
+          <DrawerPanel className="grid gap-6 px-5 py-5">
+            <div className="grid gap-2">
+              <label className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
+                Salle
+              </label>
+              <Select
+                onValueChange={(value) => {
+                  setActiveRoomId(value ?? allRoomsValue);
+                }}
+                value={activeRoomId}
+              >
+                <SelectTrigger className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none">
+                  <SelectValue placeholder="Toutes les salles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={allRoomsValue}>Toutes les salles</SelectItem>
+                  {roomOptions.map((room) => (
+                    <SelectItem key={room.id} value={room.id}>
+                      {room.code} ({room.companies.length})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
+                Statut
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {arrivalFilterOptions.map((option) => (
+                  <Button
+                    className="rounded-none"
+                    key={option.value}
+                    onClick={() => {
+                      setActiveFilter(option.value);
+                    }}
+                    type="button"
+                    variant={activeFilter === option.value ? "default" : "outline"}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-3 border-t border-[var(--s2ee-border)] pt-5 text-sm">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[color:var(--s2ee-muted-foreground)]">Entreprises placees</span>
+                <span className="font-bold text-slate-900">{summary.placedCompanyCount}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[color:var(--s2ee-muted-foreground)]">Resultats visibles</span>
+                <span className="font-bold text-slate-900">{visibleCompanies.length}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-[color:var(--s2ee-muted-foreground)]">En attente</span>
+                <span className="font-bold text-slate-900">{visiblePendingCount}</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 border-t border-[var(--s2ee-border)] pt-5">
+              <Button
+                className="rounded-none"
+                onClick={() => {
+                  setActiveRoomId(allRoomsValue);
+                  setActiveFilter("pending");
+                  setIsMobileFiltersOpen(false);
+                }}
+                type="button"
+                variant="outline"
+              >
+                Reinitialiser
+              </Button>
+              <Button
+                className="rounded-none"
+                onClick={() => {
+                  setIsMobileFiltersOpen(false);
+                }}
+                type="button"
+              >
+                Voir la liste
+              </Button>
+            </div>
+          </DrawerPanel>
+        </DrawerPopup>
+      </Drawer>
     </main>
   );
 }

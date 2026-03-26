@@ -23,13 +23,13 @@ export function SignInForm(): React.ReactElement {
     const currentSession = await authClient.getSession();
 
     if (currentSession.error) {
-      return currentSession.error.message ?? "Authentication succeeded but the session could not be resolved.";
+      return currentSession.error.message ?? "Connexion reussie, mais session introuvable.";
     }
 
     const role = getSessionRole(currentSession.data);
 
     if (role == null) {
-      return "Authentication succeeded but the session role could not be resolved.";
+      return "Connexion reussie, mais le role n'a pas pu etre determine.";
     }
 
     await navigate({
@@ -52,7 +52,7 @@ export function SignInForm(): React.ReactElement {
       });
 
       if (result.error) {
-        setSignInError(result.error.message ?? "Unable to sign in with those credentials.");
+        setSignInError(result.error.message ?? "Impossible de se connecter avec ces identifiants.");
         return;
       }
 
@@ -68,11 +68,11 @@ export function SignInForm(): React.ReactElement {
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-primary shadow-[0_0_0_4px_color-mix(in_srgb,var(--color-primary)_10%,transparent)]" />
           <h2 className="text-2xl font-black uppercase tracking-[-0.05em] text-[color:var(--s2ee-soft-foreground)] sm:text-3xl">
-            System access
+            Connexion
           </h2>
         </div>
         <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary">
-          Initialize session command
+          Acceder a votre espace
         </p>
       </header>
 
@@ -102,11 +102,8 @@ export function SignInForm(): React.ReactElement {
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-4">
               <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="sign-in-password">
-                Password
+                Mot de passe
               </label>
-              <a className="text-[9px] font-bold uppercase tracking-[0.18em] text-primary transition-opacity hover:opacity-80" href="/auth/sign-in">
-                Reset key
-              </a>
             </div>
             <Input
               id="sign-in-password"
@@ -131,50 +128,26 @@ export function SignInForm(): React.ReactElement {
           </div>
         ) : null}
 
-        <label className="flex items-center gap-3">
-          <input className="size-4 rounded-none border-[var(--s2ee-border)]" type="checkbox" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--s2ee-muted-foreground)]">
-            Persistent uplink
-          </span>
-        </label>
-
         <div className="space-y-5">
           <button
             className="flex min-h-16 w-full items-center justify-between bg-primary px-6 py-4 text-sm font-bold uppercase tracking-[0.22em] text-primary-foreground transition-all duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
             disabled={isSigningIn}
             type="submit"
           >
-            <span>{isSigningIn ? "Initializing..." : "Initialize uplink"}</span>
+            <span>{isSigningIn ? "Connexion..." : "Se connecter"}</span>
             <span aria-hidden="true" className="text-base leading-none">
               {"->"}
             </span>
           </button>
 
-          <div className="flex items-center gap-4">
-            <div className="h-px flex-1 bg-[var(--s2ee-border)]" />
-            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-[color:var(--s2ee-muted-foreground)]">
-              Switch protocol
-            </span>
-            <div className="h-px flex-1 bg-[var(--s2ee-border)]" />
-          </div>
-
           <a
             className="inline-flex min-h-14 w-full items-center justify-center border bg-[var(--s2ee-surface-soft)] px-6 py-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-soft-foreground)] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_75%,white)] active:scale-[0.98] [border-color:color-mix(in_srgb,var(--s2ee-border)_70%,transparent)]"
             href="/auth/sign-up"
           >
-            Create student account
+            Creer un compte etudiant
           </a>
         </div>
       </form>
-
-      <div className="flex flex-wrap items-center gap-4 text-[9px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
-        <span className="inline-flex items-center gap-2">
-          <span className="size-1.5 rounded-full bg-primary" />
-          System online
-        </span>
-        <span>S2EE auth route</span>
-        <span>Role redirect active</span>
-      </div>
     </div>
   );
 }

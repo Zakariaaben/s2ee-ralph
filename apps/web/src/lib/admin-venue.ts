@@ -102,14 +102,14 @@ export const filterPlacementManagementCompanies = (
 
 export const describeVenueRoomOccupancy = (summary: AdminVenueRoomSummary): string => {
   if (summary.companyCount === 0) {
-    return "No companies assigned";
+    return "Aucune entreprise";
   }
 
   if (summary.companyCount === 1) {
-    return summary.pendingCount === 0 ? "1 company assigned and arrived" : "1 company assigned";
+    return summary.pendingCount === 0 ? "1 entreprise arrivee" : "1 entreprise";
   }
 
   return summary.pendingCount === 0
-    ? `${summary.companyCount} companies assigned, all arrived`
-    : `${summary.companyCount} companies assigned`;
+    ? `${summary.companyCount} entreprises, toutes arrivees`
+    : `${summary.companyCount} entreprises`;
 };

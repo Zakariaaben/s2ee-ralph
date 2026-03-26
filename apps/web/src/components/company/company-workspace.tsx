@@ -98,7 +98,7 @@ const formatMutationError = (error: unknown): string => {
     return error.message;
   }
 
-  return "The update did not complete. Refresh and try again.";
+  return "La mise a jour n'a pas pu etre effectuee. Reessayez.";
 };
 
 export function CompanyWorkspace(): React.ReactElement {
@@ -111,7 +111,7 @@ export function CompanyWorkspace(): React.ReactElement {
   const [codeDraft, setCodeDraft] = useState("");
   const [preferredRecruiterId, setPreferredRecruiterId] = useState<Recruiter["id"] | null>(null);
   const [selectedRecruiterId, setSelectedRecruiterId] = useState<Recruiter["id"] | null>(null);
-  const [accountName, setAccountName] = useState<string>("Company account");
+  const [accountName, setAccountName] = useState<string>("Compte entreprise");
   const [pageMessage, setPageMessage] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [isStartingInterview, setIsStartingInterview] = useState(false);
@@ -131,7 +131,7 @@ export function CompanyWorkspace(): React.ReactElement {
 
   const companyState = toAsyncPanelState(
     currentCompanyResult,
-    "The company setup could not be loaded.",
+    "Les informations de l'entreprise n'ont pas pu etre chargees.",
   );
   const company = companyState.kind === "success" ? companyState.value : null;
   const recruiters = company?.recruiters ?? [];
@@ -218,14 +218,14 @@ export function CompanyWorkspace(): React.ReactElement {
     event.preventDefault();
 
     if (company == null) {
-      setPageError("This account has not been linked to a company by admin yet.");
+      setPageError("Ce compte n'est pas encore lie a une entreprise.");
       return;
     }
 
     const name = newRecruiterName.trim();
 
     if (name.length === 0) {
-      setPageError("Recruiter name cannot be blank.");
+      setPageError("Le nom du recruteur est obligatoire.");
       return;
     }
 
@@ -238,7 +238,7 @@ export function CompanyWorkspace(): React.ReactElement {
         reactivityKeys: companyWorkspaceReactivity.currentCompany,
       });
       setNewRecruiterName("");
-      setPageMessage(`Recruiter ${name} added.`);
+      setPageMessage(`Recruteur ${name} ajoute.`);
       refreshCompany();
     } catch (error) {
       setPageError(formatMutationError(error));
@@ -255,7 +255,7 @@ export function CompanyWorkspace(): React.ReactElement {
     const name = editingRecruiterName.trim();
 
     if (name.length === 0) {
-      setPageError("Recruiter name cannot be blank.");
+      setPageError("Le nom du recruteur est obligatoire.");
       return;
     }
 
@@ -269,7 +269,7 @@ export function CompanyWorkspace(): React.ReactElement {
       });
       setEditingRecruiterId(null);
       setEditingRecruiterName("");
-      setPageMessage("Recruiter updated.");
+      setPageMessage("Recruteur mis a jour.");
       refreshCompany();
     } catch (error) {
       setPageError(formatMutationError(error));
@@ -282,7 +282,7 @@ export function CompanyWorkspace(): React.ReactElement {
     const normalizedCode = normalizeStudentQrIdentityInput(codeDraft);
 
     if (normalizedCode.length === 0) {
-      setPageError("Scan or enter a 6-character CV code first.");
+      setPageError("Scannez ou saisissez un code a 6 caracteres.");
       return;
     }
 
@@ -307,12 +307,12 @@ export function CompanyWorkspace(): React.ReactElement {
 
   const beginInterview = async (candidatePreview: PresentedCvProfilePreview) => {
     if (company == null) {
-      setPageError("This account has not been linked to a company by admin yet.");
+      setPageError("Ce compte n'est pas encore lie a une entreprise.");
       return;
     }
 
     if (!selectedRecruiter) {
-      setPageError("Choose a recruiter in the drawer before starting the interview.");
+      setPageError("Selectionnez un recruteur avant de demarrer l'entretien.");
       return;
     }
 
@@ -350,14 +350,12 @@ export function CompanyWorkspace(): React.ReactElement {
           <DrawerHeader className="border-b border-[var(--s2ee-border)]">
             <div className="space-y-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                Company setup
+                Entreprise
               </p>
               <DrawerTitle className="font-mono text-2xl font-black tracking-[-0.06em]">
                 {companyLabel}
               </DrawerTitle>
-              <DrawerDescription className="font-mono text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                Keep recruiter selection and navigation here so the scan surface stays narrow.
-              </DrawerDescription>
+              <DrawerDescription className="font-mono text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]" />
             </div>
           </DrawerHeader>
 
@@ -370,7 +368,7 @@ export function CompanyWorkspace(): React.ReactElement {
                 variant="outline"
               >
                 <ScanLineIcon />
-                Scanner
+                Scan
               </Button>
               <Button
                 className="justify-start rounded-none"
@@ -379,7 +377,7 @@ export function CompanyWorkspace(): React.ReactElement {
                 variant="outline"
               >
                 <ArrowRightIcon />
-                Interviews
+                Entretiens
               </Button>
             </div>
 
@@ -391,10 +389,9 @@ export function CompanyWorkspace(): React.ReactElement {
             ) : company == null ? (
               <Alert variant="warning">
                 <CircleAlertIcon className="size-4" />
-                <AlertTitle>Company missing</AlertTitle>
+                <AlertTitle>Entreprise manquante</AlertTitle>
                 <AlertDescription>
-                  This account has no provisioned company record yet. Admin needs to link it before
-                  recruiters can be managed here.
+                  Ce compte n&apos;est pas encore lie a une entreprise.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -402,16 +399,13 @@ export function CompanyWorkspace(): React.ReactElement {
                 <section className="grid gap-3">
                   <div className="space-y-1">
                     <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                      Recruiter
-                    </p>
-                    <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                      The selected recruiter becomes the default for this device.
+                      Recruteurs
                     </p>
                   </div>
                   <div className="grid gap-2">
                     {recruiters.length === 0 ? (
                       <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                        No recruiter is available yet.
+                        Aucun recruteur.
                       </p>
                     ) : (
                       recruiters.map((recruiter) =>
@@ -427,7 +421,7 @@ export function CompanyWorkspace(): React.ReactElement {
                             />
                             <div className="flex gap-2">
                               <Button className="flex-1 rounded-none" type="submit">
-                                Save
+                                Enregistrer
                               </Button>
                               <Button
                                 className="flex-1 rounded-none"
@@ -438,7 +432,7 @@ export function CompanyWorkspace(): React.ReactElement {
                                 type="button"
                                 variant="outline"
                               >
-                                Cancel
+                                Annuler
                               </Button>
                             </div>
                           </form>
@@ -451,8 +445,8 @@ export function CompanyWorkspace(): React.ReactElement {
                                 </p>
                                 <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
                                   {resolvePreferredRecruiter(recruiters, preferredRecruiterId)?.id === recruiter.id
-                                    ? "Default on this device"
-                                    : "Available"}
+                                    ? "Par defaut sur cet appareil"
+                                    : "Disponible"}
                                 </p>
                               </div>
                               <button
@@ -463,7 +457,7 @@ export function CompanyWorkspace(): React.ReactElement {
                                 }}
                                 type="button"
                               >
-                                Rename
+                                Renommer
                               </button>
                             </div>
                             <Button
@@ -472,7 +466,7 @@ export function CompanyWorkspace(): React.ReactElement {
                               type="button"
                               variant={selectedRecruiterId === recruiter.id ? "default" : "outline"}
                             >
-                              {selectedRecruiterId === recruiter.id ? "Selected" : "Select"}
+                              {selectedRecruiterId === recruiter.id ? "Selectionne" : "Selectionner"}
                             </Button>
                           </div>
                         ),
@@ -484,10 +478,7 @@ export function CompanyWorkspace(): React.ReactElement {
                 <section className="grid gap-3 border-t border-[var(--s2ee-border)] pt-6">
                   <div className="space-y-1">
                     <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                      Add recruiter
-                    </p>
-                    <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                      Recruiters are the only mutable setup item here.
+                      Ajouter un recruteur
                     </p>
                   </div>
                   <form className="grid gap-3" onSubmit={submitRecruiter}>
@@ -497,11 +488,11 @@ export function CompanyWorkspace(): React.ReactElement {
                         const { value } = event.currentTarget;
                         setNewRecruiterName(value);
                       }}
-                      placeholder="Recruiter name"
+                      placeholder="Nom du recruteur"
                       value={newRecruiterName}
                     />
                     <Button className="rounded-none" type="submit">
-                      Add recruiter
+                      Ajouter
                     </Button>
                   </form>
                 </section>
@@ -511,7 +502,7 @@ export function CompanyWorkspace(): React.ReactElement {
             <div className="grid gap-2 border-t border-[var(--s2ee-border)] pt-6">
               <DrawerClose render={<Button className="rounded-none justify-start" variant="outline" />}>
                 <Settings2Icon />
-                Close
+                Fermer
               </DrawerClose>
               <Button
                 className="justify-start rounded-none"
@@ -521,7 +512,7 @@ export function CompanyWorkspace(): React.ReactElement {
                 variant="outline"
               >
                 <LogOutIcon />
-                Sign out
+                Se deconnecter
               </Button>
             </div>
           </DrawerPanel>
@@ -532,17 +523,13 @@ export function CompanyWorkspace(): React.ReactElement {
         <header className="flex flex-col gap-4 border-b border-[var(--s2ee-border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em]">
-              <span className="text-primary">S2EE Company</span>
+              <span className="text-primary">S2EE Entreprise</span>
               <span className="text-[color:var(--s2ee-muted-foreground)]">{companyLabel}</span>
             </div>
             <div className="space-y-1">
               <h1 className="text-[clamp(2rem,4vw,3.4rem)] font-black tracking-[-0.08em]">
-                Interview scanner
+                Scan entretien
               </h1>
-              <p className="max-w-3xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                Scan the presented QR code or type the 6-character code. Recruiter selection and
-                navigation live in the drawer, not in the main scan surface.
-              </p>
             </div>
           </div>
 
@@ -553,14 +540,14 @@ export function CompanyWorkspace(): React.ReactElement {
             </Button>
             <Button className="rounded-none" onClick={() => navigate({ to: "/company/interviews" })} type="button" variant="outline">
               <ArrowRightIcon />
-              Interviews
+              Entretiens
             </Button>
           </div>
         </header>
 
         {pageMessage != null ? (
           <Alert>
-            <AlertTitle>Updated</AlertTitle>
+            <AlertTitle>Mise a jour</AlertTitle>
             <AlertDescription>{pageMessage}</AlertDescription>
           </Alert>
         ) : null}
@@ -568,7 +555,7 @@ export function CompanyWorkspace(): React.ReactElement {
         {pageError != null ? (
           <Alert variant="error">
             <CircleAlertIcon className="size-4" />
-            <AlertTitle>Update failed</AlertTitle>
+            <AlertTitle>Echec de mise a jour</AlertTitle>
             <AlertDescription>{pageError}</AlertDescription>
           </Alert>
         ) : null}
@@ -579,17 +566,13 @@ export function CompanyWorkspace(): React.ReactElement {
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
                 Camera
               </p>
-              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                The scanner starts the camera automatically when supported, and falls back to manual
-                code entry when it is not.
-              </p>
             </div>
             <CameraScanner
               onDetected={applyDetectedCode}
             />
             <form className="grid gap-3 border-t border-[var(--s2ee-border)] pt-4" onSubmit={submitCandidateCode}>
               <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                Manual code
+                Code manuel
               </label>
               <InputOTP
                 containerClassName="justify-center"
@@ -612,10 +595,10 @@ export function CompanyWorkspace(): React.ReactElement {
               </InputOTP>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Button className="rounded-none" type="submit">
-                  Resolve candidate
+                  Rechercher
                 </Button>
                 <Button className="rounded-none" onClick={resetCandidate} type="button" variant="outline">
-                  Clear
+                  Effacer
                 </Button>
               </div>
             </form>
@@ -624,15 +607,12 @@ export function CompanyWorkspace(): React.ReactElement {
           <section className="grid gap-4 p-6">
             <div className="space-y-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                Candidate preview
-              </p>
-              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                Resolve one presented CV, confirm the recruiter, then move into the interview route.
+                Apercu candidat
               </p>
             </div>
 
             {submittedCode == null ? (
-              <EmptyPreview message="Awaiting QR scan or 6-character code." />
+              <EmptyPreview message="En attente d'un QR code ou d'un code a 6 caracteres." />
             ) : (
               <CandidatePreviewPanel
                 companyMissing={company == null}
@@ -670,7 +650,7 @@ function CameraScanner(props: {
       navigator.mediaDevices?.getUserMedia == null
     ) {
       setCameraState("unsupported");
-      setCameraMessage("Camera scanning is not available in this browser. Use the manual code field below.");
+      setCameraMessage("Le scan camera n'est pas disponible dans ce navigateur.");
       return;
     }
 
@@ -679,7 +659,7 @@ function CameraScanner(props: {
 
       if (video == null) {
         setCameraState("error");
-        setCameraMessage("Camera preview could not be initialized.");
+        setCameraMessage("Impossible d'initialiser la camera.");
         return;
       }
 
@@ -702,7 +682,7 @@ function CameraScanner(props: {
       setCameraMessage(null);
     } catch {
       setCameraState("error");
-      setCameraMessage("Camera access was denied or unavailable. Use the manual code field below.");
+      setCameraMessage("Acces camera refuse ou indisponible.");
     }
   }, [props, stopCamera]);
 
@@ -732,7 +712,7 @@ function CameraScanner(props: {
                 <CameraIcon className="size-6 text-primary" />
               </div>
               <p className="max-w-sm text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                {cameraMessage ?? "Starting camera…"}
+                {cameraMessage ?? "Demarrage de la camera..."}
               </p>
             </div>
           </div>
@@ -742,7 +722,7 @@ function CameraScanner(props: {
       </div>
       <Button className="rounded-none" onClick={() => void startCamera()} type="button" variant="outline">
         <QrCodeIcon />
-        Retry camera
+        Relancer la camera
       </Button>
     </div>
   );
@@ -762,7 +742,7 @@ function CandidatePreviewPanel(props: {
   const previewResult = useAtomValue(previewAtom);
   const previewState = toAsyncPanelState(
     previewResult,
-    "That code did not resolve to a presented CV.",
+    "Ce code ne correspond a aucun CV.",
   );
 
   if (previewState.kind === "loading") {
@@ -777,9 +757,9 @@ function CandidatePreviewPanel(props: {
 
   if (previewState.kind === "failure") {
     return (
-      <Alert variant="error">
-        <CircleAlertIcon className="size-4" />
-        <AlertTitle>Candidate unavailable</AlertTitle>
+        <Alert variant="error">
+          <CircleAlertIcon className="size-4" />
+          <AlertTitle>Candidat indisponible</AlertTitle>
         <AlertDescription>{previewState.message}</AlertDescription>
       </Alert>
     );
@@ -798,16 +778,16 @@ function CandidatePreviewPanel(props: {
       {props.companyMissing ? (
         <Alert variant="warning">
           <CircleAlertIcon className="size-4" />
-          <AlertTitle>Provisioning incomplete</AlertTitle>
+          <AlertTitle>Configuration incomplete</AlertTitle>
           <AlertDescription>
-            This account still needs its company record from admin before interviews can start.
+            Ce compte doit d'abord etre relie a une entreprise.
           </AlertDescription>
         </Alert>
       ) : null}
 
       <div className="grid gap-4 border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-5">
         <div className="space-y-2">
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">Candidate</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">Candidat</p>
           <h3 className="text-2xl font-black tracking-[-0.06em]">
             {candidatePreview.student.firstName} {candidatePreview.student.lastName}
           </h3>
@@ -817,9 +797,9 @@ function CandidatePreviewPanel(props: {
           </p>
         </div>
         <div className="grid gap-3 border-t border-[var(--s2ee-border)] pt-4 text-sm">
-          <DetailRow label="Presented code" value={candidatePreview.cvProfile.presentationCode} />
-          <DetailRow label="CV file" value={candidatePreview.cvProfile.fileName} />
-          <DetailRow label="Recruiter" value={props.selectedRecruiter?.name ?? "Select one in the drawer"} />
+          <DetailRow label="Code" value={candidatePreview.cvProfile.presentationCode} />
+          <DetailRow label="CV" value={candidatePreview.cvProfile.fileName} />
+          <DetailRow label="Recruteur" value={props.selectedRecruiter?.name ?? "Selectionnez un recruteur"} />
         </div>
       </div>
 
@@ -830,7 +810,7 @@ function CandidatePreviewPanel(props: {
         onClick={() => props.onStartInterview(candidatePreview)}
         type="button"
       >
-        Start interview
+        Demarrer l'entretien
         <ArrowRightIcon />
       </Button>
     </div>

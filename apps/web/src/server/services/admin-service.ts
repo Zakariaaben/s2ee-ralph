@@ -33,7 +33,6 @@ export class AdminService extends ServiceMap.Service<
     readonly createAdminCompanyAccount: (input: {
       readonly actor: AuthenticatedActor;
       readonly companyName: string;
-      readonly accountName: string;
       readonly email: string;
       readonly password: string;
     }) => Effect.Effect<AdminAccessLedgerEntry, HttpApiError.Forbidden | HttpApiError.BadRequest>;
@@ -72,12 +71,11 @@ export class AdminService extends ServiceMap.Service<
 
             return updatedEntry;
           }),
-        createAdminCompanyAccount: ({ actor, accountName, companyName, email, password }) =>
+        createAdminCompanyAccount: ({ actor, companyName, email, password }) =>
           Effect.gen(function*() {
             yield* requireAdminActor(actor);
 
             return yield* adminRepository.createCompanyAccount({
-              accountName,
               companyName,
               email,
               password,

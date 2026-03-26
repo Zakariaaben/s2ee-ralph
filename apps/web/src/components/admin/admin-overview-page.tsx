@@ -35,22 +35,22 @@ export function AdminOverviewPage(): React.ReactElement {
 
   const overviewCards = [
     {
-      label: "Companies placed",
+      label: "Entreprises placees",
       value: `${summary.placedCompanyCount}`,
       detail: `/ ${summary.companyCount}`,
     },
     {
-      label: "Pending arrivals",
+      label: "Arrivees en attente",
       value: `${summary.pendingArrivalCount}`,
-      detail: "placed companies",
+      detail: "entreprises placees",
     },
     {
-      label: "Interviews logged",
+      label: "Entretiens",
       value: `${summary.interviewCount}`,
-      detail: `${summary.completedInterviewCount} completed`,
+      detail: `${summary.completedInterviewCount} termines`,
     },
     {
-      label: "Access records",
+      label: "Acces",
       value: `${summary.accessEntryCount}`,
       detail: `${summary.adminCount} admin`,
     },
@@ -62,18 +62,18 @@ export function AdminOverviewPage(): React.ReactElement {
         actions={
           <Button onClick={refreshOverview} type="button" variant="outline">
             <RefreshCwIcon className="size-4" />
-            Refresh
+            Actualiser
           </Button>
         }
-        description="Use this page to read the current event state and jump into the exact admin module that needs attention."
-        eyebrow="Admin overview"
-        title="One compact starting point"
+        description=""
+        eyebrow="Admin"
+        title="Apercu"
       />
 
       {errors.length > 0 ? (
         <Alert variant="error">
           <CircleAlertIcon className="size-4" />
-          <AlertTitle>Some admin data is unavailable</AlertTitle>
+          <AlertTitle>Donnees indisponibles</AlertTitle>
           <AlertDescription>{errors.join(" ")}</AlertDescription>
         </Alert>
       ) : null}
@@ -115,7 +115,7 @@ export function AdminOverviewPage(): React.ReactElement {
         <div className="space-y-6">
           <div className="border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-5">
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-              Next focus
+              A suivre
             </p>
             <p className="mt-3 max-w-3xl text-base leading-7 text-[color:var(--s2ee-soft-foreground)]">
               {summary.nextOperationalLabel}
@@ -129,12 +129,12 @@ export function AdminOverviewPage(): React.ReactElement {
                 <Link className="bg-white p-5 transition-colors hover:bg-[var(--s2ee-surface-soft)]" key={section.id} to={section.to}>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-4">
-                      <p className="text-sm font-bold uppercase tracking-[0.1em] text-slate-900">
-                        {section.label}
-                      </p>
-                      <span className="text-[11px] uppercase tracking-[0.18em] text-primary">
-                        Open
-                      </span>
+                        <p className="text-sm font-bold uppercase tracking-[0.1em] text-slate-900">
+                          {section.label}
+                        </p>
+                        <span className="text-[11px] uppercase tracking-[0.18em] text-primary">
+                          Ouvrir
+                        </span>
                     </div>
                     <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
                       {section.description}
@@ -150,17 +150,15 @@ export function AdminOverviewPage(): React.ReactElement {
             <div className="space-y-2 border-b border-[var(--s2ee-border)] pb-4">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
                 Role coverage
-              </p>
-              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                Provisioned accounts across the event surface.
+                Repartition des roles
               </p>
             </div>
             <div className="mt-4 grid gap-3">
               {[
                 ["Admin", summary.adminCount],
-                ["Company", summary.companyAccountCount],
-                ["Check-in", summary.checkInCount],
-                ["Student", summary.studentCount],
+                ["Entreprise", summary.companyAccountCount],
+                ["Accueil", summary.checkInCount],
+                ["Etudiant", summary.studentCount],
               ].map(([label, value]) => (
                 <div className="flex items-center justify-between border-b border-[var(--s2ee-border)] pb-3 last:border-b-0 last:pb-0" key={label}>
                   <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
@@ -177,10 +175,7 @@ export function AdminOverviewPage(): React.ReactElement {
           <div className="border border-[var(--s2ee-border)] bg-white p-5">
             <div className="space-y-2 border-b border-[var(--s2ee-border)] pb-4">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                Recent interviews
-              </p>
-              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                Latest activity for a quick operational read.
+                Entretiens recents
               </p>
             </div>
 
@@ -189,12 +184,12 @@ export function AdminOverviewPage(): React.ReactElement {
               {interviewLedgerState.kind === "failure" ? (
                 <AdminFailurePanel
                   description={interviewLedgerState.message}
-                  title="Interview activity unavailable"
+                  title="Entretiens indisponibles"
                 />
               ) : null}
               {interviewLedgerState.kind === "success" && recentInterviews.length === 0 ? (
                 <div className="border border-dashed border-[var(--s2ee-border)] p-5 text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                  No interview activity has been recorded yet.
+                  Aucun entretien pour le moment.
                 </div>
               ) : null}
               {interviewLedgerState.kind === "success" && recentInterviews.length > 0 ? (
@@ -217,7 +212,7 @@ export function AdminOverviewPage(): React.ReactElement {
                           </p>
                           <p className="mt-1 text-sm font-medium text-slate-900">
                             {entry.interview.score == null
-                              ? "No score"
+                              ? "Sans note"
                               : `${entry.interview.score.toFixed(1)} / 5`}
                           </p>
                         </div>
@@ -234,14 +229,12 @@ export function AdminOverviewPage(): React.ReactElement {
       {errors.length === 0 ? (
         <Alert>
           <BadgeCheckIcon className="size-4" />
-          <AlertTitle>Admin routes are now split</AlertTitle>
+          <AlertTitle>Organisation des espaces admin</AlertTitle>
           <AlertDescription>
-            Overview stays compact while companies, venue, map, access, and interviews each live on
-            their own route.
+            Chaque espace dispose maintenant de sa propre page.
           </AlertDescription>
         </Alert>
       ) : null}
     </div>
   );
 }
-

@@ -57,7 +57,7 @@ const formatMutationError = (error: unknown): string => {
     return error.message;
   }
 
-  return "The student workspace update did not complete. Refresh and try again.";
+  return "La mise a jour n'a pas pu etre effectuee. Reessayez.";
 };
 
 const readFileAsBase64 = (file: File): Promise<string> =>
@@ -65,19 +65,19 @@ const readFileAsBase64 = (file: File): Promise<string> =>
     const reader = new FileReader();
 
     reader.onerror = () => {
-      reject(new Error("The selected CV file could not be read."));
+      reject(new Error("Impossible de lire le fichier selectionne."));
     };
 
     reader.onload = () => {
       if (typeof reader.result !== "string") {
-        reject(new Error("The selected CV file could not be encoded."));
+        reject(new Error("Impossible de traiter le fichier selectionne."));
         return;
       }
 
       const base64 = reader.result.split(",", 2)[1];
 
       if (!base64) {
-        reject(new Error("The selected CV file did not contain uploadable contents."));
+        reject(new Error("Le fichier selectionne ne contient pas de donnees utilisables."));
         return;
       }
 
@@ -127,11 +127,11 @@ export function StudentWorkspace(): React.ReactElement {
 
   const studentState = toAsyncPanelState(
     currentStudentResult,
-    "Your student settings could not be loaded.",
+    "Vos informations n'ont pas pu etre chargees.",
   );
   const cvsState = toAsyncPanelState(
     cvsResult,
-    "Your CV list could not be loaded.",
+    "Votre liste de CV n'a pas pu etre chargee.",
   );
   const student = studentState.kind === "success" ? studentState.value : null;
   const cvs = cvsState.kind === "success" ? cvsState.value : [];
@@ -214,7 +214,7 @@ export function StudentWorkspace(): React.ReactElement {
       refreshCurrentStudent();
       setHasCompletedOnboarding(true);
       startTransition(() => {
-        setWorkspaceMessage("Settings saved.");
+        setWorkspaceMessage("Informations enregistrees.");
       });
     } catch (error) {
       setOnboardingMutationError(formatMutationError(error));
@@ -241,7 +241,7 @@ export function StudentWorkspace(): React.ReactElement {
       major.length === 0 ||
       institution.length === 0
     ) {
-      setWorkspaceError("Complete every settings field before saving.");
+      setWorkspaceError("Completez tous les champs avant d'enregistrer.");
       setActiveTab("settings");
       return;
     }
@@ -262,7 +262,7 @@ export function StudentWorkspace(): React.ReactElement {
       });
       refreshCurrentStudent();
       startTransition(() => {
-        setWorkspaceMessage("Settings saved.");
+        setWorkspaceMessage("Informations enregistrees.");
       });
     } catch (error) {
       setWorkspaceError(formatMutationError(error));
@@ -276,17 +276,17 @@ export function StudentWorkspace(): React.ReactElement {
     event.preventDefault();
 
     if (studentState.kind !== "success") {
-      setWorkspaceError("Wait until your student settings finish loading, then try again.");
+      setWorkspaceError("Attendez le chargement complet avant de reessayer.");
       return;
     }
 
     if (selectedFile == null) {
-      setWorkspaceError("Choose a CV file before uploading.");
+      setWorkspaceError("Choisissez un fichier avant de continuer.");
       return;
     }
 
     if (selectedFile.type !== "application/pdf" && !selectedFile.name.toLowerCase().endsWith(".pdf")) {
-      setWorkspaceError("Only PDF CV files are allowed.");
+      setWorkspaceError("Seuls les fichiers PDF sont autorises.");
       return;
     }
 
@@ -309,7 +309,7 @@ export function StudentWorkspace(): React.ReactElement {
       startTransition(() => {
         setSelectedFile(null);
         setFileInputResetKey((value) => value + 1);
-        setWorkspaceMessage(`${selectedFile.name} uploaded.`);
+        setWorkspaceMessage(`${selectedFile.name} ajoute.`);
       });
     } catch (error) {
       setWorkspaceError(formatMutationError(error));
@@ -317,7 +317,7 @@ export function StudentWorkspace(): React.ReactElement {
   };
 
   const removeCv = async (cv: CvProfile) => {
-    const confirmed = window.confirm(`Delete ${cv.fileName}? This cannot be undone.`);
+    const confirmed = window.confirm(`Supprimer ${cv.fileName} ?`);
     if (!confirmed) {
       return;
     }
@@ -331,7 +331,7 @@ export function StudentWorkspace(): React.ReactElement {
         payload: { cvProfileId: cv.id },
         reactivityKeys: studentWorkspaceReactivity.cvProfiles,
       });
-      setWorkspaceMessage(`${cv.fileName} deleted.`);
+      setWorkspaceMessage(`${cv.fileName} supprime.`);
     } catch (error) {
       setWorkspaceError(formatMutationError(error));
     } finally {
@@ -346,15 +346,12 @@ export function StudentWorkspace(): React.ReactElement {
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em]">
               <span className="text-primary">S2EE</span>
-              <span className="text-[color:var(--s2ee-muted-foreground)]">Student</span>
+              <span className="text-[color:var(--s2ee-muted-foreground)]">Etudiant</span>
             </div>
             <div className="space-y-2">
               <h1 className="text-[clamp(2rem,5vw,3.25rem)] font-black tracking-[-0.08em] text-[color:var(--s2ee-soft-foreground)]">
-                My CVs
+                Mes CV
               </h1>
-              <p className="max-w-3xl text-sm leading-7 text-[color:var(--s2ee-soft-foreground)] sm:text-base">
-                Upload CVs, open one when you need its QR and code, and update your personal settings when needed.
-              </p>
             </div>
           </div>
 
@@ -364,7 +361,7 @@ export function StudentWorkspace(): React.ReactElement {
               variant="outline"
               onClick={refreshWorkspace}
             >
-              Refresh
+              Actualiser
               <RefreshCwIcon />
             </Button>
             <Button
@@ -373,7 +370,7 @@ export function StudentWorkspace(): React.ReactElement {
               variant="outline"
               onClick={handleSignOut}
             >
-              Sign out
+              Se deconnecter
               <LogOutIcon />
             </Button>
           </div>
@@ -386,27 +383,27 @@ export function StudentWorkspace(): React.ReactElement {
             {workspaceError ? (
               <Alert variant="error">
                 <CircleAlertIcon className="size-4" />
-                <AlertTitle>Update failed</AlertTitle>
+                <AlertTitle>Echec de mise a jour</AlertTitle>
                 <AlertDescription>{workspaceError}</AlertDescription>
               </Alert>
             ) : null}
             {workspaceMessage ? (
-              <Alert>
-                <AlertTitle>Updated</AlertTitle>
+                <Alert>
+                <AlertTitle>Mise a jour</AlertTitle>
                 <AlertDescription>{workspaceMessage}</AlertDescription>
               </Alert>
             ) : null}
             {studentState.kind === "failure" ? (
               <Alert variant="warning">
                 <CircleAlertIcon className="size-4" />
-                <AlertTitle>Settings unavailable</AlertTitle>
+                <AlertTitle>Informations indisponibles</AlertTitle>
                 <AlertDescription>{studentState.message}</AlertDescription>
               </Alert>
             ) : null}
             {cvsState.kind === "failure" ? (
               <Alert variant="warning">
                 <CircleAlertIcon className="size-4" />
-                <AlertTitle>CV list unavailable</AlertTitle>
+                <AlertTitle>Liste des CV indisponible</AlertTitle>
                 <AlertDescription>{cvsState.message}</AlertDescription>
               </Alert>
             ) : null}
@@ -415,8 +412,8 @@ export function StudentWorkspace(): React.ReactElement {
 
         <div className="mb-6 flex gap-2 border-b pb-4 [border-color:var(--s2ee-border)]">
           {[
-            { id: "cvs", label: "CVs" },
-            { id: "settings", label: "Settings" },
+            { id: "cvs", label: "CV" },
+            { id: "settings", label: "Informations" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -440,10 +437,10 @@ export function StudentWorkspace(): React.ReactElement {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                    Upload
+                    Ajout
                   </p>
                   <h2 className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
-                    Add CV
+                    Ajouter un CV
                   </h2>
                 </div>
 
@@ -453,7 +450,7 @@ export function StudentWorkspace(): React.ReactElement {
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-cv-upload"
                     >
-                      Select file
+                      Fichier
                     </label>
                     <div className="border bg-[var(--s2ee-surface)] p-4 [border-color:var(--s2ee-border)]">
                       <Input
@@ -471,7 +468,7 @@ export function StudentWorkspace(): React.ReactElement {
                       />
                     </div>
                     <p className="text-[11px] leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                        PDF files are supported.
+                      PDF uniquement.
                       </p>
                   </div>
 
@@ -485,7 +482,7 @@ export function StudentWorkspace(): React.ReactElement {
                   ) : null}
 
                   <Button className="min-h-14 rounded-none px-6 py-4 text-sm uppercase tracking-[0.2em]" size="lg" type="submit">
-                    Upload CV
+                    Ajouter le CV
                     <UploadIcon />
                   </Button>
                 </form>
@@ -495,10 +492,10 @@ export function StudentWorkspace(): React.ReactElement {
             <div className="bg-[var(--s2ee-surface)] p-5 sm:p-6">
               <div className="space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                  CVs
+                  CV
                 </p>
                 <h2 className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
-                  Library
+                  Liste
                 </h2>
               </div>
 
@@ -512,10 +509,7 @@ export function StudentWorkspace(): React.ReactElement {
                   <div className="border bg-[var(--s2ee-surface-soft)] p-6 [border-color:var(--s2ee-border)]">
                     <div className="space-y-3">
                       <p className="text-lg font-black tracking-[-0.05em] text-[color:var(--s2ee-soft-foreground)]">
-                        No CVs yet
-                      </p>
-                      <p className="max-w-xl text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
-                        Upload your first CV from the left side, then open it when you need its QR and code.
+                        Aucun CV
                       </p>
                     </div>
                   </div>
@@ -523,7 +517,7 @@ export function StudentWorkspace(): React.ReactElement {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between gap-3 border-b pb-3 [border-color:var(--s2ee-border)]">
                       <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
-                        {sortedCvs.length} file{sortedCvs.length === 1 ? "" : "s"}
+                        {sortedCvs.length} fichier{sortedCvs.length === 1 ? "" : "s"}
                       </span>
                     </div>
 
@@ -551,7 +545,7 @@ export function StudentWorkspace(): React.ReactElement {
                                 })
                               }
                             >
-                              Open CV
+                              Ouvrir
                               <ArrowRightIcon />
                             </Button>
                             <Button
@@ -561,7 +555,7 @@ export function StudentWorkspace(): React.ReactElement {
                               variant="destructive-outline"
                               onClick={() => void removeCv(cv)}
                             >
-                              Delete
+                              Supprimer
                               <Trash2Icon />
                             </Button>
                           </div>
@@ -577,10 +571,10 @@ export function StudentWorkspace(): React.ReactElement {
           <section className="max-w-3xl border bg-[var(--s2ee-surface)] p-5 sm:p-6 [border-color:var(--s2ee-border)]">
             <div className="space-y-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                Settings
+                Informations
               </p>
               <h2 className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
-                Personal information
+                Informations personnelles
               </h2>
             </div>
 
@@ -596,7 +590,7 @@ export function StudentWorkspace(): React.ReactElement {
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-first-name">
-                      First name
+                      Prenom
                     </label>
                     <Input
                       id="student-settings-first-name"
@@ -608,7 +602,7 @@ export function StudentWorkspace(): React.ReactElement {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-last-name">
-                      Last name
+                      Nom
                     </label>
                     <Input
                       id="student-settings-last-name"
@@ -620,7 +614,7 @@ export function StudentWorkspace(): React.ReactElement {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-school">
-                      School
+                      Etablissement
                     </label>
                     <Input
                       id="student-settings-school"
@@ -632,7 +626,7 @@ export function StudentWorkspace(): React.ReactElement {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-major">
-                      Major
+                      Specialite
                     </label>
                     <Input
                       id="student-settings-major"
@@ -644,7 +638,7 @@ export function StudentWorkspace(): React.ReactElement {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-academic-year">
-                      Academic year
+                      Annee
                     </label>
                     <Input
                       id="student-settings-academic-year"
@@ -656,7 +650,7 @@ export function StudentWorkspace(): React.ReactElement {
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-phone-number">
-                      Phone number
+                      Telephone
                     </label>
                     <Input
                       id="student-settings-phone-number"
@@ -669,7 +663,7 @@ export function StudentWorkspace(): React.ReactElement {
 
                 <div className="flex justify-end border-t pt-5 [border-color:var(--s2ee-border)]">
                   <Button className="rounded-none px-6 py-4 text-sm uppercase tracking-[0.2em]" loading={isSavingSettings} size="lg" type="submit">
-                    Save settings
+                    Enregistrer
                   </Button>
                 </div>
               </form>

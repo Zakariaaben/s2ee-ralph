@@ -41,37 +41,37 @@ export const formatAdminMutationError = (error: unknown): string => {
     return error.message;
   }
 
-  return "The admin update did not complete. Refresh the page and try again.";
+  return "La mise a jour n'a pas pu etre effectuee. Rechargez la page puis reessayez.";
 };
 
 export const useAdminCompanyLedgerState = () =>
   toAdminAsyncState(
     useAtomValue(adminWorkspaceAtoms.companyLedger),
-    "The company ledger could not be loaded.",
+    "Les entreprises n'ont pas pu etre chargees.",
   );
 
 export const useAdminInterviewLedgerState = () =>
   toAdminAsyncState(
     useAtomValue(adminWorkspaceAtoms.interviewLedger),
-    "The interview ledger could not be loaded.",
+    "Les entretiens n'ont pas pu etre charges.",
   );
 
 export const useAdminAccessLedgerState = () =>
   toAdminAsyncState(
     useAtomValue(adminWorkspaceAtoms.accessLedger),
-    "The access ledger could not be loaded.",
+    "Les acces n'ont pas pu etre charges.",
   );
 
 export const useAdminVenueRoomsState = () =>
   toAdminAsyncState(
     useAtomValue(adminWorkspaceAtoms.venueRooms),
-    "The venue rooms could not be loaded.",
+    "Les salles n'ont pas pu etre chargees.",
   );
 
 export const useAdminPublishedVenueMapState = () =>
   toAdminAsyncState(
     useAtomValue(adminWorkspaceAtoms.publishedVenueMap),
-    "The published venue map could not be loaded.",
+    "Le plan public n'a pas pu etre charge.",
   );
 
 export const useAdminOverviewData = () => {

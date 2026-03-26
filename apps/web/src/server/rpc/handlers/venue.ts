@@ -107,6 +107,15 @@ export const makeVenueRpcHandlers = Effect.gen(function*() {
           companyId: input.companyId,
         });
       }),
+    resetCompanyArrival: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* venueService.resetCompanyArrival({
+          actor,
+          companyId: input.companyId,
+        });
+      }),
   });
 });
 

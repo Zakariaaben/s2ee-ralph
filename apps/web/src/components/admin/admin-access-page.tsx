@@ -38,23 +38,24 @@ import {
   adminWorkspaceReactivity,
 } from "@/lib/admin-atoms";
 import {
+  describeAdminAccessAccount,
   describeAdminAccessSubject,
   filterAdminAccessLedger,
 } from "@/lib/admin-workspace";
 
 const accessRoleFilterOptions = [
-  { value: "all", label: "All roles" },
+  { value: "all", label: "Tous les roles" },
   { value: "admin", label: "Admin" },
-  { value: "company", label: "Company" },
-  { value: "check-in", label: "Check-in" },
-  { value: "student", label: "Student" },
+  { value: "company", label: "Entreprise" },
+  { value: "check-in", label: "Accueil" },
+  { value: "student", label: "Etudiant" },
 ] as const;
 
 const roleOptions = [
   { value: "admin", label: "Admin" },
-  { value: "company", label: "Company" },
-  { value: "check-in", label: "Check-in" },
-  { value: "student", label: "Student" },
+  { value: "company", label: "Entreprise" },
+  { value: "check-in", label: "Accueil" },
+  { value: "student", label: "Etudiant" },
 ] as const;
 
 const roleBadgeVariant = (
@@ -94,7 +95,7 @@ export function AdminAccessPage(): React.ReactElement {
     setRoleDrafts(
       Object.fromEntries(accessLedgerState.value.map((entry) => [entry.user.id, entry.user.role])),
     );
-  }, [accessLedgerState]);
+  }, [accessLedgerState.kind, accessLedgerState.kind === "success" ? accessLedgerState.value : null]);
 
   const visibleAccessEntries = filterAdminAccessLedger(
     accessLedgerState.kind === "success" ? accessLedgerState.value : [],
@@ -125,7 +126,7 @@ export function AdminAccessPage(): React.ReactElement {
       });
       refreshAccessLedger();
       startTransition(() => {
-        setWorkspaceMessage(`${entry.user.name} is now assigned to ${nextRole}.`);
+        setWorkspaceMessage(`${describeAdminAccessAccount(entry)} est maintenant affecte au role ${roleOptions.find((option) => option.value === nextRole)?.label ?? nextRole}.`);
       });
     } catch (error) {
       setWorkspaceError(formatAdminMutationError(error));
@@ -137,15 +138,15 @@ export function AdminAccessPage(): React.ReactElement {
   return (
     <div className="space-y-8">
       <AdminPageHeader
-        description="Review the access ledger and apply role changes without mixing in company or venue operations."
-        eyebrow="Admin access"
-        title="User and role management"
+        description=""
+        eyebrow="Admin"
+        title="Acces"
       />
 
       {workspaceMessage ? (
         <Alert>
           <UsersRoundIcon className="size-4" />
-          <AlertTitle>Role updated</AlertTitle>
+          <AlertTitle>Role mis a jour</AlertTitle>
           <AlertDescription>{workspaceMessage}</AlertDescription>
         </Alert>
       ) : null}
@@ -153,7 +154,7 @@ export function AdminAccessPage(): React.ReactElement {
       {workspaceError ? (
         <Alert variant="error">
           <CircleAlertIcon className="size-4" />
-          <AlertTitle>Role update failed</AlertTitle>
+          <AlertTitle>Echec de mise a jour</AlertTitle>
           <AlertDescription>{workspaceError}</AlertDescription>
         </Alert>
       ) : null}
@@ -167,7 +168,7 @@ export function AdminAccessPage(): React.ReactElement {
               onChange={(event) => {
                 setAccessQuery(event.target.value);
               }}
-              placeholder="Search account, email, or linked subject"
+              placeholder="Rechercher un compte, un email ou un profil"
               value={accessQuery}
             />
           </div>
@@ -194,7 +195,7 @@ export function AdminAccessPage(): React.ReactElement {
         {accessLedgerState.kind === "failure" ? (
           <AdminFailurePanel
             description={accessLedgerState.message}
-            title="Access ledger unavailable"
+            title="Acces indisponibles"
           />
         ) : null}
         {accessLedgerState.kind === "success" && visibleAccessEntries.length === 0 ? (
@@ -203,9 +204,9 @@ export function AdminAccessPage(): React.ReactElement {
               <EmptyMedia className="rounded-none" variant="icon">
                 <UsersRoundIcon className="size-5" />
               </EmptyMedia>
-              <EmptyTitle>No accounts match these filters</EmptyTitle>
+              <EmptyTitle>Aucun compte ne correspond</EmptyTitle>
               <EmptyDescription>
-                Broaden the query or role filter to inspect the full access ledger.
+                Modifiez les filtres pour afficher plus de resultats.
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -223,7 +224,7 @@ export function AdminAccessPage(): React.ReactElement {
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-bold uppercase tracking-[0.08em] text-slate-900">
-                          {entry.user.name}
+                          {describeAdminAccessAccount(entry)}
                         </p>
                         <Badge variant={roleBadgeVariant(entry.user.role)}>{entry.user.role}</Badge>
                       </div>
@@ -231,7 +232,7 @@ export function AdminAccessPage(): React.ReactElement {
                         {entry.user.email}
                       </p>
                       <p className="text-sm text-[color:var(--s2ee-muted-foreground)]">
-                        Linked subject: {describeAdminAccessSubject(entry)}
+                        Profil lie : {describeAdminAccessSubject(entry)}
                       </p>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -262,7 +263,7 @@ export function AdminAccessPage(): React.ReactElement {
                         }}
                         type="button"
                       >
-                        {isPending ? "Saving..." : "Apply role"}
+                        {isPending ? "Enregistrement..." : "Appliquer"}
                       </Button>
                     </div>
                   </div>

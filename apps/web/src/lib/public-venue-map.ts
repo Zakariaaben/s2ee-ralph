@@ -10,10 +10,32 @@ export type PublicVenueMapSummary = {
 const byRoomCode = (left: VenueMapPin, right: VenueMapPin): number =>
   left.room.code.localeCompare(right.room.code);
 
+const normalizeQuery = (value: string): string => value.trim().toLowerCase();
+
 export const sortPublishedVenueMapPins = (
   publishedVenueMap: PublishedVenueMap | null,
 ): ReadonlyArray<VenueMapPin> =>
   publishedVenueMap == null ? [] : [...publishedVenueMap.pins].sort(byRoomCode);
+
+export const filterPublishedVenueMapPins = (
+  pins: ReadonlyArray<VenueMapPin>,
+  query: string,
+): ReadonlyArray<VenueMapPin> => {
+  const normalizedQuery = normalizeQuery(query);
+
+  if (normalizedQuery.length === 0) {
+    return pins;
+  }
+
+  return pins.filter((pin) =>
+    [
+      pin.room.code,
+      ...pin.room.companies.map((company) => company.companyName),
+      ...pin.room.companies.map((company) => String(company.standNumber)),
+      ...pin.room.companies.map((company) => `stand ${company.standNumber}`),
+    ].some((value) => value.toLowerCase().includes(normalizedQuery)),
+  );
+};
 
 export const resolvePublishedVenueMapSelection = (
   pins: ReadonlyArray<VenueMapPin>,
@@ -49,20 +71,20 @@ export const summarizePublishedVenueMap = (
 
 export const describePublishedVenueRoom = (pin: VenueMapPin): string => {
   if (pin.room.companies.length === 0) {
-    return `Room ${pin.room.code} has no published company placements yet.`;
+    return `La salle ${pin.room.code} n'a pas encore d'entreprise affichee.`;
   }
 
   if (pin.room.companies.length === 1) {
     const company = pin.room.companies[0]!;
     const arrivalLabel =
-      company.arrivalStatus === "arrived" ? "arrived on site" : "not marked arrived yet";
+      company.arrivalStatus === "arrived" ? "arrivee sur place" : "pas encore marquee arrivee";
 
-    return `${company.companyName} is at stand ${company.standNumber} and is ${arrivalLabel}.`;
+    return `${company.companyName} est au stand ${company.standNumber} et est ${arrivalLabel}.`;
   }
 
   const arrivedCount = pin.room.companies.filter(
     (company) => company.arrivalStatus === "arrived",
   ).length;
 
-  return `${pin.room.companies.length} companies are placed here, with ${arrivedCount} marked arrived.`;
+  return `${pin.room.companies.length} entreprises sont placees ici, dont ${arrivedCount} marquees arrivees.`;
 };

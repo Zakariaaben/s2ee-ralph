@@ -40,4 +40,5 @@ export const adminWorkspaceAtoms = {
   deleteRoom: AppRpcClient.mutation("deleteRoom"),
   assignCompanyPlacement: AppRpcClient.mutation("assignCompanyPlacement"),
   clearCompanyPlacement: AppRpcClient.mutation("clearCompanyPlacement"),
+  resetCompanyArrival: AppRpcClient.mutation("resetCompanyArrival"),
 } as const;

@@ -17,44 +17,44 @@ export type AdminSection = {
 export const adminSections: ReadonlyArray<AdminSection> = [
   {
     id: "overview",
-    label: "Overview",
-    title: "Operational overview",
-    description: "Event state and module entry points.",
+    label: "Apercu",
+    title: "Apercu",
+    description: "",
     to: "/admin/overview",
   },
   {
     id: "companies",
-    label: "Companies",
-    title: "Companies and recruiters",
-    description: "Company records and recruiter rosters.",
+    label: "Entreprises",
+    title: "Entreprises",
+    description: "",
     to: "/admin/companies",
   },
   {
     id: "venue",
-    label: "Venue",
-    title: "Venue logistics",
-    description: "Rooms, stands, and placements.",
+    label: "Salles",
+    title: "Salles",
+    description: "",
     to: "/admin/venue",
   },
   {
     id: "map",
-    label: "Map",
-    title: "Public map",
-    description: "Map image publication and room pins.",
+    label: "Plan",
+    title: "Plan",
+    description: "",
     to: "/admin/map",
   },
   {
     id: "access",
-    label: "Access",
-    title: "Access control",
-    description: "User ledger and role assignment.",
+    label: "Acces",
+    title: "Acces",
+    description: "",
     to: "/admin/access",
   },
   {
     id: "interviews",
-    label: "Interviews",
-    title: "Interview review",
-    description: "Interview ledger and filtering.",
+    label: "Entretiens",
+    title: "Entretiens",
+    description: "",
     to: "/admin/interviews",
   },
 ] as const;
@@ -66,4 +66,3 @@ export const getAdminIndexRedirectPath = (pathname: string): string | null => {
 
   return null;
 };
-

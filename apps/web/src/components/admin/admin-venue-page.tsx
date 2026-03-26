@@ -38,6 +38,7 @@ import {
   DoorOpenIcon,
   MapPinnedIcon,
   PencilLineIcon,
+  RotateCcwIcon,
   SearchIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -111,6 +112,9 @@ export function AdminVenuePage(): React.ReactElement {
     mode: "promise",
   });
   const clearCompanyPlacement = useAtomSet(adminWorkspaceAtoms.clearCompanyPlacement, {
+    mode: "promise",
+  });
+  const resetCompanyArrival = useAtomSet(adminWorkspaceAtoms.resetCompanyArrival, {
     mode: "promise",
   });
   const upsertVenueMapRoomPin = useAtomSet(adminWorkspaceAtoms.upsertVenueMapRoomPin, {
@@ -209,7 +213,7 @@ export function AdminVenuePage(): React.ReactElement {
     const code = newRoomCode.trim().toUpperCase();
 
     if (code.length === 0) {
-      setWorkspaceError("Provide a room code before creating the room.");
+      setWorkspaceError("Renseignez un code de salle.");
       return;
     }
 
@@ -227,7 +231,7 @@ export function AdminVenuePage(): React.ReactElement {
       refreshVenuePage();
       setNewRoomCode("");
       startTransition(() => {
-        setWorkspaceMessage(`Room ${code} created.`);
+        setWorkspaceMessage(`Salle ${code} ajoutee.`);
       });
     } catch (error) {
       setWorkspaceError(formatAdminMutationError(error));
@@ -240,7 +244,7 @@ export function AdminVenuePage(): React.ReactElement {
     const nextCode = (roomCodeDrafts[roomId] ?? currentCode).trim().toUpperCase();
 
     if (nextCode.length === 0) {
-      setWorkspaceError("Room code cannot be empty.");
+      setWorkspaceError("Le code de salle est obligatoire.");
       return;
     }
 
@@ -266,7 +270,7 @@ export function AdminVenuePage(): React.ReactElement {
       });
       refreshVenuePage();
       startTransition(() => {
-        setWorkspaceMessage(`Room ${currentCode} renamed to ${nextCode}.`);
+        setWorkspaceMessage(`Salle ${currentCode} renommee en ${nextCode}.`);
       });
     } catch (error) {
       setWorkspaceError(formatAdminMutationError(error));
@@ -293,7 +297,7 @@ export function AdminVenuePage(): React.ReactElement {
       });
       refreshVenuePage();
       startTransition(() => {
-        setWorkspaceMessage(`Room ${roomCode} deleted.`);
+        setWorkspaceMessage(`Salle ${roomCode} supprimee.`);
       });
     } catch (error) {
       setWorkspaceError(formatAdminMutationError(error));
@@ -314,19 +318,19 @@ export function AdminVenuePage(): React.ReactElement {
       ).trim();
 
     if (roomIdDraft === "unplaced") {
-      setWorkspaceError("Choose a room before saving the placement.");
+      setWorkspaceError("Choisissez une salle.");
       return;
     }
 
     if (standDraft.length === 0) {
-      setWorkspaceError("Provide a stand number before saving the placement.");
+      setWorkspaceError("Renseignez un numero de stand.");
       return;
     }
 
     const standNumber = Number(standDraft);
 
     if (!Number.isInteger(standNumber) || standNumber <= 0) {
-      setWorkspaceError("Stand number must be a positive integer.");
+      setWorkspaceError("Le numero de stand doit etre un entier positif.");
       return;
     }
 
@@ -349,7 +353,7 @@ export function AdminVenuePage(): React.ReactElement {
       });
       refreshVenuePage();
       startTransition(() => {
-        setWorkspaceMessage(`${entry.company.name} placement saved.`);
+        setWorkspaceMessage(`Placement enregistre pour ${entry.company.name}.`);
       });
     } catch (error) {
       setWorkspaceError(formatAdminMutationError(error));
@@ -376,7 +380,34 @@ export function AdminVenuePage(): React.ReactElement {
       });
       refreshVenuePage();
       startTransition(() => {
-        setWorkspaceMessage(`${entry.company.name} placement cleared.`);
+        setWorkspaceMessage(`Placement retire pour ${entry.company.name}.`);
+      });
+    } catch (error) {
+      setWorkspaceError(formatAdminMutationError(error));
+    } finally {
+      setPendingVenueActionId(null);
+    }
+  };
+
+  const resetArrival = async (entry: AdminCompanyLedgerEntry) => {
+    setPendingVenueActionId(`placement:arrival-reset:${entry.company.id}`);
+    setWorkspaceError(null);
+    setWorkspaceMessage(null);
+
+    try {
+      await resetCompanyArrival({
+        payload: {
+          companyId: entry.company.id,
+        },
+        reactivityKeys: {
+          companyLedger: adminWorkspaceReactivity.companyLedger,
+          venueRooms: adminWorkspaceReactivity.venueRooms,
+          publishedVenueMap: adminWorkspaceReactivity.publishedVenueMap,
+        },
+      });
+      refreshVenuePage();
+      startTransition(() => {
+        setWorkspaceMessage(`${entry.company.name} remise en attente.`);
       });
     } catch (error) {
       setWorkspaceError(formatAdminMutationError(error));
@@ -432,7 +463,7 @@ export function AdminVenuePage(): React.ReactElement {
 
   const saveVenueMapPinDrafts = async () => {
     if (publishedVenueMap == null) {
-      setWorkspaceError("Publish the venue map image before placing room pins.");
+      setWorkspaceError("Publiez d'abord le plan.");
       return;
     }
 
@@ -445,7 +476,7 @@ export function AdminVenuePage(): React.ReactElement {
     if (diff.upserts.length === 0 && diff.deletes.length === 0) {
       setIsPinEditorOpen(false);
       startTransition(() => {
-        setWorkspaceMessage("No map pin changes to save.");
+        setWorkspaceMessage("Aucun changement a enregistrer.");
       });
       return;
     }
@@ -477,7 +508,7 @@ export function AdminVenuePage(): React.ReactElement {
       setIsPinEditorOpen(false);
       startTransition(() => {
         setWorkspaceMessage(
-          `${diff.upserts.length + diff.deletes.length} map pin change${diff.upserts.length + diff.deletes.length === 1 ? "" : "s"} saved.`,
+          `${diff.upserts.length + diff.deletes.length} changement${diff.upserts.length + diff.deletes.length === 1 ? "" : "s"} enregistre${diff.upserts.length + diff.deletes.length === 1 ? "" : "s"}.`,
         );
       });
     } catch (error) {
@@ -492,18 +523,18 @@ export function AdminVenuePage(): React.ReactElement {
       <AdminPageHeader
         actions={
           <Button onClick={refreshVenuePage} type="button" variant="outline">
-            Refresh
+            Actualiser
           </Button>
         }
-        description="This page is split into room registry, company assignment, and map pinning so each venue task stays narrower."
-        eyebrow="Admin venue"
-        title="Venue logistics"
+        description=""
+        eyebrow="Admin"
+        title="Salles"
       />
 
       {workspaceMessage ? (
         <Alert>
           <BadgeCheckIcon className="size-4" />
-          <AlertTitle>Venue update saved</AlertTitle>
+          <AlertTitle>Mise a jour enregistree</AlertTitle>
           <AlertDescription>{workspaceMessage}</AlertDescription>
         </Alert>
       ) : null}
@@ -511,16 +542,16 @@ export function AdminVenuePage(): React.ReactElement {
       {workspaceError ? (
         <Alert variant="error">
           <CircleAlertIcon className="size-4" />
-          <AlertTitle>Venue update failed</AlertTitle>
+          <AlertTitle>Echec de mise a jour</AlertTitle>
           <AlertDescription>{workspaceError}</AlertDescription>
         </Alert>
       ) : null}
 
       <Tabs className="gap-6" defaultValue="rooms">
         <TabsList className="w-full justify-start overflow-x-auto rounded-none border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-1">
-          <TabsTrigger value="rooms">Rooms</TabsTrigger>
-          <TabsTrigger value="placements">Assign companies</TabsTrigger>
-          <TabsTrigger value="pins">Pin on map</TabsTrigger>
+          <TabsTrigger value="rooms">Salles</TabsTrigger>
+          <TabsTrigger value="placements">Placements</TabsTrigger>
+          <TabsTrigger value="pins">Reperes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="rooms">
@@ -528,10 +559,7 @@ export function AdminVenuePage(): React.ReactElement {
             <div className="space-y-4 border-b border-[var(--s2ee-border)] pb-5">
               <div className="space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                  Room registry
-                </p>
-                <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                  Create, rename, and retire rooms while keeping placement work synchronized.
+                  Salles
                 </p>
               </div>
 
@@ -542,7 +570,7 @@ export function AdminVenuePage(): React.ReactElement {
                 }}
               >
                 <div className="space-y-2">
-                  <Label htmlFor="new-room-code">New room code</Label>
+                  <Label htmlFor="new-room-code">Code de la salle</Label>
                   <Input
                     className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                     id="new-room-code"
@@ -559,7 +587,7 @@ export function AdminVenuePage(): React.ReactElement {
                   type="submit"
                 >
                   <DoorOpenIcon className="size-4" />
-                  {pendingVenueActionId === "room:create" ? "Creating..." : "Add room"}
+                  {pendingVenueActionId === "room:create" ? "Creation..." : "Ajouter"}
                 </Button>
               </form>
 
@@ -570,7 +598,7 @@ export function AdminVenuePage(): React.ReactElement {
                   onChange={(event) => {
                     setVenueQuery(event.target.value);
                   }}
-                  placeholder="Search room, company, or stand"
+                  placeholder="Rechercher une salle, une entreprise ou un stand"
                   value={venueQuery}
                 />
               </div>
@@ -580,7 +608,7 @@ export function AdminVenuePage(): React.ReactElement {
             {venueRoomsState.kind === "failure" ? (
               <AdminFailurePanel
                 description={venueRoomsState.message}
-                title="Venue registry unavailable"
+                title="Salles indisponibles"
               />
             ) : null}
             {venueRoomsState.kind === "success" && visibleVenueRooms.length === 0 ? (
@@ -589,9 +617,9 @@ export function AdminVenuePage(): React.ReactElement {
                   <EmptyMedia className="rounded-none" variant="icon">
                     <DoorOpenIcon className="size-5" />
                   </EmptyMedia>
-                  <EmptyTitle>No rooms match this query</EmptyTitle>
+                  <EmptyTitle>Aucune salle ne correspond</EmptyTitle>
                   <EmptyDescription>
-                    Adjust the room query or create the first room for placement work.
+                    Modifiez la recherche ou ajoutez une salle.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -618,16 +646,16 @@ export function AdminVenuePage(): React.ReactElement {
                           <div className="flex flex-wrap gap-2">
                             <Badge variant={summary.pendingCount === 0 ? "success" : "outline"}>
                               {summary.companyCount === 1
-                                ? "1 company"
-                                : `${summary.companyCount} companies`}
+                                ? "1 entreprise"
+                                : `${summary.companyCount} entreprises`}
                             </Badge>
-                            <Badge variant="outline">{summary.arrivedCount} arrived</Badge>
+                            <Badge variant="outline">{summary.arrivedCount} arrivees</Badge>
                           </div>
                         </div>
 
                         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
                           <div className="space-y-2">
-                            <Label htmlFor={`room-code-${summary.room.id}`}>Room code</Label>
+                            <Label htmlFor={`room-code-${summary.room.id}`}>Code</Label>
                             <Input
                               className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                               id={`room-code-${summary.room.id}`}
@@ -651,7 +679,7 @@ export function AdminVenuePage(): React.ReactElement {
                             variant="outline"
                           >
                             <PencilLineIcon className="size-4" />
-                            {pendingRename ? "Saving..." : "Rename"}
+                            {pendingRename ? "Enregistrement..." : "Renommer"}
                           </Button>
                           <Button
                             disabled={pendingDelete}
@@ -662,7 +690,7 @@ export function AdminVenuePage(): React.ReactElement {
                             variant="ghost"
                           >
                             <Trash2Icon className="size-4" />
-                            {pendingDelete ? "Deleting..." : "Delete"}
+                            {pendingDelete ? "Suppression..." : "Supprimer"}
                           </Button>
                         </div>
 
@@ -689,10 +717,7 @@ export function AdminVenuePage(): React.ReactElement {
             <div className="space-y-4 border-b border-[var(--s2ee-border)] pb-5">
               <div className="space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                  Company assignment
-                </p>
-                <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                  Assign companies to rooms and stands while keeping arrival context visible.
+                  Placements
                 </p>
               </div>
               <div className="relative">
@@ -702,7 +727,7 @@ export function AdminVenuePage(): React.ReactElement {
                   onChange={(event) => {
                     setPlacementQuery(event.target.value);
                   }}
-                  placeholder="Search company, recruiter, room, or stand"
+                  placeholder="Rechercher une entreprise, un recruteur, une salle ou un stand"
                   value={placementQuery}
                 />
               </div>
@@ -714,13 +739,13 @@ export function AdminVenuePage(): React.ReactElement {
             {companyLedgerState.kind === "failure" ? (
               <AdminFailurePanel
                 description={companyLedgerState.message}
-                title="Company placement ledger unavailable"
+                title="Placements indisponibles"
               />
             ) : null}
             {venueRoomsState.kind === "failure" ? (
               <AdminFailurePanel
                 description={venueRoomsState.message}
-                title="Venue rooms unavailable"
+                title="Salles indisponibles"
               />
             ) : null}
             {companyLedgerState.kind === "success" &&
@@ -731,9 +756,9 @@ export function AdminVenuePage(): React.ReactElement {
                   <EmptyMedia className="rounded-none" variant="icon">
                     <Building2Icon className="size-5" />
                   </EmptyMedia>
-                  <EmptyTitle>No companies match this query</EmptyTitle>
+                  <EmptyTitle>Aucune entreprise ne correspond</EmptyTitle>
                   <EmptyDescription>
-                    Broaden the search query to continue placement work.
+                    Modifiez la recherche.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
@@ -749,8 +774,8 @@ export function AdminVenuePage(): React.ReactElement {
                     "unplaced";
                   const roomDraftLabel =
                     roomDraft === "unplaced"
-                      ? "No room selected"
-                      : venueRooms.find((room) => room.id === roomDraft)?.code ?? "Unknown room";
+                      ? "Aucune salle"
+                      : venueRooms.find((room) => room.id === roomDraft)?.code ?? "Salle inconnue";
                   const standDraft =
                     placementStandDrafts[entry.company.id] ??
                     (entry.standNumber == null ? "" : String(entry.standNumber));
@@ -773,18 +798,18 @@ export function AdminVenuePage(): React.ReactElement {
                           </div>
                           <div className="flex flex-wrap gap-2">
                             <Badge variant={arrivalBadgeVariant(entry.arrivalStatus)}>
-                              {entry.arrivalStatus === "arrived" ? "Arrived" : "Pending"}
+                              {entry.arrivalStatus === "arrived" ? "Arrivee" : "En attente"}
                             </Badge>
                             <Badge variant="outline">
-                              {entry.company.recruiters.length} recruiter
+                              {entry.company.recruiters.length} recruteur
                               {entry.company.recruiters.length === 1 ? "" : "s"}
                             </Badge>
                           </div>
                         </div>
 
-                        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_160px_auto_auto] xl:items-end">
+                        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_160px_auto_auto_auto] xl:items-end">
                           <div className="space-y-2">
-                            <Label htmlFor={`placement-room-${entry.company.id}`}>Room</Label>
+                            <Label htmlFor={`placement-room-${entry.company.id}`}>Salle</Label>
                             <Select
                               onValueChange={(value) => {
                                 setPlacementRoomDrafts((current) => ({
@@ -801,7 +826,7 @@ export function AdminVenuePage(): React.ReactElement {
                                 <SelectValue>{roomDraftLabel}</SelectValue>
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="unplaced">No room selected</SelectItem>
+                                <SelectItem value="unplaced">Aucune salle</SelectItem>
                                 {venueRooms.map((room) => (
                                   <SelectItem key={room.id} value={room.id as string}>
                                     {room.code}
@@ -835,7 +860,23 @@ export function AdminVenuePage(): React.ReactElement {
                             }}
                             type="button"
                           >
-                            {pendingSave ? "Saving..." : "Save placement"}
+                            {pendingSave ? "Enregistrement..." : "Enregistrer"}
+                          </Button>
+                          <Button
+                            disabled={
+                              pendingVenueActionId === `placement:arrival-reset:${entry.company.id}` ||
+                              entry.arrivalStatus !== "arrived"
+                            }
+                            onClick={() => {
+                              void resetArrival(entry);
+                            }}
+                            type="button"
+                            variant="outline"
+                          >
+                            <RotateCcwIcon className="size-4" />
+                            {pendingVenueActionId === `placement:arrival-reset:${entry.company.id}`
+                              ? "Reinitialisation..."
+                              : "Remettre en attente"}
                           </Button>
                           <Button
                             disabled={pendingClear || entry.room == null}
@@ -845,7 +886,7 @@ export function AdminVenuePage(): React.ReactElement {
                             type="button"
                             variant="ghost"
                           >
-                            {pendingClear ? "Clearing..." : "Clear"}
+                            {pendingClear ? "Suppression..." : "Retirer"}
                           </Button>
                         </div>
 
@@ -872,18 +913,14 @@ export function AdminVenuePage(): React.ReactElement {
             <div className="space-y-4 border-b border-[var(--s2ee-border)] pb-5">
               <div className="space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                  Room pin placement
-                </p>
-                <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                  Pin positions are saved in the database by room id with normalized map coordinates,
-                  so the public map can render them in the same place later.
+                  Reperes
                 </p>
               </div>
               <div className="grid gap-px border border-[var(--s2ee-border)] bg-[var(--s2ee-border)] md:grid-cols-3">
                 {[
-                  ["Rooms", venueMapRoomRows.length],
-                  ["Pinned", publishedVenueMap?.pins.length ?? 0],
-                  ["Unsaved", draftVenueMapPinChangeCount],
+                  ["Salles", venueMapRoomRows.length],
+                  ["Reperees", publishedVenueMap?.pins.length ?? 0],
+                  ["Non enregistres", draftVenueMapPinChangeCount],
                 ].map(([label, value]) => (
                   <div className="bg-white p-5" key={label}>
                     <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
@@ -899,7 +936,7 @@ export function AdminVenuePage(): React.ReactElement {
                   onClick={openPinEditor}
                   type="button"
                 >
-                  Open pin editor
+                  Ouvrir l'editeur
                 </Button>
                 <Button
                   disabled={draftVenueMapPinChangeCount === 0}
@@ -907,15 +944,15 @@ export function AdminVenuePage(): React.ReactElement {
                   type="button"
                   variant="ghost"
                 >
-                  Reset staged changes
+                  Reinitialiser
                 </Button>
               </div>
               {selectedVenueMapRoom ? (
                 <div className="border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-4 text-sm leading-6 text-[color:var(--s2ee-soft-foreground)]">
-                  Active room: {selectedVenueMapRoom.room.code}.{" "}
+                  Salle active : {selectedVenueMapRoom.room.code}.{" "}
                   {selectedDraftVenueMapPin
-                    ? `Draft pin at ${formatDraftVenueMapPinPosition(selectedDraftVenueMapPin)}.`
-                    : "No draft pin staged yet."}
+                    ? `Repere provisoire : ${formatDraftVenueMapPinPosition(selectedDraftVenueMapPin)}.`
+                    : "Aucun repere provisoire."}
                 </div>
               ) : null}
             </div>
@@ -928,13 +965,13 @@ export function AdminVenuePage(): React.ReactElement {
                 {venueRoomsState.kind === "failure" ? (
                   <AdminFailurePanel
                     description={venueRoomsState.message}
-                    title="Venue rooms unavailable"
+                    title="Salles indisponibles"
                   />
                 ) : null}
                 {publishedVenueMapState.kind === "failure" ? (
                   <AdminFailurePanel
                     description={publishedVenueMapState.message}
-                    title="Published map unavailable"
+                    title="Plan indisponible"
                   />
                 ) : null}
                 {venueRoomsState.kind === "success" && venueMapRoomRows.length === 0 ? (
@@ -943,9 +980,9 @@ export function AdminVenuePage(): React.ReactElement {
                       <EmptyMedia className="rounded-none" variant="icon">
                         <DoorOpenIcon className="size-5" />
                       </EmptyMedia>
-                      <EmptyTitle>No rooms available for pinning</EmptyTitle>
+                      <EmptyTitle>Aucune salle a reperer</EmptyTitle>
                       <EmptyDescription>
-                        Create rooms before placing them on the public map.
+                        Creez d'abord des salles.
                       </EmptyDescription>
                     </EmptyHeader>
                   </Empty>
@@ -979,15 +1016,15 @@ export function AdminVenuePage(): React.ReactElement {
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 <Badge variant={isSelected ? "default" : "outline"}>
-                                  {isSelected ? "Active" : "Inactive"}
+                                  {isSelected ? "Selectionnee" : "Disponible"}
                                 </Badge>
                                 <Badge variant={draftPin ? "success" : "outline"}>
-                                  {draftPin ? "Pinned" : "Unpinned"}
+                                  {draftPin ? "Reperee" : "Sans repere"}
                                 </Badge>
                               </div>
                             </div>
                             <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                              {draftPin ? formatDraftVenueMapPinPosition(draftPin) : "No pin saved yet."}
+                              {draftPin ? formatDraftVenueMapPinPosition(draftPin) : "Aucun repere."}
                             </p>
                             <div className="flex flex-col gap-2 sm:flex-row">
                               <Button
@@ -997,7 +1034,7 @@ export function AdminVenuePage(): React.ReactElement {
                                 type="button"
                                 variant={isSelected ? "default" : "outline"}
                               >
-                                {isSelected ? "Selected" : "Select room"}
+                                  {isSelected ? "Selectionnee" : "Selectionner"}
                               </Button>
                               <Button
                                 disabled={draftPin == null}
@@ -1007,7 +1044,7 @@ export function AdminVenuePage(): React.ReactElement {
                                 type="button"
                                 variant="ghost"
                               >
-                                Clear staged pin
+                                Retirer le repere
                               </Button>
                             </div>
                           </div>
@@ -1025,9 +1062,9 @@ export function AdminVenuePage(): React.ReactElement {
                       <EmptyMedia className="rounded-none" variant="icon">
                         <MapPinnedIcon className="size-5" />
                       </EmptyMedia>
-                      <EmptyTitle>No public map published yet</EmptyTitle>
+                      <EmptyTitle>Aucun plan publie</EmptyTitle>
                       <EmptyDescription>
-                        Publish the venue map on `/admin/map` before placing room pins here.
+                        Publiez le plan depuis l'espace Plan.
                       </EmptyDescription>
                     </EmptyHeader>
                   </Empty>
@@ -1057,10 +1094,7 @@ export function AdminVenuePage(): React.ReactElement {
                     ))}
                   </div>
                 )}
-                <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                  Map publication still lives on `/admin/map`. Use the large editor to drag pins in
-                  real time, then save the staged layout.
-                </p>
+                <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">Le plan public se verifie ici.</p>
               </div>
             </div>
           </section>
@@ -1082,11 +1116,10 @@ export function AdminVenuePage(): React.ReactElement {
             >
               <DialogHeader className="border-b bg-[var(--s2ee-surface-soft)] px-5 py-5 sm:px-8 sm:py-6 [border-color:var(--s2ee-border)]">
                 <DialogTitle className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
-                  Venue pin editor
+                  Editeur de reperes
                 </DialogTitle>
                 <DialogDescription className="max-w-3xl text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
-                  Select one active room, click anywhere on the map to place it, drag pins in real
-                  time, then save once the layout looks right.
+                  Selectionnez une salle, placez son repere sur le plan, puis enregistrez.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1096,16 +1129,16 @@ export function AdminVenuePage(): React.ReactElement {
                     <div className="space-y-4 border-b px-5 py-5 sm:px-6 [border-color:var(--s2ee-border)]">
                       <div className="space-y-2">
                         <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                          Active room
+                          Salle active
                         </p>
                         <p className="text-lg font-black tracking-[-0.05em] text-slate-900">
-                          {selectedVenueMapRoom?.room.code ?? "No room selected"}
+                          {selectedVenueMapRoom?.room.code ?? "Aucune salle"}
                         </p>
                       </div>
                       <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
                         {selectedDraftVenueMapPin
-                          ? `Current draft: ${formatDraftVenueMapPinPosition(selectedDraftVenueMapPin)}`
-                          : "Click the map to place the selected room for the first time."}
+                          ? `Repere provisoire : ${formatDraftVenueMapPinPosition(selectedDraftVenueMapPin)}`
+                          : "Cliquez sur le plan pour placer le repere."}
                       </p>
                     </div>
 
@@ -1130,15 +1163,15 @@ export function AdminVenuePage(): React.ReactElement {
                                   <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
                                     {draftPin
                                       ? formatDraftVenueMapPinPosition(draftPin)
-                                      : "No draft pin placed."}
+                                      : "Aucun repere provisoire."}
                                   </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                  <Badge variant={isActive ? "default" : "outline"}>
-                                    {isActive ? "Active" : "Inactive"}
+                                <Badge variant={isActive ? "default" : "outline"}>
+                                    {isActive ? "Selectionnee" : "Disponible"}
                                   </Badge>
                                   <Badge variant={draftPin ? "success" : "outline"}>
-                                    {draftPin ? "Pinned" : "Unpinned"}
+                                    {draftPin ? "Repere" : "Sans repere"}
                                   </Badge>
                                 </div>
                               </div>
@@ -1152,7 +1185,7 @@ export function AdminVenuePage(): React.ReactElement {
                                   type="button"
                                   variant={isActive ? "default" : "outline"}
                                 >
-                                  {isActive ? "Selected" : "Select"}
+                                  {isActive ? "Selectionnee" : "Selectionner"}
                                 </Button>
                                 <Button
                                   disabled={draftPin == null}
@@ -1163,7 +1196,7 @@ export function AdminVenuePage(): React.ReactElement {
                                   type="button"
                                   variant="ghost"
                                 >
-                                  Clear
+                                  Retirer
                                 </Button>
                               </div>
                             </div>
@@ -1180,9 +1213,9 @@ export function AdminVenuePage(): React.ReactElement {
                           <EmptyMedia className="rounded-none" variant="icon">
                             <MapPinnedIcon className="size-5" />
                           </EmptyMedia>
-                          <EmptyTitle>No public map published yet</EmptyTitle>
+                          <EmptyTitle>Aucun plan publie</EmptyTitle>
                           <EmptyDescription>
-                            Publish the venue map on `/admin/map` before editing room pins.
+                            Publiez le plan avant de modifier les reperes.
                           </EmptyDescription>
                         </EmptyHeader>
                       </Empty>
@@ -1191,7 +1224,7 @@ export function AdminVenuePage(): React.ReactElement {
                         className="relative overflow-hidden border border-[var(--s2ee-border)] bg-white"
                         onClick={(event) => {
                           if (selectedVenueMapRoomId == null) {
-                            setWorkspaceError("Choose a room before placing a map pin.");
+                            setWorkspaceError("Choisissez une salle avant de placer un repere.");
                             return;
                           }
 
@@ -1214,7 +1247,7 @@ export function AdminVenuePage(): React.ReactElement {
                         ref={venueMapEditorRef}
                       >
                         <img
-                          alt="Venue pin editor"
+                          alt="Editeur de reperes"
                           className="block max-h-[76vh] min-h-[420px] w-full object-contain"
                           src={toImageSource(publishedVenueMap.image)}
                         />
@@ -1285,8 +1318,8 @@ export function AdminVenuePage(): React.ReactElement {
 
               <DialogFooter className="items-center border-t bg-[var(--s2ee-surface-soft)] px-5 py-4 sm:px-8 [border-color:var(--s2ee-border)]">
                 <p className="mr-auto text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                  {draftPinnedRoomCount} pinned room{draftPinnedRoomCount === 1 ? "" : "s"} staged.{" "}
-                  {draftVenueMapPinChangeCount} unsaved change{draftVenueMapPinChangeCount === 1 ? "" : "s"}.
+                  {draftPinnedRoomCount} salle{draftPinnedRoomCount === 1 ? "" : "s"} reperee{draftPinnedRoomCount === 1 ? "" : "s"}.{" "}
+                  {draftVenueMapPinChangeCount} changement{draftVenueMapPinChangeCount === 1 ? "" : "s"} non enregistre{draftVenueMapPinChangeCount === 1 ? "" : "s"}.
                 </p>
                 <Button
                   onClick={() => {
@@ -1296,7 +1329,7 @@ export function AdminVenuePage(): React.ReactElement {
                   type="button"
                   variant="ghost"
                 >
-                  Cancel
+                  Annuler
                 </Button>
                 <Button
                   disabled={publishedVenueMap == null || pendingVenueActionId === "map:pin:commit"}
@@ -1305,7 +1338,7 @@ export function AdminVenuePage(): React.ReactElement {
                   }}
                   type="button"
                 >
-                  {pendingVenueActionId === "map:pin:commit" ? "Saving..." : "Save pin layout"}
+                  {pendingVenueActionId === "map:pin:commit" ? "Enregistrement..." : "Enregistrer"}
                 </Button>
               </DialogFooter>
             </DialogPopup>

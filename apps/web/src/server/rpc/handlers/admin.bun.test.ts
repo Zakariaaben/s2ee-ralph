@@ -366,7 +366,6 @@ describeWithStorage("admin rpc", () => {
 
         const createdEntry = yield* adminClient.createAdminCompanyAccount({
           companyName: "Atlas Systems",
-          accountName: "Nora Recruiter",
           email: "atlas@example.com",
           password: "temporary-password-123",
         }).pipe(RpcClient.withHeaders(adminHeaders));
@@ -375,7 +374,7 @@ describeWithStorage("admin rpc", () => {
           user: {
             role: "company",
             email: "atlas@example.com",
-            name: "Nora Recruiter",
+            name: "Atlas Systems",
           },
           student: null,
           company: {

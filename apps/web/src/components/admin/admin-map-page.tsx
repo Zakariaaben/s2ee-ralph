@@ -47,11 +47,11 @@ const readFileAsDataUrl = (file: File): Promise<string> =>
     const reader = new FileReader();
 
     reader.onerror = () => {
-      reject(new Error("The selected map image could not be read."));
+      reject(new Error("Impossible de lire l'image selectionnee."));
     };
     reader.onload = () => {
       if (typeof reader.result !== "string") {
-        reject(new Error("The selected map image did not produce uploadable contents."));
+        reject(new Error("Le fichier selectionne ne peut pas etre utilise."));
         return;
       }
 
@@ -93,12 +93,12 @@ export function AdminMapPage(): React.ReactElement {
 
   const publishSelectedVenueMap = async () => {
     if (selectedVenueMapFile == null) {
-      setWorkspaceError("Choose a venue map image before publishing.");
+      setWorkspaceError("Choisissez une image avant de publier le plan.");
       return;
     }
 
     if (!selectedVenueMapFile.type.startsWith("image/")) {
-      setWorkspaceError("The venue map must be an image file.");
+      setWorkspaceError("Le plan doit etre une image.");
       return;
     }
 
@@ -112,7 +112,7 @@ export function AdminMapPage(): React.ReactElement {
       const contentType = metadata?.match(/^data:(.+);base64$/)?.[1] ?? selectedVenueMapFile.type;
 
       if (!contentsBase64 || contentsBase64.trim().length === 0) {
-        throw new Error("The selected map image did not contain publishable contents.");
+        throw new Error("Le fichier selectionne ne contient pas de donnees utilisables.");
       }
 
       await publishVenueMap({
@@ -129,7 +129,7 @@ export function AdminMapPage(): React.ReactElement {
       setSelectedVenueMapFile(null);
       setVenueMapFileInputResetKey((current) => current + 1);
       startTransition(() => {
-        setWorkspaceMessage(`${selectedVenueMapFile.name} published as the public map.`);
+        setWorkspaceMessage(`${selectedVenueMapFile.name} publie comme plan public.`);
       });
     } catch (error) {
       setWorkspaceError(formatAdminMutationError(error));
@@ -152,7 +152,7 @@ export function AdminMapPage(): React.ReactElement {
       });
       refreshMapPage();
       startTransition(() => {
-        setWorkspaceMessage("Published venue map cleared.");
+        setWorkspaceMessage("Plan public retire.");
       });
     } catch (error) {
       setWorkspaceError(formatAdminMutationError(error));
@@ -166,18 +166,18 @@ export function AdminMapPage(): React.ReactElement {
       <AdminPageHeader
         actions={
           <Button onClick={refreshMapPage} type="button" variant="outline">
-            Refresh
+            Actualiser
           </Button>
         }
-        description="Publish the public venue image and align room pins to the room registry. General logistics stay on the venue page."
-        eyebrow="Admin map"
-        title="Public venue map publication"
+        description=""
+        eyebrow="Admin"
+        title="Plan"
       />
 
       {workspaceMessage ? (
         <Alert>
           <BadgeCheckIcon className="size-4" />
-          <AlertTitle>Map update saved</AlertTitle>
+          <AlertTitle>Plan mis a jour</AlertTitle>
           <AlertDescription>{workspaceMessage}</AlertDescription>
         </Alert>
       ) : null}
@@ -185,7 +185,7 @@ export function AdminMapPage(): React.ReactElement {
       {workspaceError ? (
         <Alert variant="error">
           <CircleAlertIcon className="size-4" />
-          <AlertTitle>Map update failed</AlertTitle>
+          <AlertTitle>Echec de mise a jour</AlertTitle>
           <AlertDescription>{workspaceError}</AlertDescription>
         </Alert>
       ) : null}
@@ -195,16 +195,12 @@ export function AdminMapPage(): React.ReactElement {
           <div className="space-y-4 border-b border-[var(--s2ee-border)] pb-5">
             <div className="space-y-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                Published map
-              </p>
-              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                Upload the single public map image, then keep room pins aligned with the current room
-                registry.
+                Plan public
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="venue-map-upload">Map image</Label>
+              <Label htmlFor="venue-map-upload">Image du plan</Label>
               <Input
                 accept="image/*"
                 className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
@@ -215,9 +211,6 @@ export function AdminMapPage(): React.ReactElement {
                 }}
                 type="file"
               />
-              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                Re-publishing replaces the current image while keeping existing room pins in place.
-              </p>
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row">
@@ -228,7 +221,7 @@ export function AdminMapPage(): React.ReactElement {
                 }}
                 type="button"
               >
-                {pendingVenueActionId === "map:publish" ? "Publishing..." : "Publish map"}
+                {pendingVenueActionId === "map:publish" ? "Publication..." : "Publier le plan"}
               </Button>
               <Button
                 disabled={publishedVenueMap == null || pendingVenueActionId === "map:clear"}
@@ -238,7 +231,7 @@ export function AdminMapPage(): React.ReactElement {
                 type="button"
                 variant="ghost"
               >
-                {pendingVenueActionId === "map:clear" ? "Clearing..." : "Clear map"}
+                {pendingVenueActionId === "map:clear" ? "Suppression..." : "Retirer le plan"}
               </Button>
             </div>
           </div>
@@ -247,7 +240,7 @@ export function AdminMapPage(): React.ReactElement {
           {publishedVenueMapState.kind === "failure" ? (
             <AdminFailurePanel
               description={publishedVenueMapState.message}
-              title="Published map unavailable"
+              title="Plan indisponible"
             />
           ) : null}
           {publishedVenueMapState.kind === "success" && publishedVenueMap == null ? (
@@ -256,9 +249,9 @@ export function AdminMapPage(): React.ReactElement {
                 <EmptyMedia className="rounded-none" variant="icon">
                   <MapPinnedIcon className="size-5" />
                 </EmptyMedia>
-                <EmptyTitle>No public map published yet</EmptyTitle>
+                <EmptyTitle>Aucun plan publie</EmptyTitle>
                 <EmptyDescription>
-                  Upload the venue image first, then place room pins from the venue page.
+                  Publiez d'abord l'image du plan.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -269,8 +262,9 @@ export function AdminMapPage(): React.ReactElement {
                 {publishedVenueMap.image.fileName}
               </p>
               <p className="mt-2 text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                {publishedVenueMap.pins.length} room pin
-                {publishedVenueMap.pins.length === 1 ? "" : "s"} currently published.
+                {publishedVenueMap.pins.length} repere
+                {publishedVenueMap.pins.length === 1 ? "" : "s"} publie
+                {publishedVenueMap.pins.length === 1 ? "" : "s"}.
               </p>
             </div>
           ) : null}
@@ -280,18 +274,14 @@ export function AdminMapPage(): React.ReactElement {
           <div className="space-y-4 border-b border-[var(--s2ee-border)] pb-5">
             <div className="space-y-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                Publication status
-              </p>
-              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                Keep the public artifact stable here. Room placement and pin alignment now happen from
-                the tabbed venue workflow.
+                Etat du plan
               </p>
             </div>
             <div className="grid gap-px border border-[var(--s2ee-border)] bg-[var(--s2ee-border)] md:grid-cols-3">
               {[
-                ["Rooms", venueMapRoomRows.length],
-                ["Pinned", pinnedRoomCount],
-                ["Unpinned", unpinnedRoomCount],
+                ["Salles", venueMapRoomRows.length],
+                ["Reperees", pinnedRoomCount],
+                ["Sans repere", unpinnedRoomCount],
               ].map(([label, value]) => (
                 <div className="bg-white p-5" key={label}>
                   <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
@@ -309,7 +299,7 @@ export function AdminMapPage(): React.ReactElement {
               {venueRoomsState.kind === "failure" ? (
                 <AdminFailurePanel
                   description={venueRoomsState.message}
-                  title="Venue rooms unavailable"
+                  title="Salles indisponibles"
                 />
               ) : null}
               {venueRoomsState.kind === "success" && venueMapRoomRows.length === 0 ? (
@@ -318,9 +308,9 @@ export function AdminMapPage(): React.ReactElement {
                     <EmptyMedia className="rounded-none" variant="icon">
                       <Building2Icon className="size-5" />
                     </EmptyMedia>
-                    <EmptyTitle>No rooms available yet</EmptyTitle>
+                    <EmptyTitle>Aucune salle</EmptyTitle>
                     <EmptyDescription>
-                      Build the room registry on the venue page before publishing the public map.
+                      Creez d'abord les salles.
                     </EmptyDescription>
                   </EmptyHeader>
                 </Empty>
@@ -338,14 +328,14 @@ export function AdminMapPage(): React.ReactElement {
                               </p>
                               <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
                                 {entry.room.companies.length === 0
-                                  ? "No companies assigned yet."
+                                  ? "Aucune entreprise."
                                   : entry.room.companies.length === 1
-                                    ? "1 company assigned."
-                                    : `${entry.room.companies.length} companies assigned.`}
+                                    ? "1 entreprise."
+                                    : `${entry.room.companies.length} entreprises.`}
                               </p>
                             </div>
                             <Badge variant={entry.pin ? "success" : "outline"}>
-                              {entry.pin ? "Pinned" : "Unpinned"}
+                              {entry.pin ? "Reperee" : "Sans repere"}
                             </Badge>
                           </div>
                           {entry.room.companies.length > 0 ? (
@@ -369,7 +359,7 @@ export function AdminMapPage(): React.ReactElement {
               {publishedVenueMap != null ? (
                 <div className="relative overflow-hidden border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)]">
                   <img
-                    alt="Published venue map preview"
+                    alt="Apercu du plan"
                     className="block max-h-[760px] w-full object-contain"
                     src={publishedVenueMapImageSrc ?? undefined}
                   />
@@ -388,15 +378,13 @@ export function AdminMapPage(): React.ReactElement {
                 </div>
               ) : (
                 <div className="grid min-h-80 place-items-center border border-dashed border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 text-center text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                  Publish a venue map image to unlock room pin placement on the venue page.
+                  Publiez un plan pour afficher les reperes.
                 </div>
               )}
               <div className="border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-4 text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                The public map stays read-only for visitors. Use the venue page for room assignment and
-                pin alignment, then return here to verify the published artifact.
                 <div className="mt-4">
                   <Link className={buttonVariants({ variant: "outline" })} to="/admin/venue">
-                    Open venue tabs
+                    Ouvrir Salles
                   </Link>
                 </div>
               </div>

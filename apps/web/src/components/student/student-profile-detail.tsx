@@ -53,7 +53,7 @@ const formatMutationError = (error: unknown): string => {
     return error.message;
   }
 
-  return "The CV action did not complete. Refresh and try again.";
+  return "L'action sur le CV n'a pas pu etre effectuee. Reessayez.";
 };
 
 export function StudentProfileDetail({ profileId }: { readonly profileId: string }): React.ReactElement {
@@ -88,11 +88,11 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
 
   const cvProfilesState = toAsyncPanelState(
     cvProfilesResult,
-    "The CV list could not be loaded.",
+    "La liste des CV n'a pas pu etre chargee.",
   );
   const downloadUrlState = toAsyncPanelState(
     downloadUrlResult,
-    "The PDF link could not be loaded.",
+    "Le lien du PDF n'a pas pu etre charge.",
   );
 
   const cvProfiles = cvProfilesState.kind === "success" ? cvProfilesState.value : [];
@@ -132,7 +132,7 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
       return;
     }
 
-    const confirmed = window.confirm(`Delete ${selectedProfile.fileName}? This action cannot be undone.`);
+    const confirmed = window.confirm(`Supprimer ${selectedProfile.fileName} ?`);
     if (!confirmed) {
       return;
     }
@@ -175,11 +175,11 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
             onClick={() => navigate({ to: "/student" })}
           >
             <ArrowLeftIcon />
-            Back to CVs
+            Retour aux CV
           </Button>
           <Alert variant="error">
             <CircleAlertIcon className="size-4" />
-            <AlertTitle>CV unavailable</AlertTitle>
+            <AlertTitle>CV indisponible</AlertTitle>
             <AlertDescription>{cvProfilesState.message}</AlertDescription>
           </Alert>
         </div>
@@ -197,13 +197,13 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
             onClick={() => navigate({ to: "/student" })}
           >
             <ArrowLeftIcon />
-            Back to CVs
+            Retour aux CV
           </Button>
           <Alert variant="warning">
             <CircleAlertIcon className="size-4" />
-            <AlertTitle>CV not found</AlertTitle>
+            <AlertTitle>CV introuvable</AlertTitle>
             <AlertDescription>
-              This CV is not in your library anymore. Return to the list and open another file.
+              Ce CV n'est plus disponible dans votre espace.
             </AlertDescription>
           </Alert>
         </div>
@@ -218,14 +218,14 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em]">
               <span className="text-primary">S2EE</span>
-              <span className="text-[color:var(--s2ee-muted-foreground)]">Student CV</span>
+              <span className="text-[color:var(--s2ee-muted-foreground)]">CV etudiant</span>
             </div>
             <div className="space-y-2">
               <h1 className="text-[clamp(2rem,5vw,3.25rem)] font-black tracking-[-0.08em] text-[color:var(--s2ee-soft-foreground)]">
                 {selectedProfile.fileName}
               </h1>
               <p className="max-w-3xl text-sm leading-7 text-[color:var(--s2ee-soft-foreground)] sm:text-base">
-                Present this specific CV to recruiters using the QR or the manual code below.
+                Utilisez ce QR code ou ce code manuel pour presenter ce CV.
               </p>
             </div>
           </div>
@@ -237,7 +237,7 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
               onClick={() => navigate({ to: "/student" })}
             >
               <ArrowLeftIcon />
-              Back to CVs
+              Retour aux CV
             </Button>
             <Button
               className="w-full rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 uppercase tracking-[0.18em] text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white sm:w-auto"
@@ -245,7 +245,7 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
               variant="outline"
               onClick={handleSignOut}
             >
-              Sign out
+              Se deconnecter
               <LogOutIcon />
             </Button>
           </div>
@@ -258,13 +258,13 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
             {detailError ? (
               <Alert variant="error">
                 <CircleAlertIcon className="size-4" />
-                <AlertTitle>CV action failed</AlertTitle>
+                <AlertTitle>Echec de l'action</AlertTitle>
                 <AlertDescription>{detailError}</AlertDescription>
               </Alert>
             ) : null}
             {detailMessage ? (
               <Alert>
-                <AlertTitle>Updated</AlertTitle>
+                <AlertTitle>Mise a jour</AlertTitle>
                 <AlertDescription>{detailMessage}</AlertDescription>
               </Alert>
             ) : null}
@@ -294,19 +294,19 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
               <div className="space-y-8">
                 <div className="space-y-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                    Manual code
+                  Code manuel
                   </p>
                   <div className="border bg-[var(--s2ee-surface-soft)] px-4 py-5 text-center text-[clamp(1.4rem,7vw,2rem)] font-black tracking-[0.22em] text-[color:var(--s2ee-soft-foreground)] [border-color:var(--s2ee-border)]">
                     {selectedProfile.presentationCode}
                   </div>
                   <p className="text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
-                    If the recruiter cannot scan the QR, they can enter this code directly.
+                    Si le QR code ne peut pas etre scanne, utilisez ce code.
                   </p>
                 </div>
 
                 <div className="space-y-3">
                   <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                    File
+                  Fichier
                   </p>
                   <div className="grid gap-3 border p-4 [border-color:var(--s2ee-border)]">
                     <div className="grid gap-1">
@@ -321,7 +321,7 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
                     ) : downloadUrlState.kind === "failure" ? (
                       <Alert variant="warning">
                         <CircleAlertIcon className="size-4" />
-                        <AlertTitle>PDF unavailable</AlertTitle>
+                        <AlertTitle>PDF indisponible</AlertTitle>
                         <AlertDescription>{downloadUrlState.message}</AlertDescription>
                       </Alert>
                     ) : (
@@ -331,7 +331,7 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
                         rel="noreferrer"
                         target="_blank"
                       >
-                        <span>Open PDF</span>
+                        <span>Ouvrir le PDF</span>
                         <ExternalLinkIcon className="size-4" />
                       </a>
                     )}
@@ -348,8 +348,8 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
                   Notes
                 </p>
                 <div className="space-y-3 text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
-                  <p>This page belongs to one CV file only.</p>
-                  <p>Use the QR or manual code when presenting this version to companies.</p>
+                  <p>Cette page correspond a un seul fichier.</p>
+                  <p>Utilisez le QR code ou le code manuel pour cette version.</p>
                 </div>
               </div>
 
@@ -363,7 +363,7 @@ export function StudentProfileDetail({ profileId }: { readonly profileId: string
                   variant="destructive-outline"
                   onClick={() => void deleteSelectedProfile()}
                 >
-                  Delete CV
+                  Supprimer le CV
                   <Trash2Icon />
                 </Button>
               </div>
