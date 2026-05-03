@@ -72,7 +72,7 @@ describe("check-in workspace helper", () => {
     expect(summary.placedCompanyCount).toBe(3);
     expect(summary.arrivedCount).toBe(1);
     expect(summary.pendingCount).toBe(2);
-    expect(summary.nextArrivalLabel).toBe("Atlas Systems is next for arrival check-in.");
+    expect(summary.nextArrivalLabel).toBe("Atlas Systems est la prochaine entreprise a accueillir.");
   });
 
   it("flattens room placements into searchable company entries", () => {

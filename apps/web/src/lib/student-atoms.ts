@@ -5,6 +5,8 @@ export const studentWorkspaceReactivity = {
   currentStudent: ["student", "current-student"] as const,
   cvProfiles: ["student", "cv-profiles"] as const,
   cvProfileTypes: ["student", "cv-profile-types"] as const,
+  studentInstitutions: ["student", "student-institutions"] as const,
+  studentMajors: ["student", "student-majors"] as const,
 } as const;
 
 export const studentWorkspaceAtoms = {
@@ -18,6 +20,14 @@ export const studentWorkspaceAtoms = {
   }),
   cvProfileTypes: AppRpcClient.query("listCvProfileTypes", undefined, {
     reactivityKeys: studentWorkspaceReactivity.cvProfileTypes,
+    timeToLive: "30 minutes",
+  }),
+  studentInstitutions: AppRpcClient.query("listStudentInstitutions", undefined, {
+    reactivityKeys: studentWorkspaceReactivity.studentInstitutions,
+    timeToLive: "30 minutes",
+  }),
+  studentMajors: AppRpcClient.query("listStudentMajors", undefined, {
+    reactivityKeys: studentWorkspaceReactivity.studentMajors,
     timeToLive: "30 minutes",
   }),
   getStudentCvProfileDownloadUrl: (cvProfileId: CvProfile["id"]) =>

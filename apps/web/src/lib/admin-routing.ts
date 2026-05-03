@@ -2,6 +2,7 @@ export type AdminSectionId =
   | "overview"
   | "companies"
   | "venue"
+  | "vocabularies"
   | "map"
   | "access"
   | "interviews";
@@ -35,6 +36,13 @@ export const adminSections: ReadonlyArray<AdminSection> = [
     title: "Salles",
     description: "",
     to: "/admin/venue",
+  },
+  {
+    id: "vocabularies",
+    label: "Referentiels",
+    title: "Referentiels",
+    description: "",
+    to: "/admin/vocabularies",
   },
   {
     id: "map",

@@ -2,7 +2,7 @@ import { account, session, user } from "@project/db/schema/auth";
 import { company } from "@project/db/schema/company";
 import { publishedVenueMap, publishedVenueMapPin, room } from "@project/db/schema/venue";
 import { AdminRpcGroup, CompanyRpcGroup, PublicVenueRpcGroup, VenueRpcGroup } from "@project/rpc";
-import { afterEach, beforeAll, describe, expect, it } from "@effect/vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import * as RpcClient from "effect/unstable/rpc/RpcClient";
 import { RpcTest } from "effect/unstable/rpc";
@@ -56,6 +56,12 @@ const describeWithPostgres = postgresTestInfra.available ? describe : describe.s
 describeWithPostgres("venue rpc", () => {
   beforeAll(() => {
     startPostgresTestInfra();
+  });
+
+  beforeEach(async () => {
+    await Effect.runPromise(
+      resetTables([publishedVenueMapPin, publishedVenueMap, company, room, session, account, user]),
+    );
   });
 
   it.effect("admin actors can create rooms and list them in the venue state after transport decoding", () =>

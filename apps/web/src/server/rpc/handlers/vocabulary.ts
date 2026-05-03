@@ -19,6 +19,18 @@ export const makeVocabularyRpcHandlers = Effect.gen(function*() {
 
         return yield* vocabularyService.listGlobalInterviewTags(actor);
       }),
+    listStudentMajors: () =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.listStudentMajors(actor);
+      }),
+    listStudentInstitutions: () =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.listStudentInstitutions(actor);
+      }),
     addCvProfileType: (input) =>
       Effect.gen(function*() {
         const actor = yield* CurrentActor;
@@ -73,6 +85,60 @@ export const makeVocabularyRpcHandlers = Effect.gen(function*() {
           entries: input.entries,
         });
       }),
+    addStudentMajor: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.addStudentMajor({
+          actor,
+          entry: input,
+        });
+      }),
+    deleteStudentMajor: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.deleteStudentMajor({
+          actor,
+          id: input.id,
+        });
+      }),
+    replaceStudentMajors: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.replaceStudentMajors({
+          actor,
+          entries: input.entries,
+        });
+      }),
+    addStudentInstitution: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.addStudentInstitution({
+          actor,
+          entry: input,
+        });
+      }),
+    deleteStudentInstitution: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.deleteStudentInstitution({
+          actor,
+          id: input.id,
+        });
+      }),
+    replaceStudentInstitutions: (input) =>
+      Effect.gen(function*() {
+        const actor = yield* CurrentActor;
+
+        return yield* vocabularyService.replaceStudentInstitutions({
+          actor,
+          entries: input.entries,
+        });
+      }),
     seedControlledVocabularies: (input) =>
       Effect.gen(function*() {
         const actor = yield* CurrentActor;
@@ -81,6 +147,8 @@ export const makeVocabularyRpcHandlers = Effect.gen(function*() {
           actor,
           cvProfileTypes: input.cvProfileTypes,
           globalInterviewTags: input.globalInterviewTags,
+          studentInstitutions: input.studentInstitutions,
+          studentMajors: input.studentMajors,
         });
       }),
   });

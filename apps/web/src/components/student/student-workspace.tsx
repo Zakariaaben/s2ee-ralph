@@ -112,6 +112,8 @@ export function StudentWorkspace(): React.ReactElement {
 
   const currentStudentResult = useAtomValue(studentWorkspaceAtoms.currentStudent);
   const cvsResult = useAtomValue(studentWorkspaceAtoms.cvProfiles);
+  const studentInstitutionsResult = useAtomValue(studentWorkspaceAtoms.studentInstitutions);
+  const studentMajorsResult = useAtomValue(studentWorkspaceAtoms.studentMajors);
   const refreshCurrentStudent = useAtomRefresh(studentWorkspaceAtoms.currentStudent);
   const refreshCvs = useAtomRefresh(studentWorkspaceAtoms.cvProfiles);
 
@@ -135,6 +137,12 @@ export function StudentWorkspace(): React.ReactElement {
   );
   const student = studentState.kind === "success" ? studentState.value : null;
   const cvs = cvsState.kind === "success" ? cvsState.value : [];
+  const studentInstitutions = AsyncResult.isSuccess(studentInstitutionsResult)
+    ? studentInstitutionsResult.value
+    : [];
+  const studentMajors = AsyncResult.isSuccess(studentMajorsResult)
+    ? studentMajorsResult.value
+    : [];
   const sortedCvs = [...cvs].sort((left, right) => {
     const byFileName = left.fileName.localeCompare(right.fileName);
     if (byFileName !== 0) {
@@ -678,6 +686,8 @@ export function StudentWorkspace(): React.ReactElement {
         onSubmit={submitOnboarding}
         open={onboardingRequired && !hasCompletedOnboarding}
         student={student}
+        studentInstitutions={studentInstitutions}
+        studentMajors={studentMajors}
       />
     </main>
   );

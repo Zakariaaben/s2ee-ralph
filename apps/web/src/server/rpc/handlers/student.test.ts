@@ -56,7 +56,7 @@ describeWithPostgres("student rpc", () => {
           firstName: "Ada",
           lastName: "Lovelace",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: "https://example.com/ada.png",
@@ -65,7 +65,7 @@ describeWithPostgres("student rpc", () => {
         expect(student.firstName).toBe("Ada");
         expect(student.lastName).toBe("Lovelace");
         expect(student.phoneNumber).toBe("+213 555 12 34");
-        expect(student.academicYear).toBe("5th year");
+        expect(student.academicYear).toBe("5");
         expect(student.major).toBe("Computer Science");
         expect(student.institution).toBe("ESI");
         expect(student.image).toBe("https://example.com/ada.png");
@@ -80,7 +80,7 @@ describeWithPostgres("student rpc", () => {
           firstName: "Ada",
           lastName: "Lovelace",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Software Engineering",
           institution: "ESI",
           image: null,
@@ -112,7 +112,7 @@ describeWithPostgres("student rpc", () => {
           firstName: "Grace",
           lastName: "Hopper",
           phoneNumber: "+213 555 00 99",
-          academicYear: "4th year",
+          academicYear: "4",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -147,7 +147,7 @@ describeWithPostgres("student rpc", () => {
             firstName: "  ",
             lastName: "Hopper",
             phoneNumber: "+213 555 00 99",
-            academicYear: "4th year",
+            academicYear: "4",
             major: "Computer Science",
             institution: "ESI",
             image: null,

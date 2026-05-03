@@ -47,6 +47,12 @@ describe("vocabulary rpc input schemas", () => {
         globalInterviewTags: [
           { id: "  follow-up  ", label: "  Follow Up  " },
         ],
+        studentInstitutions: [
+          { id: "  esi  ", label: "  ESI  " },
+        ],
+        studentMajors: [
+          { id: "  data-science  ", label: "  Data Science  " },
+        ],
       }),
     ).toEqual({
       cvProfileTypes: [
@@ -54,6 +60,12 @@ describe("vocabulary rpc input schemas", () => {
       ],
       globalInterviewTags: [
         { id: "follow-up", label: "Follow Up" },
+      ],
+      studentInstitutions: [
+        { id: "esi", label: "ESI" },
+      ],
+      studentMajors: [
+        { id: "data-science", label: "Data Science" },
       ],
     });
   });
@@ -99,6 +111,8 @@ describe("vocabulary rpc input schemas", () => {
         globalInterviewTags: [
           { id: "hire", label: "Hire" },
         ],
+        studentInstitutions: [],
+        studentMajors: [],
       })
     ).toThrow();
 
@@ -111,6 +125,8 @@ describe("vocabulary rpc input schemas", () => {
           { id: "follow-up", label: "Follow Up" },
           { id: " follow-up ", label: "Follow Up Duplicate" },
         ],
+        studentInstitutions: [],
+        studentMajors: [],
       })
     ).toThrow();
   });

@@ -18,6 +18,7 @@ describe("admin-routing", () => {
       "/admin/overview",
       "/admin/companies",
       "/admin/venue",
+      "/admin/vocabularies",
       "/admin/map",
       "/admin/access",
       "/admin/interviews",

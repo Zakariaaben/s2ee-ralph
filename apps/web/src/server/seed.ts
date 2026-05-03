@@ -2,6 +2,12 @@ import { makeAuth } from "@project/auth";
 import { DB, DatabaseLive } from "@project/db";
 import { user } from "@project/db/schema/auth";
 import { company } from "@project/db/schema/company";
+import {
+  cvProfileType,
+  globalInterviewTag,
+  studentInstitution,
+  studentMajor,
+} from "@project/db/schema/vocabulary";
 import { room } from "@project/db/schema/venue";
 import { ServerEnvLive } from "@project/env/server";
 import { eq, inArray } from "drizzle-orm";
@@ -84,6 +90,37 @@ const companiesSeed = [
     standNumber: 1,
     arrivalStatus: "not-arrived" as const,
   },
+] as const;
+
+const studentMajorsSeed = [
+  { id: "software-engineering", label: "Software Engineering" },
+  { id: "data-science", label: "Data Science" },
+  { id: "artificial-intelligence", label: "Artificial Intelligence" },
+  { id: "cybersecurity", label: "Cybersecurity" },
+  { id: "networks-and-systems", label: "Networks and Systems" },
+  { id: "cloud-and-devops", label: "Cloud and DevOps" },
+  { id: "embedded-systems", label: "Embedded Systems" },
+  { id: "information-systems", label: "Information Systems" },
+] as const;
+
+const studentInstitutionsSeed = [
+  { id: "esi-algiers", label: "ESI Alger" },
+  { id: "esi-sba", label: "ESI Sidi Bel Abbes" },
+  { id: "usthb", label: "USTHB" },
+  { id: "university-of-algiers", label: "Universite d'Alger" },
+  { id: "university-of-blida", label: "Universite de Blida" },
+] as const;
+
+const cvProfileTypesSeed = [
+  { id: "default", label: "CV principal" },
+  { id: "software-engineering", label: "Software Engineering" },
+  { id: "data-science", label: "Data Science" },
+] as const;
+
+const globalInterviewTagsSeed = [
+  { id: "curious", label: "Curious" },
+  { id: "strong-technical", label: "Strong Technical" },
+  { id: "follow-up", label: "Follow Up" },
 ] as const;
 
 const recreateAuthUser = (seededUser: SeedUser) =>
@@ -191,6 +228,24 @@ const program = Effect.gen(function*() {
             },
           });
       }
+
+      await tx.delete(globalInterviewTag);
+      await tx.delete(cvProfileType);
+      await tx.delete(studentInstitution);
+      await tx.delete(studentMajor);
+
+      await tx.insert(cvProfileType).values(
+        cvProfileTypesSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })),
+      );
+      await tx.insert(globalInterviewTag).values(
+        globalInterviewTagsSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })),
+      );
+      await tx.insert(studentMajor).values(
+        studentMajorsSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })),
+      );
+      await tx.insert(studentInstitution).values(
+        studentInstitutionsSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })),
+      );
     }),
   );
 

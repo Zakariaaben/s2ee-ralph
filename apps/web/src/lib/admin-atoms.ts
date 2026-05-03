@@ -6,6 +6,8 @@ export const adminWorkspaceReactivity = {
   accessLedger: ["admin", "access-ledger"] as const,
   venueRooms: ["admin", "venue-rooms"] as const,
   publishedVenueMap: ["admin", "published-venue-map"] as const,
+  studentInstitutions: ["admin", "student-institutions"] as const,
+  studentMajors: ["admin", "student-majors"] as const,
 } as const;
 
 export const adminWorkspaceAtoms = {
@@ -29,6 +31,18 @@ export const adminWorkspaceAtoms = {
     reactivityKeys: adminWorkspaceReactivity.venueRooms,
     timeToLive: "30 seconds",
   }),
+  studentInstitutions: AppRpcClient.query("listStudentInstitutions", undefined, {
+    reactivityKeys: adminWorkspaceReactivity.studentInstitutions,
+    timeToLive: "30 seconds",
+  }),
+  studentMajors: AppRpcClient.query("listStudentMajors", undefined, {
+    reactivityKeys: adminWorkspaceReactivity.studentMajors,
+    timeToLive: "30 seconds",
+  }),
+  addStudentInstitution: AppRpcClient.mutation("addStudentInstitution"),
+  deleteStudentInstitution: AppRpcClient.mutation("deleteStudentInstitution"),
+  addStudentMajor: AppRpcClient.mutation("addStudentMajor"),
+  deleteStudentMajor: AppRpcClient.mutation("deleteStudentMajor"),
   publishVenueMap: AppRpcClient.mutation("publishVenueMap"),
   clearPublishedVenueMap: AppRpcClient.mutation("clearPublishedVenueMap"),
   upsertVenueMapRoomPin: AppRpcClient.mutation("upsertVenueMapRoomPin"),

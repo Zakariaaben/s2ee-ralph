@@ -112,6 +112,8 @@ describeWithStorage("interview rpc", () => {
         yield* vocabularyClient.seedControlledVocabularies({
           cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
           globalInterviewTags: [{ id: "curious", label: "Curious" }],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
@@ -132,7 +134,7 @@ describeWithStorage("interview rpc", () => {
           firstName: "Ada",
           lastName: "Lovelace",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -214,6 +216,8 @@ describeWithStorage("interview rpc", () => {
         yield* vocabularyClient.seedControlledVocabularies({
           cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
           globalInterviewTags: [{ id: "curious", label: "Curious" }],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
@@ -227,7 +231,7 @@ describeWithStorage("interview rpc", () => {
           firstName: "Ada",
           lastName: "Lovelace",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -272,10 +276,15 @@ describeWithStorage("interview rpc", () => {
         expect(typeof completedInterview.companyTags[0]!.id).toBe("string");
 
         expect(
+          (yield* interviewClient.listCurrentCompanyCompletedInterviews().pipe(
+            RpcClient.withHeaders(companyHeaders),
+          )).map((entry) => entry.interview),
+        ).toEqual([completedInterview]);
+        expect(
           yield* interviewClient.listCurrentCompanyInterviews().pipe(
             RpcClient.withHeaders(companyHeaders),
           ),
-        ).toEqual([completedInterview]);
+        ).toEqual([]);
       }),
     ),
   );
@@ -296,6 +305,8 @@ describeWithStorage("interview rpc", () => {
         yield* vocabularyClient.seedControlledVocabularies({
           cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
           globalInterviewTags: [{ id: "curious", label: "Curious" }],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
@@ -309,7 +320,7 @@ describeWithStorage("interview rpc", () => {
           firstName: "Grace",
           lastName: "Hopper",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -364,7 +375,7 @@ describeWithStorage("interview rpc", () => {
           yield* interviewClient.listCurrentCompanyInterviews().pipe(
             RpcClient.withHeaders(companyHeaders),
           ),
-        ).toEqual([]);
+        ).toEqual([startedInterview]);
       }),
     ),
   );
@@ -385,6 +396,8 @@ describeWithStorage("interview rpc", () => {
         yield* vocabularyClient.seedControlledVocabularies({
           cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
           globalInterviewTags: [{ id: "curious", label: "Curious" }],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
@@ -398,7 +411,7 @@ describeWithStorage("interview rpc", () => {
           firstName: "Grace",
           lastName: "Hopper",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -456,6 +469,8 @@ describeWithStorage("interview rpc", () => {
         yield* vocabularyClient.seedControlledVocabularies({
           cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
           globalInterviewTags: [{ id: "curious", label: "Curious" }],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
@@ -476,7 +491,7 @@ describeWithStorage("interview rpc", () => {
           firstName: "Grace",
           lastName: "Hopper",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -623,6 +638,8 @@ describeWithStorage("interview rpc", () => {
         yield* vocabularyClient.seedControlledVocabularies({
           cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
           globalInterviewTags: [],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
@@ -636,7 +653,7 @@ describeWithStorage("interview rpc", () => {
           firstName: "Katherine",
           lastName: "Johnson",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Mathematics",
           institution: "ESI",
           image: null,
@@ -689,10 +706,15 @@ describeWithStorage("interview rpc", () => {
         expect(secondInterview.cvProfileId).toBe(selectedCvProfile.id);
 
         expect(
+          (yield* interviewClient.listCurrentCompanyCompletedInterviews().pipe(
+            RpcClient.withHeaders(companyHeaders),
+          )).map((entry) => entry.interview),
+        ).toEqual([firstInterview, secondInterview]);
+        expect(
           yield* interviewClient.listCurrentCompanyInterviews().pipe(
             RpcClient.withHeaders(companyHeaders),
           ),
-        ).toEqual([firstInterview, secondInterview]);
+        ).toEqual([]);
       }),
     ),
   );

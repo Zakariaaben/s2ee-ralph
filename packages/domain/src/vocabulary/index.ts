@@ -3,3 +3,7 @@ export * from "./cv-profile-type";
 export * from "./cv-profile-type-id";
 export * from "./global-interview-tag";
 export * from "./global-interview-tag-id";
+export * from "./student-institution";
+export * from "./student-institution-id";
+export * from "./student-major";
+export * from "./student-major-id";

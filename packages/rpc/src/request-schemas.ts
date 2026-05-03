@@ -29,6 +29,20 @@ export const VocabularyEntryId = RequiredText;
 
 export const VocabularyEntryLabel = RequiredText;
 
+const validAcademicYear = Schema.makeFilter<string>((value) => {
+  const numericValue = Number(value);
+
+  if (!Number.isInteger(numericValue) || numericValue < 1 || numericValue > 7) {
+    return "Expected an academic year between 1 and 7";
+  }
+
+  return true;
+});
+
+export const AcademicYear = RequiredText.pipe(
+  Schema.check(validAcademicYear),
+);
+
 export const InterviewCompanyTagLabel = RequiredText;
 
 export const InterviewNotes = Schema.Trim;

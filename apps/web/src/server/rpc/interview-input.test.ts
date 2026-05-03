@@ -7,11 +7,11 @@ describe("interview rpc input schemas", () => {
     expect(
       Schema.decodeUnknownSync(StartInterviewInput)({
         recruiterId: "recruiter-1",
-        presentationIdentity: "  profile:v1:cv-profile-1  ",
+        presentationIdentity: "  b7-13 c9  ",
       }),
     ).toEqual({
       recruiterId: "recruiter-1",
-      presentationIdentity: "cv-profile-1",
+      presentationIdentity: "B713C9",
     });
 
     expect(

@@ -110,10 +110,10 @@ describe("public venue map helper", () => {
 
   it("describes room placement context for the detail panel", () => {
     expect(describePublishedVenueRoom(publishedVenueMap.pins[1]!)).toBe(
-      "2 companies are placed here, with 1 marked arrived.",
+      "2 entreprises sont placees ici, dont 1 marquees arrivees.",
     );
     expect(describePublishedVenueRoom(publishedVenueMap.pins[0]!)).toBe(
-      "Beacon Labs is at stand 14 and is arrived on site.",
+      "Beacon Labs est au stand 14 et est arrivee sur place.",
     );
   });
 });

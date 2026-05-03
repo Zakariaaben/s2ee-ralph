@@ -76,10 +76,10 @@ describe("company-interviews", () => {
         id: "active-1",
         institution: "",
         kind: "active",
-        label: "Interview active-1",
+        label: "Entretien active-1",
         major: "",
         recruiterName: "Nora Lane",
-        scoreLabel: "In progress",
+        scoreLabel: "En cours",
         status: "active",
       },
       {

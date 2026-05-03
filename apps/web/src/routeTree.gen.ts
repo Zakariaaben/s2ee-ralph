@@ -21,6 +21,7 @@ import { Route as CompanyIndexRouteImport } from './routes/company/index'
 import { Route as AuthSignUpRouteImport } from './routes/auth/sign-up'
 import { Route as AuthSignInRouteImport } from './routes/auth/sign-in'
 import { Route as ApiRpcRouteImport } from './routes/api/rpc'
+import { Route as AdminVocabulariesRouteImport } from './routes/admin/vocabularies'
 import { Route as AdminVenueRouteImport } from './routes/admin/venue'
 import { Route as AdminOverviewRouteImport } from './routes/admin/overview'
 import { Route as AdminMapRouteImport } from './routes/admin/map'
@@ -92,6 +93,11 @@ const ApiRpcRoute = ApiRpcRouteImport.update({
   path: '/api/rpc',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminVocabulariesRoute = AdminVocabulariesRouteImport.update({
+  id: '/vocabularies',
+  path: '/vocabularies',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminVenueRoute = AdminVenueRouteImport.update({
   id: '/venue',
   path: '/venue',
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/admin/map': typeof AdminMapRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/venue': typeof AdminVenueRoute
+  '/admin/vocabularies': typeof AdminVocabulariesRoute
   '/api/rpc': typeof ApiRpcRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/admin/map': typeof AdminMapRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/venue': typeof AdminVenueRoute
+  '/admin/vocabularies': typeof AdminVocabulariesRoute
   '/api/rpc': typeof ApiRpcRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/admin/map': typeof AdminMapRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/venue': typeof AdminVenueRoute
+  '/admin/vocabularies': typeof AdminVocabulariesRoute
   '/api/rpc': typeof ApiRpcRoute
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
@@ -232,6 +241,7 @@ export interface FileRouteTypes {
     | '/admin/map'
     | '/admin/overview'
     | '/admin/venue'
+    | '/admin/vocabularies'
     | '/api/rpc'
     | '/auth/sign-in'
     | '/auth/sign-up'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/admin/map'
     | '/admin/overview'
     | '/admin/venue'
+    | '/admin/vocabularies'
     | '/api/rpc'
     | '/auth/sign-in'
     | '/auth/sign-up'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/admin/map'
     | '/admin/overview'
     | '/admin/venue'
+    | '/admin/vocabularies'
     | '/api/rpc'
     | '/auth/sign-in'
     | '/auth/sign-up'
@@ -387,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRpcRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/vocabularies': {
+      id: '/admin/vocabularies'
+      path: '/vocabularies'
+      fullPath: '/admin/vocabularies'
+      preLoaderRoute: typeof AdminVocabulariesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/venue': {
       id: '/admin/venue'
       path: '/venue'
@@ -467,6 +486,7 @@ interface AdminRouteChildren {
   AdminMapRoute: typeof AdminMapRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminVenueRoute: typeof AdminVenueRoute
+  AdminVocabulariesRoute: typeof AdminVocabulariesRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -476,6 +496,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminMapRoute: AdminMapRoute,
   AdminOverviewRoute: AdminOverviewRoute,
   AdminVenueRoute: AdminVenueRoute,
+  AdminVocabulariesRoute: AdminVocabulariesRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

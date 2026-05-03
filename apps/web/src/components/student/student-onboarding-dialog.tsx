@@ -10,7 +10,14 @@ import {
   DialogTitle,
 } from "@project/ui/components/dialog";
 import { Input } from "@project/ui/components/input";
-import type { Student } from "@project/domain";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@project/ui/components/select";
+import type { Student, StudentInstitution, StudentMajor } from "@project/domain";
 import { CircleAlertIcon } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -31,7 +38,11 @@ type StudentOnboardingDialogProps = {
   readonly onSubmit: (payload: StudentOnboardingPayload) => Promise<void>;
   readonly open: boolean;
   readonly student: Student | null;
+  readonly studentInstitutions: ReadonlyArray<StudentInstitution>;
+  readonly studentMajors: ReadonlyArray<StudentMajor>;
 };
+
+const requiredLabel = (label: string) => `${label} *`;
 
 const readFileAsDataUrl = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -87,6 +98,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
     const academicYear = academicYearDraft.trim();
     const major = majorDraft.trim();
     const institution = institutionDraft.trim();
+    const academicYearNumber = Number(academicYear);
 
     if (
       firstName.length === 0 ||
@@ -97,6 +109,11 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
       institution.length === 0
     ) {
       setLocalError("Completez tous les champs obligatoires.");
+      return;
+    }
+
+    if (!Number.isInteger(academicYearNumber) || academicYearNumber < 1 || academicYearNumber > 7) {
+      setLocalError("L'annee doit etre un numero entre 1 et 7.");
       return;
     }
 
@@ -149,7 +166,8 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                 </div>
 
                 <div className="space-y-4 text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
-                  <p>Renseignez vos informations avant d'ajouter un CV.</p>
+                  <p>Renseignez les champs marques d'un asterisque avant d'ajouter un CV.</p>
+                  <p>La photo est optionnelle et peut etre ajoutee plus tard.</p>
                 </div>
               </div>
             </section>
@@ -162,7 +180,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-first-name"
                     >
-                      Prenom
+                      {requiredLabel("Prenom")}
                     </label>
                     <Input
                       id="student-onboarding-first-name"
@@ -182,7 +200,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-last-name"
                     >
-                      Nom
+                      {requiredLabel("Nom")}
                     </label>
                     <Input
                       id="student-onboarding-last-name"
@@ -202,7 +220,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-phone-number"
                     >
-                      Telephone
+                      {requiredLabel("Telephone")}
                     </label>
                     <Input
                       id="student-onboarding-phone-number"
@@ -222,13 +240,17 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-academic-year"
                     >
-                      Annee
+                      {requiredLabel("Annee")}
                     </label>
                     <Input
                       id="student-onboarding-academic-year"
                       className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
                       name="academicYear"
-                      placeholder="Annee"
+                      inputMode="numeric"
+                      min={1}
+                      max={7}
+                      placeholder="1 a 7"
+                      type="number"
                       value={academicYearDraft}
                       onChange={(event) => {
                         const { value } = event.currentTarget;
@@ -242,19 +264,20 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-major"
                     >
-                      Specialite
+                      {requiredLabel("Specialite")}
                     </label>
-                    <Input
-                      id="student-onboarding-major"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
-                      name="major"
-                      placeholder="Specialite"
-                      value={majorDraft}
-                      onChange={(event) => {
-                        const { value } = event.currentTarget;
-                        setMajorDraft(value);
-                      }}
-                    />
+                    <Select onValueChange={(value) => setMajorDraft(value ?? "")} value={majorDraft}>
+                      <SelectTrigger id="student-onboarding-major" className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none">
+                        <SelectValue placeholder="Choisir une specialite" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {props.studentMajors.map((major) => (
+                          <SelectItem key={major.id} value={major.label}>
+                            {major.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">
@@ -262,19 +285,20 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                       className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                       htmlFor="student-onboarding-institution"
                     >
-                      Institution
+                      {requiredLabel("Institution")}
                     </label>
-                    <Input
-                      id="student-onboarding-institution"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
-                      name="institution"
-                      placeholder="Institution"
-                      value={institutionDraft}
-                      onChange={(event) => {
-                        const { value } = event.currentTarget;
-                        setInstitutionDraft(value);
-                      }}
-                    />
+                    <Select onValueChange={(value) => setInstitutionDraft(value ?? "")} value={institutionDraft}>
+                      <SelectTrigger id="student-onboarding-institution" className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none">
+                        <SelectValue placeholder="Choisir une institution" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {props.studentInstitutions.map((institution) => (
+                          <SelectItem key={institution.id} value={institution.label}>
+                            {institution.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -283,7 +307,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                     className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
                     htmlFor="student-onboarding-image"
                   >
-                    Photo de profil
+                    Photo de profil (optionnel)
                   </label>
                   <div className="border bg-[var(--s2ee-surface-soft)] p-4 [border-color:var(--s2ee-border)]">
                     <Input

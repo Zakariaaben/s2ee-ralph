@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "bun:test";
 import { account, session, user } from "@project/db/schema/auth";
 import { company, recruiter } from "@project/db/schema/company";
 import { cvProfile } from "@project/db/schema/cv-profile";
@@ -112,6 +112,27 @@ describeWithStorage("admin rpc", () => {
     startPostgresAndStorageTestInfra();
   });
 
+  beforeEach(async () => {
+    await Effect.runPromise(
+      resetTables([
+        interviewCompanyTag,
+        interviewGlobalTag,
+        interview,
+        companyInterviewTag,
+        cvProfile,
+        cvProfileType,
+        globalInterviewTag,
+        recruiter,
+        company,
+        room,
+        studentTable,
+        session,
+        account,
+        user,
+      ]),
+    );
+  });
+
   it(
     "admin actors can list the global company ledger with recruiter, placement, and arrival context",
     runLayerEffect(AdminTestLive, () =>
@@ -187,6 +208,8 @@ describeWithStorage("admin rpc", () => {
         yield* vocabularyClient.seedControlledVocabularies({
           cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
           globalInterviewTags: [{ id: "curious", label: "Curious" }],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         const createdRoom = yield* venueClient.createRoom({ code: "CP3" }).pipe(
@@ -215,7 +238,7 @@ describeWithStorage("admin rpc", () => {
           firstName: "Ada",
           lastName: "Lovelace",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -300,7 +323,7 @@ describeWithStorage("admin rpc", () => {
           firstName: "Ada",
           lastName: "Lovelace",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -363,12 +386,16 @@ describeWithStorage("admin rpc", () => {
       Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const adminClient = yield* makeAdminClient;
+        const actorClient = yield* makeActorClient;
 
         const createdEntry = yield* adminClient.createAdminCompanyAccount({
           companyName: "Atlas Systems",
           email: "atlas@example.com",
           password: "temporary-password-123",
         }).pipe(RpcClient.withHeaders(adminHeaders));
+        const currentActorAfterProvisioning = yield* actorClient.currentActor().pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
 
         expect(createdEntry).toMatchObject({
           user: {
@@ -382,6 +409,7 @@ describeWithStorage("admin rpc", () => {
             recruiters: [],
           },
         });
+        expect(currentActorAfterProvisioning.role).toBe("admin");
 
         const accessLedger = yield* adminClient.listAdminAccessLedger().pipe(
           RpcClient.withHeaders(adminHeaders),

@@ -103,8 +103,8 @@ describe("admin venue helper", () => {
     const summaries = sortVenueRoomSummaries(venueRooms);
 
     expect(summaries.map((summary) => summary.room.code)).toEqual(["A1", "B4"]);
-    expect(describeVenueRoomOccupancy(summaries[0]!)).toBe("1 company assigned and arrived");
-    expect(describeVenueRoomOccupancy(summaries[1]!)).toBe("1 company assigned");
+    expect(describeVenueRoomOccupancy(summaries[0]!)).toBe("1 entreprise arrivee");
+    expect(describeVenueRoomOccupancy(summaries[1]!)).toBe("1 entreprise");
   });
 
   it("filters rooms by room code, company name, and stand number", () => {

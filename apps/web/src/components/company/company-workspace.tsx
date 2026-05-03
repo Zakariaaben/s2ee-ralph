@@ -21,6 +21,7 @@ import {
 import { Input } from "@project/ui/components/input";
 import { Skeleton } from "@project/ui/components/skeleton";
 import type {
+  Company,
   PresentedCvProfilePreview,
   Recruiter,
 } from "@project/domain";
@@ -116,6 +117,8 @@ export function CompanyWorkspace(): React.ReactElement {
   const [pageError, setPageError] = useState<string | null>(null);
   const [isStartingInterview, setIsStartingInterview] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [hadNoRecruitersOnLoad, setHadNoRecruitersOnLoad] = useState(false);
+  const [hasCompletedRecruiterOnboarding, setHasCompletedRecruiterOnboarding] = useState(false);
 
   const currentCompanyResult = useAtomValue(companyWorkspaceAtoms.currentCompany);
   const refreshCompany = useAtomRefresh(companyWorkspaceAtoms.currentCompany);
@@ -165,6 +168,17 @@ export function CompanyWorkspace(): React.ReactElement {
   }, []);
 
   useEffect(() => {
+    if (companyState.kind !== "success") {
+      return;
+    }
+
+    if (recruiters.length === 0) {
+      setHadNoRecruitersOnLoad(true);
+      setHasCompletedRecruiterOnboarding(false);
+    }
+  }, [companyState.kind, recruiters.length]);
+
+  useEffect(() => {
     const recruiterId = resolveInterviewStartRecruiterId({
       recruiters,
       preferredRecruiterId,
@@ -175,6 +189,12 @@ export function CompanyWorkspace(): React.ReactElement {
       setSelectedRecruiterId(recruiterId);
     }
   }, [preferredRecruiterId, recruiters, selectedRecruiterId]);
+
+  const needsRecruiterOnboarding =
+    company != null &&
+    (recruiters.length === 0 ||
+      selectedRecruiter == null ||
+      (hadNoRecruitersOnLoad && !hasCompletedRecruiterOnboarding));
 
   const rememberRecruiter = (recruiterId: Recruiter["id"]) => {
     startTransition(() => {
@@ -214,35 +234,50 @@ export function CompanyWorkspace(): React.ReactElement {
     }
   };
 
-  const submitRecruiter = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const addRecruiterByName = async (name: string): Promise<Recruiter | null> => {
     if (company == null) {
       setPageError("Ce compte n'est pas encore lie a une entreprise.");
-      return;
+      return null;
     }
-
-    const name = newRecruiterName.trim();
 
     if (name.length === 0) {
       setPageError("Le nom du recruteur est obligatoire.");
-      return;
+      return null;
     }
 
     setPageError(null);
     setPageMessage(null);
 
     try {
-      await addRecruiter({
+      const existingRecruiterIds = new Set(recruiters.map((recruiter) => recruiter.id));
+      const updatedCompany = await addRecruiter({
         payload: { name },
         reactivityKeys: companyWorkspaceReactivity.currentCompany,
-      });
+      }) as Company;
+      const addedRecruiter =
+        updatedCompany.recruiters.find((recruiter) => !existingRecruiterIds.has(recruiter.id)) ??
+        updatedCompany.recruiters.find((recruiter) => recruiter.name === name) ??
+        null;
+
+      if (addedRecruiter != null) {
+        rememberRecruiter(addedRecruiter.id);
+      }
+
       setNewRecruiterName("");
       setPageMessage(`Recruteur ${name} ajoute.`);
       refreshCompany();
+
+      return addedRecruiter;
     } catch (error) {
       setPageError(formatMutationError(error));
+      return null;
     }
+  };
+
+  const submitRecruiter = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    await addRecruiterByName(newRecruiterName.trim());
   };
 
   const submitRecruiterRename = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -560,7 +595,30 @@ export function CompanyWorkspace(): React.ReactElement {
           </Alert>
         ) : null}
 
-        <div className="grid border border-[var(--s2ee-border)] lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]">
+        {needsRecruiterOnboarding ? (
+          <RecruiterOnboardingPanel
+            addRecruiter={addRecruiterByName}
+            companyLabel={companyLabel}
+            onContinue={() => {
+              if (selectedRecruiter == null) {
+                setPageError("Selectionnez un recruteur avant de continuer.");
+                return;
+              }
+
+              setHasCompletedRecruiterOnboarding(true);
+              setHadNoRecruitersOnLoad(false);
+              setPageError(null);
+            }}
+            onSelectRecruiter={rememberRecruiter}
+            recruiters={recruiters}
+            selectedRecruiterId={selectedRecruiterId}
+          />
+        ) : null}
+
+        <div className={[
+          "grid border border-[var(--s2ee-border)] lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]",
+          needsRecruiterOnboarding ? "pointer-events-none opacity-35" : "",
+        ].join(" ")}>
           <section className="grid gap-4 border-b border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 lg:border-r lg:border-b-0">
             <div className="space-y-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
@@ -626,6 +684,123 @@ export function CompanyWorkspace(): React.ReactElement {
         </div>
       </div>
     </main>
+  );
+}
+
+function RecruiterOnboardingPanel(props: {
+  readonly addRecruiter: (name: string) => Promise<Recruiter | null>;
+  readonly companyLabel: string;
+  readonly onContinue: () => void;
+  readonly onSelectRecruiter: (recruiterId: Recruiter["id"]) => void;
+  readonly recruiters: ReadonlyArray<Recruiter>;
+  readonly selectedRecruiterId: Recruiter["id"] | null;
+}): React.ReactElement {
+  const [nameDraft, setNameDraft] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const selectedRecruiter =
+    props.recruiters.find((recruiter) => recruiter.id === props.selectedRecruiterId) ?? null;
+
+  const submitRecruiter = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const name = nameDraft.trim();
+
+    if (name.length === 0) {
+      return;
+    }
+
+    setIsAdding(true);
+
+    try {
+      const addedRecruiter = await props.addRecruiter(name);
+
+      if (addedRecruiter != null) {
+        setNameDraft("");
+      }
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  return (
+    <section className="grid gap-6 border border-primary bg-[var(--s2ee-surface)] p-5 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-7 lg:grid-cols-[minmax(0,0.85fr)_minmax(320px,1fr)]">
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
+            Onboarding recruteurs
+          </p>
+          <h2 className="max-w-2xl text-3xl font-black tracking-[-0.08em] text-slate-900 sm:text-4xl">
+            Ajoutez les personnes qui conduiront les entretiens.
+          </h2>
+          <p className="max-w-2xl text-sm leading-7 text-[color:var(--s2ee-muted-foreground)]">
+            {props.companyLabel} doit avoir au moins un recruteur avant de scanner un candidat. Vous pouvez en ajouter plusieurs maintenant, puis choisir celui utilise par defaut sur cet appareil.
+          </p>
+        </div>
+
+        <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={submitRecruiter}>
+          <Input
+            className="h-12 rounded-none border-[var(--s2ee-border)] bg-white shadow-none"
+            disabled={isAdding}
+            onChange={(event) => setNameDraft(event.currentTarget.value)}
+            placeholder="Nom du recruteur"
+            value={nameDraft}
+          />
+          <Button className="h-12 rounded-none px-6" loading={isAdding} type="submit">
+            Ajouter
+          </Button>
+        </form>
+      </div>
+
+      <div className="grid gap-4 border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+              Recruteur appareil
+            </p>
+            <p className="mt-2 text-sm font-bold uppercase tracking-[0.12em] text-slate-900">
+              {selectedRecruiter?.name ?? "Aucun selectionne"}
+            </p>
+          </div>
+          <Button
+            className="rounded-none"
+            disabled={selectedRecruiter == null}
+            onClick={props.onContinue}
+            type="button"
+          >
+            Continuer
+          </Button>
+        </div>
+
+        <div className="grid gap-2">
+          {props.recruiters.length === 0 ? (
+            <div className="border border-dashed border-[var(--s2ee-border)] bg-white p-4 text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+              Aucun recruteur ajoute pour le moment.
+            </div>
+          ) : (
+            props.recruiters.map((recruiter) => (
+              <button
+                className={[
+                  "flex items-center justify-between gap-4 border p-4 text-left transition-colors",
+                  props.selectedRecruiterId === recruiter.id
+                    ? "border-primary bg-white text-primary"
+                    : "border-[var(--s2ee-border)] bg-white text-slate-900 hover:border-primary/60",
+                ].join(" ")}
+                key={recruiter.id}
+                onClick={() => props.onSelectRecruiter(recruiter.id)}
+                type="button"
+              >
+                <span className="text-sm font-bold uppercase tracking-[0.12em]">
+                  {recruiter.name}
+                </span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.18em]">
+                  {props.selectedRecruiterId === recruiter.id ? "Selectionne" : "Choisir"}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 

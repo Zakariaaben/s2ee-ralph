@@ -62,6 +62,8 @@ describeWithPostgres("vocabulary rpc", () => {
             { id: "strong-fit", label: "Strong Fit" },
             { id: "follow-up", label: "Follow Up" },
           ],
+          studentInstitutions: [{ id: "esi", label: "ESI" }],
+          studentMajors: [{ id: "software-engineering", label: "Software Engineering" }],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         expect(seeded.cvProfileTypes).toEqual([
@@ -72,6 +74,8 @@ describeWithPostgres("vocabulary rpc", () => {
           { id: "strong-fit", label: "Strong Fit" },
           { id: "follow-up", label: "Follow Up" },
         ]);
+        expect(seeded.studentInstitutions).toEqual([{ id: "esi", label: "ESI" }]);
+        expect(seeded.studentMajors).toEqual([{ id: "software-engineering", label: "Software Engineering" }]);
 
         expect(
           yield* client.listCvProfileTypes().pipe(
@@ -101,6 +105,8 @@ describeWithPostgres("vocabulary rpc", () => {
           globalInterviewTags: [
             { id: "hire", label: "Hire" },
           ],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         const wrongRoleExit = yield* Effect.exit(
@@ -111,6 +117,8 @@ describeWithPostgres("vocabulary rpc", () => {
             globalInterviewTags: [
               { id: "maybe", label: "Maybe" },
             ],
+            studentInstitutions: [],
+            studentMajors: [],
           }).pipe(RpcClient.withHeaders(companyHeaders)),
         );
 
@@ -124,6 +132,8 @@ describeWithPostgres("vocabulary rpc", () => {
             { id: "refer", label: "Refer" },
             { id: "intern", label: "Intern Track" },
           ],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         expect(
@@ -157,6 +167,8 @@ describeWithPostgres("vocabulary rpc", () => {
           globalInterviewTags: [
             { id: "strong-fit", label: "Strong Fit" },
           ],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         expect(
@@ -263,6 +275,8 @@ describeWithPostgres("vocabulary rpc", () => {
             globalInterviewTags: [
               { id: "hire", label: "Hire" },
             ],
+            studentInstitutions: [],
+            studentMajors: [],
           }).pipe(RpcClient.withHeaders(adminHeaders)),
         );
 

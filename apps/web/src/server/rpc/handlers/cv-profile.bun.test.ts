@@ -73,13 +73,15 @@ describeWithStorage("cv profile rpc", () => {
         yield* vocabularyClient.seedControlledVocabularies({
           cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
           globalInterviewTags: [],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         yield* studentClient.upsertStudentOnboarding({
           firstName: "Ada",
           lastName: "Lovelace",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -143,7 +145,7 @@ describeWithStorage("cv profile rpc", () => {
           firstName: "Ada",
           lastName: "Lovelace",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -184,13 +186,15 @@ describeWithStorage("cv profile rpc", () => {
             { id: "data-science", label: "Data Science" },
           ],
           globalInterviewTags: [],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         const student = yield* studentClient.upsertStudentOnboarding({
           firstName: "Ada",
           lastName: "Lovelace",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -258,13 +262,15 @@ describeWithStorage("cv profile rpc", () => {
         yield* vocabularyClient.seedControlledVocabularies({
           cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
           globalInterviewTags: [],
+          studentInstitutions: [],
+          studentMajors: [],
         }).pipe(RpcClient.withHeaders(adminHeaders));
 
         yield* studentClient.upsertStudentOnboarding({
           firstName: "Grace",
           lastName: "Hopper",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Computer Science",
           institution: "ESI",
           image: null,
@@ -332,7 +338,7 @@ describeWithStorage("cv profile rpc", () => {
           firstName: "Katherine",
           lastName: "Johnson",
           phoneNumber: "+213 555 12 34",
-          academicYear: "5th year",
+          academicYear: "5",
           major: "Mathematics",
           institution: "ESI",
           image: null,

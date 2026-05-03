@@ -246,31 +246,37 @@ export class AdminRepository extends ServiceMap.Service<
             let createdUserId: string | null = null;
 
             try {
-              const signUpResult = await auth.api.signUpEmail({
-                body: {
-                  email,
-                  password,
-                  name: companyName,
-                },
+              const authContext = await auth.$context;
+              const normalizedEmail = email.toLowerCase();
+
+              if (await authContext.internalAdapter.findUserByEmail(normalizedEmail)) {
+                throw new Error("A user already exists for this email.");
+              }
+
+              const passwordHash = await authContext.password.hash(password);
+              const createdUser = await authContext.internalAdapter.createUser({
+                email: normalizedEmail,
+                emailVerified: true,
+                image: null,
+                name: companyName,
+                role: "company",
               });
-              const nextUserId =
-                (signUpResult as { user?: { id?: string } } | null)?.user?.id ?? null;
+              const nextUserId = createdUser?.id ?? null;
 
               if (nextUserId == null) {
-                throw new Error("Company account signup did not return a user.");
+                throw new Error("Company account creation did not return a user.");
               }
 
               createdUserId = nextUserId;
 
-              await db.transaction(async (tx) => {
-                await tx
-                  .update(user)
-                  .set({
-                    role: "company",
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(user.id, nextUserId));
+              await authContext.internalAdapter.linkAccount({
+                accountId: nextUserId,
+                password: passwordHash,
+                providerId: "credential",
+                userId: nextUserId,
+              });
 
+              await db.transaction(async (tx) => {
                 await tx.insert(company).values({
                   id: makeCompanyId(),
                   ownerUserId: nextUserId,

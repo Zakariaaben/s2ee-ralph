@@ -42,7 +42,7 @@ export class StudentService extends ServiceMap.Service<
       readonly major: string;
       readonly institution: string;
       readonly image: string | null;
-    }) => Effect.Effect<Student, HttpApiError.Forbidden>;
+    }) => Effect.Effect<Student, HttpApiError.Forbidden | HttpApiError.BadRequest>;
     readonly issueStudentQrIdentity: (
       actor: AuthenticatedActor,
     ) => Effect.Effect<string, HttpApiError.Forbidden | HttpApiError.NotFound>;
@@ -76,6 +76,11 @@ export class StudentService extends ServiceMap.Service<
         }) =>
           Effect.gen(function* () {
             const studentActor = yield* requireStudentActor(actor);
+            const academicYearNumber = Number(academicYear);
+
+            if (!Number.isInteger(academicYearNumber) || academicYearNumber < 1 || academicYearNumber > 7) {
+              return yield* Effect.fail(new HttpApiError.BadRequest({}));
+            }
 
             return yield* studentRepository.upsertByOwnerUserId({
               ownerUserId: studentActor.id,

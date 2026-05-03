@@ -2,6 +2,8 @@ import {
   ControlledVocabularies,
   CvProfileType,
   GlobalInterviewTag,
+  StudentInstitution,
+  StudentMajor,
 } from "@project/domain";
 import { Schema } from "effect";
 import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
@@ -42,6 +44,8 @@ export class SeedControlledVocabulariesInput extends Schema.Class<SeedControlled
 )({
   cvProfileTypes: UniqueIdArray(VocabularyEntryInput),
   globalInterviewTags: UniqueIdArray(VocabularyEntryInput),
+  studentInstitutions: UniqueIdArray(VocabularyEntryInput),
+  studentMajors: UniqueIdArray(VocabularyEntryInput),
 }) {}
 
 export const VocabularyRpcAccessError = HttpApiError.Unauthorized;
@@ -59,6 +63,14 @@ export const VocabularyRpcGroup = RpcGroup.make(
   }),
   Rpc.make("listGlobalInterviewTags", {
     success: Schema.Array(GlobalInterviewTag),
+    error: VocabularyRpcAccessError,
+  }),
+  Rpc.make("listStudentMajors", {
+    success: Schema.Array(StudentMajor),
+    error: VocabularyRpcAccessError,
+  }),
+  Rpc.make("listStudentInstitutions", {
+    success: Schema.Array(StudentInstitution),
     error: VocabularyRpcAccessError,
   }),
   Rpc.make("addCvProfileType", {
@@ -88,6 +100,36 @@ export const VocabularyRpcGroup = RpcGroup.make(
   }),
   Rpc.make("replaceGlobalInterviewTags", {
     success: Schema.Array(GlobalInterviewTag),
+    error: VocabularyRpcMutationError,
+    payload: ReplaceVocabularyEntriesInput,
+  }),
+  Rpc.make("addStudentMajor", {
+    success: Schema.Array(StudentMajor),
+    error: VocabularyRpcMutationError,
+    payload: VocabularyEntryInput,
+  }),
+  Rpc.make("deleteStudentMajor", {
+    success: Schema.Array(StudentMajor),
+    error: VocabularyRpcMutationError,
+    payload: VocabularyEntryIdInput,
+  }),
+  Rpc.make("replaceStudentMajors", {
+    success: Schema.Array(StudentMajor),
+    error: VocabularyRpcMutationError,
+    payload: ReplaceVocabularyEntriesInput,
+  }),
+  Rpc.make("addStudentInstitution", {
+    success: Schema.Array(StudentInstitution),
+    error: VocabularyRpcMutationError,
+    payload: VocabularyEntryInput,
+  }),
+  Rpc.make("deleteStudentInstitution", {
+    success: Schema.Array(StudentInstitution),
+    error: VocabularyRpcMutationError,
+    payload: VocabularyEntryIdInput,
+  }),
+  Rpc.make("replaceStudentInstitutions", {
+    success: Schema.Array(StudentInstitution),
     error: VocabularyRpcMutationError,
     payload: ReplaceVocabularyEntriesInput,
   }),

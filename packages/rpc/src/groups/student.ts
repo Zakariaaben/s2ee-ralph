@@ -4,7 +4,7 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError";
 import { Rpc, RpcGroup } from "effect/unstable/rpc";
 
 import { CurrentActorRpcMiddleware } from "../middleware/current-actor";
-import { RequiredText, StudentQrIdentity } from "../request-schemas";
+import { AcademicYear, RequiredText, StudentQrIdentity } from "../request-schemas";
 
 export class UpsertStudentOnboardingInput extends Schema.Class<UpsertStudentOnboardingInput>(
   "UpsertStudentOnboardingInput",
@@ -12,7 +12,7 @@ export class UpsertStudentOnboardingInput extends Schema.Class<UpsertStudentOnbo
   firstName: RequiredText,
   lastName: RequiredText,
   phoneNumber: RequiredText,
-  academicYear: RequiredText,
+  academicYear: AcademicYear,
   major: RequiredText,
   institution: RequiredText,
   image: Schema.NullOr(RequiredText),

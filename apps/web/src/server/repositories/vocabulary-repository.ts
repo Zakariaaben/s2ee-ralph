@@ -4,11 +4,15 @@ import {
 import {
   cvProfileType,
   globalInterviewTag,
+  studentInstitution,
+  studentMajor,
 } from "@project/db/schema/vocabulary";
 import {
   ControlledVocabularies,
   CvProfileType,
   GlobalInterviewTag,
+  StudentInstitution,
+  StudentMajor,
 } from "@project/domain";
 import { asc } from "drizzle-orm";
 import { Effect, Layer, ServiceMap } from "effect";
@@ -30,6 +34,18 @@ const toGlobalInterviewTag = (row: typeof globalInterviewTag.$inferSelect) =>
     label: row.label,
   });
 
+const toStudentMajor = (row: typeof studentMajor.$inferSelect) =>
+  new StudentMajor({
+    id: row.id as StudentMajor["id"],
+    label: row.label,
+  });
+
+const toStudentInstitution = (row: typeof studentInstitution.$inferSelect) =>
+  new StudentInstitution({
+    id: row.id as StudentInstitution["id"],
+    label: row.label,
+  });
+
 export class VocabularyRepository extends ServiceMap.Service<
   VocabularyRepository,
   {
@@ -38,6 +54,10 @@ export class VocabularyRepository extends ServiceMap.Service<
     >;
     readonly listGlobalInterviewTags: () => Effect.Effect<
       ReadonlyArray<GlobalInterviewTag>
+    >;
+    readonly listStudentMajors: () => Effect.Effect<ReadonlyArray<StudentMajor>>;
+    readonly listStudentInstitutions: () => Effect.Effect<
+      ReadonlyArray<StudentInstitution>
     >;
     readonly addCvProfileType: (
       entry: VocabularyEntry,
@@ -57,10 +77,30 @@ export class VocabularyRepository extends ServiceMap.Service<
     readonly replaceGlobalInterviewTags: (
       entries: ReadonlyArray<VocabularyEntry>,
     ) => Effect.Effect<ReadonlyArray<GlobalInterviewTag>>;
+    readonly addStudentMajor: (
+      entry: VocabularyEntry,
+    ) => Effect.Effect<ReadonlyArray<StudentMajor>>;
+    readonly deleteStudentMajor: (
+      id: string,
+    ) => Effect.Effect<ReadonlyArray<StudentMajor>>;
+    readonly replaceStudentMajors: (
+      entries: ReadonlyArray<VocabularyEntry>,
+    ) => Effect.Effect<ReadonlyArray<StudentMajor>>;
+    readonly addStudentInstitution: (
+      entry: VocabularyEntry,
+    ) => Effect.Effect<ReadonlyArray<StudentInstitution>>;
+    readonly deleteStudentInstitution: (
+      id: string,
+    ) => Effect.Effect<ReadonlyArray<StudentInstitution>>;
+    readonly replaceStudentInstitutions: (
+      entries: ReadonlyArray<VocabularyEntry>,
+    ) => Effect.Effect<ReadonlyArray<StudentInstitution>>;
     readonly seedControlledVocabularies: (
       input: {
         readonly cvProfileTypes: ReadonlyArray<VocabularyEntry>;
         readonly globalInterviewTags: ReadonlyArray<VocabularyEntry>;
+        readonly studentInstitutions: ReadonlyArray<VocabularyEntry>;
+        readonly studentMajors: ReadonlyArray<VocabularyEntry>;
       },
     ) => Effect.Effect<ControlledVocabularies>;
   }
@@ -89,6 +129,24 @@ export class VocabularyRepository extends ServiceMap.Service<
               asc(globalInterviewTag.id),
             )
             .then((rows) => rows.map(toGlobalInterviewTag)),
+        );
+
+      const listStudentMajors = () =>
+        Effect.promise(() =>
+          db
+            .select()
+            .from(studentMajor)
+            .orderBy(asc(studentMajor.sortOrder), asc(studentMajor.id))
+            .then((rows) => rows.map(toStudentMajor)),
+        );
+
+      const listStudentInstitutions = () =>
+        Effect.promise(() =>
+          db
+            .select()
+            .from(studentInstitution)
+            .orderBy(asc(studentInstitution.sortOrder), asc(studentInstitution.id))
+            .then((rows) => rows.map(toStudentInstitution)),
         );
 
       const replaceCvProfileTypes = (
@@ -137,9 +195,57 @@ export class VocabularyRepository extends ServiceMap.Service<
           return yield* listGlobalInterviewTags();
         });
 
+      const replaceStudentMajors = (
+        entries: ReadonlyArray<VocabularyEntry>,
+      ) =>
+        Effect.gen(function*() {
+          yield* Effect.promise(() =>
+            db.transaction(async (tx) => {
+              await tx.delete(studentMajor);
+
+              if (entries.length > 0) {
+                await tx.insert(studentMajor).values(
+                  entries.map((entry, sortOrder) => ({
+                    id: entry.id,
+                    label: entry.label,
+                    sortOrder,
+                  })),
+                );
+              }
+            }),
+          );
+
+          return yield* listStudentMajors();
+        });
+
+      const replaceStudentInstitutions = (
+        entries: ReadonlyArray<VocabularyEntry>,
+      ) =>
+        Effect.gen(function*() {
+          yield* Effect.promise(() =>
+            db.transaction(async (tx) => {
+              await tx.delete(studentInstitution);
+
+              if (entries.length > 0) {
+                await tx.insert(studentInstitution).values(
+                  entries.map((entry, sortOrder) => ({
+                    id: entry.id,
+                    label: entry.label,
+                    sortOrder,
+                  })),
+                );
+              }
+            }),
+          );
+
+          return yield* listStudentInstitutions();
+        });
+
       return VocabularyRepository.of({
         listCvProfileTypes,
         listGlobalInterviewTags,
+        listStudentInstitutions,
+        listStudentMajors,
         addCvProfileType: (entry) =>
           Effect.gen(function*() {
             const currentEntries = yield* listCvProfileTypes();
@@ -170,10 +276,42 @@ export class VocabularyRepository extends ServiceMap.Service<
             );
           }),
         replaceGlobalInterviewTags,
-        seedControlledVocabularies: ({ cvProfileTypes, globalInterviewTags }) =>
+        addStudentMajor: (entry) =>
+          Effect.gen(function*() {
+            const currentEntries = yield* listStudentMajors();
+
+            return yield* replaceStudentMajors([...currentEntries, entry]);
+          }),
+        deleteStudentMajor: (id) =>
+          Effect.gen(function*() {
+            const currentEntries = yield* listStudentMajors();
+
+            return yield* replaceStudentMajors(
+              currentEntries.filter((entry) => entry.id !== id),
+            );
+          }),
+        replaceStudentMajors,
+        addStudentInstitution: (entry) =>
+          Effect.gen(function*() {
+            const currentEntries = yield* listStudentInstitutions();
+
+            return yield* replaceStudentInstitutions([...currentEntries, entry]);
+          }),
+        deleteStudentInstitution: (id) =>
+          Effect.gen(function*() {
+            const currentEntries = yield* listStudentInstitutions();
+
+            return yield* replaceStudentInstitutions(
+              currentEntries.filter((entry) => entry.id !== id),
+            );
+          }),
+        replaceStudentInstitutions,
+        seedControlledVocabularies: ({ cvProfileTypes, globalInterviewTags, studentInstitutions, studentMajors }) =>
           Effect.gen(function*() {
             yield* Effect.promise(() =>
               db.transaction(async (tx) => {
+                await tx.delete(studentInstitution);
+                await tx.delete(studentMajor);
                 await tx.delete(globalInterviewTag);
                 await tx.delete(cvProfileType);
 
@@ -196,12 +334,34 @@ export class VocabularyRepository extends ServiceMap.Service<
                     })),
                   );
                 }
+
+                if (studentMajors.length > 0) {
+                  await tx.insert(studentMajor).values(
+                    studentMajors.map((entry, sortOrder) => ({
+                      id: entry.id,
+                      label: entry.label,
+                      sortOrder,
+                    })),
+                  );
+                }
+
+                if (studentInstitutions.length > 0) {
+                  await tx.insert(studentInstitution).values(
+                    studentInstitutions.map((entry, sortOrder) => ({
+                      id: entry.id,
+                      label: entry.label,
+                      sortOrder,
+                    })),
+                  );
+                }
               }),
             );
 
             return new ControlledVocabularies({
               cvProfileTypes: yield* listCvProfileTypes(),
               globalInterviewTags: yield* listGlobalInterviewTags(),
+              studentInstitutions: yield* listStudentInstitutions(),
+              studentMajors: yield* listStudentMajors(),
             });
           }),
       });

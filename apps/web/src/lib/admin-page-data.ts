@@ -74,6 +74,18 @@ export const useAdminPublishedVenueMapState = () =>
     "Le plan public n'a pas pu etre charge.",
   );
 
+export const useAdminStudentMajorsState = () =>
+  toAdminAsyncState(
+    useAtomValue(adminWorkspaceAtoms.studentMajors),
+    "Les specialites n'ont pas pu etre chargees.",
+  );
+
+export const useAdminStudentInstitutionsState = () =>
+  toAdminAsyncState(
+    useAtomValue(adminWorkspaceAtoms.studentInstitutions),
+    "Les institutions n'ont pas pu etre chargees.",
+  );
+
 export const useAdminOverviewData = () => {
   const companyLedgerState = useAdminCompanyLedgerState();
   const interviewLedgerState = useAdminInterviewLedgerState();
