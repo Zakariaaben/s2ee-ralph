@@ -96,4 +96,22 @@ describe("cv profile rpc input schemas", () => {
       })
     ).toThrow();
   });
+
+  it("validates large base64 CV contents without overflowing the stack", () => {
+    const contentsBase64 = "A".repeat(4 * 512 * 1024);
+
+    expect(
+      Schema.decodeUnknownSync(CreateStudentCvProfileInput)({
+        profileTypeId: "software-engineering",
+        fileName: "ada-software.pdf",
+        contentType: "application/pdf",
+        contentsBase64,
+      }),
+    ).toEqual({
+      profileTypeId: "software-engineering",
+      fileName: "ada-software.pdf",
+      contentType: "application/pdf",
+      contentsBase64,
+    });
+  });
 });

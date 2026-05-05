@@ -47,8 +47,6 @@ export const InterviewCompanyTagLabel = RequiredText;
 
 export const InterviewNotes = Schema.Trim;
 
-const base64ContentsPattern =
-  /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const invalidBase64ContentsMessage = "Expected non-empty base64-encoded file contents";
 const getBase64ByteLength = (value: string): number => {
   const paddingLength = value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0;
@@ -56,12 +54,50 @@ const getBase64ByteLength = (value: string): number => {
   return (value.length / 4) * 3 - paddingLength;
 };
 
+const isBase64AlphabetCharacter = (charCode: number): boolean =>
+  (charCode >= 65 && charCode <= 90) ||
+  (charCode >= 97 && charCode <= 122) ||
+  (charCode >= 48 && charCode <= 57) ||
+  charCode === 43 ||
+  charCode === 47;
+
+const isBase64Contents = (value: string): boolean => {
+  if (value.length === 0 || value.length % 4 !== 0) {
+    return false;
+  }
+
+  let paddingStart = -1;
+
+  for (let index = 0; index < value.length; index++) {
+    const charCode = value.charCodeAt(index);
+
+    if (charCode === 61) {
+      if (index < value.length - 2) {
+        return false;
+      }
+
+      paddingStart = paddingStart === -1 ? index : paddingStart;
+      continue;
+    }
+
+    if (paddingStart !== -1 || !isBase64AlphabetCharacter(charCode)) {
+      return false;
+    }
+  }
+
+  if (paddingStart !== -1 && value.length - paddingStart > 2) {
+    return false;
+  }
+
+  return getBase64ByteLength(value) > 0;
+};
+
 const validBase64Contents = Schema.makeFilter<string>((value) => {
-  if (!base64ContentsPattern.test(value)) {
+  if (!isBase64Contents(value)) {
     return invalidBase64ContentsMessage;
   }
 
-  return getBase64ByteLength(value) > 0 || invalidBase64ContentsMessage;
+  return true;
 });
 
 export const Base64FileContents = RequiredText.pipe(

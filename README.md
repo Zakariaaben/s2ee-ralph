@@ -47,7 +47,7 @@ bun run db:push
 4. Seed local loginable users, companies, and rooms:
 
 ```bash
-bun run --filter web db:seed
+bun run db:seed
 ```
 
 The seed creates Better Auth accounts you can use to sign in locally:

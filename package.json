@@ -41,6 +41,7 @@
     "db:studio": "turbo run db:studio -F @project/db",
     "db:generate": "turbo run db:generate -F @project/db",
     "db:migrate": "turbo run db:migrate -F @project/db",
+    "db:seed": "bun run --env-file apps/web/.env apps/web/src/server/seed.ts",
     "check": "oxlint && oxfmt --write"
   },
   "dependencies": {
