@@ -71,7 +71,6 @@ const companiesSeed = [
     ownerEmail: "acme.seed@project.local",
     name: "Acme Corp",
     roomId: "seed-room-a",
-    standNumber: 1,
     arrivalStatus: "arrived" as const,
   },
   {
@@ -79,7 +78,6 @@ const companiesSeed = [
     ownerEmail: "globex.seed@project.local",
     name: "Globex Corporation",
     roomId: "seed-room-a",
-    standNumber: 2,
     arrivalStatus: "not-arrived" as const,
   },
   {
@@ -87,7 +85,6 @@ const companiesSeed = [
     ownerEmail: "initech.seed@project.local",
     name: "Initech",
     roomId: "seed-room-b",
-    standNumber: 1,
     arrivalStatus: "not-arrived" as const,
   },
 ] as const;
@@ -213,7 +210,6 @@ const program = Effect.gen(function*() {
             ownerUserId,
             name: seededCompany.name,
             roomId: seededCompany.roomId,
-            standNumber: seededCompany.standNumber,
             arrivalStatus: seededCompany.arrivalStatus,
           })
           .onConflictDoUpdate({
@@ -222,7 +218,6 @@ const program = Effect.gen(function*() {
               ownerUserId,
               name: seededCompany.name,
               roomId: seededCompany.roomId,
-              standNumber: seededCompany.standNumber,
               arrivalStatus: seededCompany.arrivalStatus,
               updatedAt: new Date(),
             },

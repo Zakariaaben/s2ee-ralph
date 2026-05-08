@@ -348,7 +348,7 @@ export function CheckInWorkspace(): React.ReactElement {
                     onChange={(event) => {
                       setSearchQuery(event.target.value);
                     }}
-                    placeholder="Entreprise, salle ou stand"
+                    placeholder="Entreprise ou salle"
                     value={searchQuery}
                   />
                 </div>
@@ -401,7 +401,7 @@ export function CheckInWorkspace(): React.ReactElement {
 
               <div className="grid gap-3 border-t border-[var(--s2ee-border)] pt-5 text-sm">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-[color:var(--s2ee-muted-foreground)]">Entreprises placees</span>
+                  <span className="text-[color:var(--s2ee-muted-foreground)]">Entreprises affectees</span>
                   <span className="font-bold text-slate-900">{summary.placedCompanyCount}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
@@ -428,7 +428,7 @@ export function CheckInWorkspace(): React.ReactElement {
                   onChange={(event) => {
                     setSearchQuery(event.target.value);
                   }}
-                  placeholder="Entreprise, salle ou stand"
+                    placeholder="Entreprise ou salle"
                   value={searchQuery}
                 />
               </div>
@@ -465,7 +465,7 @@ export function CheckInWorkspace(): React.ReactElement {
                   </h2>
                   <p className="max-w-3xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
                     {summary.placedCompanyCount === 0
-                      ? "Aucune entreprise placee pour le moment."
+                      ? "Aucune entreprise affectee pour le moment."
                       : `${visibleCompanies.length} entreprises correspondent aux filtres actuels.`}
                   </p>
                 </div>
@@ -517,9 +517,9 @@ export function CheckInWorkspace(): React.ReactElement {
                 <div className="p-6">
                   <Empty className="items-start text-left">
                     <EmptyHeader className="items-start text-left">
-                      <EmptyTitle>Aucune entreprise placee</EmptyTitle>
+                      <EmptyTitle>Aucune entreprise affectee</EmptyTitle>
                       <EmptyDescription>
-                        Les entreprises apparaitront ici une fois placees.
+                        Les entreprises apparaitront ici une fois affectees a une salle.
                       </EmptyDescription>
                     </EmptyHeader>
                   </Empty>
@@ -555,15 +555,12 @@ export function CheckInWorkspace(): React.ReactElement {
                         key={company.companyId}
                       >
                         <div className="grid gap-3">
-                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                           <Badge className="rounded-none" variant={isArrived ? "secondary" : "default"}>
                             {isArrived ? "Arrivee" : "En attente"}
                           </Badge>
                             <Badge className="rounded-none" variant="outline">
                               Salle {company.roomCode}
-                            </Badge>
-                            <Badge className="rounded-none" variant="outline">
-                              Stand {company.standNumber}
                             </Badge>
                           </div>
                           <div className="space-y-1">
@@ -571,7 +568,7 @@ export function CheckInWorkspace(): React.ReactElement {
                               {company.companyName}
                             </h3>
                             <p className="text-sm text-[color:var(--s2ee-muted-foreground)]">
-                              Salle {company.roomCode} · stand {company.standNumber}
+                              Salle {company.roomCode}
                             </p>
                           </div>
                         </div>
@@ -668,7 +665,7 @@ export function CheckInWorkspace(): React.ReactElement {
 
             <div className="grid gap-3 border-t border-[var(--s2ee-border)] pt-5 text-sm">
               <div className="flex items-center justify-between gap-4">
-                <span className="text-[color:var(--s2ee-muted-foreground)]">Entreprises placees</span>
+                <span className="text-[color:var(--s2ee-muted-foreground)]">Entreprises affectees</span>
                 <span className="font-bold text-slate-900">{summary.placedCompanyCount}</span>
               </div>
               <div className="flex items-center justify-between gap-4">

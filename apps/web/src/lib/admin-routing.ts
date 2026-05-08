@@ -32,8 +32,8 @@ export const adminSections: ReadonlyArray<AdminSection> = [
   },
   {
     id: "venue",
-    label: "Salles",
-    title: "Salles",
+    label: "Zones",
+    title: "Zones",
     description: "",
     to: "/admin/venue",
   },
@@ -43,13 +43,6 @@ export const adminSections: ReadonlyArray<AdminSection> = [
     title: "Referentiels",
     description: "",
     to: "/admin/vocabularies",
-  },
-  {
-    id: "map",
-    label: "Plan",
-    title: "Plan",
-    description: "",
-    to: "/admin/map",
   },
   {
     id: "access",

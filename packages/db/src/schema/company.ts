@@ -1,7 +1,7 @@
 import { CompanyArrivalStatusValues } from "@project/domain";
 import { user } from "./auth";
-import { room } from "./venue";
-import { index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { room, zone } from "./venue";
+import { index, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const companyArrivalStatus = pgEnum(
   "company_arrival_status",
@@ -17,8 +17,9 @@ export const company = pgTable(
       .unique()
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    logoUrl: text("logo_url"),
+    zoneId: text("zone_id").references(() => zone.id, { onDelete: "set null" }),
     roomId: text("room_id").references(() => room.id, { onDelete: "set null" }),
-    standNumber: integer("stand_number"),
     arrivalStatus: companyArrivalStatus("arrival_status")
       .notNull()
       .default("not-arrived"),
@@ -30,11 +31,8 @@ export const company = pgTable(
   },
   (table) => [
     index("company_owner_user_id_idx").on(table.ownerUserId),
+    index("company_zone_id_idx").on(table.zoneId),
     index("company_room_id_idx").on(table.roomId),
-    uniqueIndex("company_room_stand_unique_idx").on(
-      table.roomId,
-      table.standNumber,
-    ),
   ],
 );
 

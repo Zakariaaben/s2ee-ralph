@@ -10,7 +10,6 @@ export type CheckInCompanyEntry = {
   readonly companyName: string;
   readonly roomCode: string;
   readonly roomId: VenueRoom["id"];
-  readonly standNumber: number;
 };
 
 export type CheckInWorkspaceSummary = {
@@ -32,7 +31,6 @@ export const flattenCheckInCompanies = (
       roomCode: room.code,
       companyId: company.companyId,
       companyName: company.companyName,
-      standNumber: company.standNumber,
       arrivalStatus: company.arrivalStatus,
     })),
   );
@@ -52,7 +50,7 @@ export const summarizeCheckInWorkspace = (
     pendingCount,
     nextArrivalLabel:
       nextPendingCompany == null
-        ? "Toutes les entreprises placees sont marquees arrivees."
+        ? "Toutes les entreprises affectees sont marquees arrivees."
         : `${nextPendingCompany.companyName} est la prochaine entreprise a accueillir.`,
   };
 };
@@ -87,8 +85,6 @@ export const filterCheckInCompanies = (
     return [
       company.companyName,
       company.roomCode,
-      `stand ${company.standNumber}`,
-      String(company.standNumber),
     ].some((value) => value.toLowerCase().includes(normalizedQuery));
   });
 };

@@ -40,6 +40,7 @@ const makeCompany = (input: {
   new Company({
     id: input.id as Company["id"],
     name: input.name,
+    logoUrl: null,
     recruiters: [...(input.recruiters ?? [])],
   });
 
@@ -47,6 +48,7 @@ const makeRoom = (input: { readonly id: string; readonly code: string }) =>
   new Room({
     id: input.id as Room["id"],
     code: input.code,
+    zone: null,
   });
 
 const makeUser = (input: {
@@ -86,13 +88,12 @@ const makeStudent = (input: {
 const makeCompanyLedgerEntry = (input: {
   readonly company: Company;
   readonly room: Room | null;
-  readonly standNumber: number | null;
   readonly arrivalStatus: "arrived" | "not-arrived";
 }) =>
   new AdminCompanyLedgerEntry({
     company: input.company,
+    zone: null,
     room: input.room,
-    standNumber: input.standNumber,
     arrivalStatus: input.arrivalStatus,
   });
 
@@ -125,8 +126,8 @@ const makeInterviewLedgerEntry = (input: {
     company: new AdminInterviewLedgerCompany({
       id: input.company.id as AdminInterviewLedgerCompany["id"],
       name: input.company.name,
+      zone: null,
       room: input.company.room,
-      standNumber: input.company.room == null ? null : 9,
       arrivalStatus: "not-arrived",
     }),
     student: input.student,
@@ -181,13 +182,11 @@ describe("admin workspace helper", () => {
     makeCompanyLedgerEntry({
       company: atlas,
       room: roomA,
-      standNumber: 12,
       arrivalStatus: "not-arrived",
     }),
     makeCompanyLedgerEntry({
       company: beacon,
       room: null,
-      standNumber: null,
       arrivalStatus: "not-arrived",
     }),
   ];
@@ -314,8 +313,8 @@ describe("admin workspace helper", () => {
     expect(describeAdminAccessAccount(accessLedger[0]!)).toBe("admin@example.com");
     expect(describeAdminAccessSubject(accessLedger[2]!)).toBe("Atlas Systems");
     expect(describeAdminAccessSubject(accessLedger[1]!)).toBe("Ada Lovelace");
-    expect(describeAdminPlacement(companyLedger[0]!)).toBe("Salle A1 / Stand 12");
-    expect(describeAdminPlacement(companyLedger[1]!)).toBe("Non placee");
+    expect(describeAdminPlacement(companyLedger[0]!)).toBe("Salle A1");
+    expect(describeAdminPlacement(companyLedger[1]!)).toBe("Non affectee");
     expect(selectRecentAdminInterviews(interviewLedger, 1).map((entry) => entry.interview.id)).toEqual([
       "interview_2",
     ]);
