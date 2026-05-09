@@ -44,6 +44,10 @@ const publicCompaniesAtom = AppRpcClient.query("listPublicVenueCompanies", undef
   timeToLive: "30 seconds",
 });
 
+type PublicVenueMapProps = {
+  readonly embedded?: boolean;
+};
+
 const defaultMapCenter: [number, number] = [36.7051, 3.1739];
 
 const createZoneMarkerIcon = (selected: boolean) =>
@@ -58,7 +62,7 @@ const createZoneMarkerIcon = (selected: boolean) =>
     tooltipAnchor: [0, -24],
   });
 
-export function PublicVenueMap(): React.ReactElement {
+export function PublicVenueMap({ embedded = false }: PublicVenueMapProps = {}): React.ReactElement {
   const zonesResult = useAtomValue(publicZonesAtom);
   const companiesResult = useAtomValue(publicCompaniesAtom);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
@@ -86,9 +90,15 @@ export function PublicVenueMap(): React.ReactElement {
 
     return [firstZone.latitude, firstZone.longitude];
   }, [mappableZones]);
+  const Root = embedded ? "section" : "main";
 
   return (
-    <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-[color:var(--s2ee-soft-foreground)]">
+    <Root
+      className={[
+        "bg-[var(--s2ee-canvas)] font-mono text-[color:var(--s2ee-soft-foreground)]",
+        embedded ? "min-h-0" : "min-h-[100dvh]",
+      ].join(" ")}
+    >
       <div className="mx-auto max-w-[1480px] px-5 py-6 sm:px-8 sm:py-8">
         <div className="space-y-6">
           <header className="space-y-3 border-b border-[var(--s2ee-border)] pb-6">
@@ -125,7 +135,12 @@ export function PublicVenueMap(): React.ReactElement {
           ) : null}
 
           {mappableZones.length > 0 ? (
-            <div className="h-[72vh] overflow-hidden border border-[var(--s2ee-border)] bg-white">
+            <div
+              className={[
+                "overflow-hidden border border-[var(--s2ee-border)] bg-white",
+                embedded ? "h-[42rem]" : "h-[72vh]",
+              ].join(" ")}
+            >
               <MapContainer center={mapCenter} className="h-full w-full" zoom={15} style={{ zIndex: 0 }}>
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -221,6 +236,6 @@ export function PublicVenueMap(): React.ReactElement {
           </SheetPanel>
         </SheetPopup>
       </Sheet>
-    </main>
+    </Root>
   );
 }
