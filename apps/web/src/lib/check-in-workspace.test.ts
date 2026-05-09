@@ -10,13 +10,11 @@ import {
 const makeVenueCompany = (input: {
   readonly id: string;
   readonly name: string;
-  readonly standNumber: number;
   readonly arrivalStatus: "arrived" | "not-arrived";
 }) =>
   new VenueCompany({
     companyId: input.id as VenueCompany["companyId"],
     companyName: input.name,
-    standNumber: input.standNumber,
     arrivalStatus: input.arrivalStatus,
   });
 
@@ -28,6 +26,7 @@ const makeVenueRoom = (input: {
   new VenueRoom({
     id: input.id as VenueRoom["id"],
     code: input.code,
+    zone: null,
     companies: [...input.companies],
   });
 
@@ -40,13 +39,11 @@ describe("check-in workspace helper", () => {
         makeVenueCompany({
           id: "company_1",
           name: "Atlas Systems",
-          standNumber: 12,
           arrivalStatus: "not-arrived",
         }),
         makeVenueCompany({
           id: "company_2",
           name: "Beacon Labs",
-          standNumber: 14,
           arrivalStatus: "arrived",
         }),
       ],
@@ -58,7 +55,6 @@ describe("check-in workspace helper", () => {
         makeVenueCompany({
           id: "company_3",
           name: "Northwind Works",
-          standNumber: 3,
           arrivalStatus: "not-arrived",
         }),
       ],
@@ -84,7 +80,6 @@ describe("check-in workspace helper", () => {
         roomCode: "A1",
         companyId: "company_1",
         companyName: "Atlas Systems",
-        standNumber: 12,
         arrivalStatus: "not-arrived",
       },
       {
@@ -92,7 +87,6 @@ describe("check-in workspace helper", () => {
         roomCode: "A1",
         companyId: "company_2",
         companyName: "Beacon Labs",
-        standNumber: 14,
         arrivalStatus: "arrived",
       },
       {
@@ -100,13 +94,12 @@ describe("check-in workspace helper", () => {
         roomCode: "B3",
         companyId: "company_3",
         companyName: "Northwind Works",
-        standNumber: 3,
         arrivalStatus: "not-arrived",
       },
     ]);
   });
 
-  it("filters by status and search terms across company, room, and stand labels", () => {
+  it("filters by status and search terms across company and room labels", () => {
     const companies = flattenCheckInCompanies(rooms);
 
     expect(
@@ -127,7 +120,7 @@ describe("check-in workspace helper", () => {
 
     expect(
       filterCheckInCompanies(companies, {
-        query: "14",
+        query: "beacon",
         roomId: null,
         status: "arrived",
       }).map((company) => company.companyName),

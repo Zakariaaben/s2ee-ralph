@@ -85,6 +85,7 @@ describe("company-workspace", () => {
     const company = new Company({
       id: asId<Company["id"]>("company-1"),
       name: "North Ridge Labs",
+      logoUrl: null,
       recruiters: [
         { id: asId<Company["recruiters"][number]["id"]>("recruiter-1"), name: "Nora Lane" },
         { id: asId<Company["recruiters"][number]["id"]>("recruiter-2"), name: "Ilyes Haddad" },

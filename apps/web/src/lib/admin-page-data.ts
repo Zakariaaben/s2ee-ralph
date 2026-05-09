@@ -62,16 +62,16 @@ export const useAdminAccessLedgerState = () =>
     "Les acces n'ont pas pu etre charges.",
   );
 
+export const useAdminZonesState = () =>
+  toAdminAsyncState(
+    useAtomValue(adminWorkspaceAtoms.zones),
+    "Les zones n'ont pas pu etre chargees.",
+  );
+
 export const useAdminVenueRoomsState = () =>
   toAdminAsyncState(
     useAtomValue(adminWorkspaceAtoms.venueRooms),
     "Les salles n'ont pas pu etre chargees.",
-  );
-
-export const useAdminPublishedVenueMapState = () =>
-  toAdminAsyncState(
-    useAtomValue(adminWorkspaceAtoms.publishedVenueMap),
-    "Le plan public n'a pas pu etre charge.",
   );
 
 export const useAdminStudentMajorsState = () =>

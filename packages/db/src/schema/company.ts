@@ -1,19 +1,12 @@
 import { CompanyArrivalStatusValues } from "@project/domain";
 import { user } from "./auth";
-import { room } from "./venue";
-import {
-  boolean,
-  index,
-  integer,
-  jsonb,
-  pgEnum,
-  pgTable,
-  text,
-  timestamp,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { room, zone } from "./venue";
+import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-export const companyArrivalStatus = pgEnum("company_arrival_status", CompanyArrivalStatusValues);
+export const companyArrivalStatus = pgEnum(
+  "company_arrival_status",
+  CompanyArrivalStatusValues,
+);
 
 export const company = pgTable(
   "company",
@@ -24,9 +17,12 @@ export const company = pgTable(
       .unique()
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    logoUrl: text("logo_url"),
+    zoneId: text("zone_id").references(() => zone.id, { onDelete: "set null" }),
     roomId: text("room_id").references(() => room.id, { onDelete: "set null" }),
-    standNumber: integer("stand_number"),
-    arrivalStatus: companyArrivalStatus("arrival_status").notNull().default("not-arrived"),
+    arrivalStatus: companyArrivalStatus("arrival_status")
+      .notNull()
+      .default("not-arrived"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
       .defaultNow()
@@ -35,8 +31,8 @@ export const company = pgTable(
   },
   (table) => [
     index("company_owner_user_id_idx").on(table.ownerUserId),
+    index("company_zone_id_idx").on(table.zoneId),
     index("company_room_id_idx").on(table.roomId),
-    uniqueIndex("company_room_stand_unique_idx").on(table.roomId, table.standNumber),
   ],
 );
 
@@ -62,9 +58,9 @@ export const featuredCompany = pgTable(
   {
     id: text("id").primaryKey(),
     name: text("name").notNull(),
-    description: text("description").notNull(),
-    logoLabel: text("logo_label").notNull(),
-    profiles: jsonb("profiles").$type<ReadonlyArray<string>>().notNull(),
+    description: text("description").notNull().default(""),
+    logoLabel: text("logo_label").notNull().default(""),
+    profiles: jsonb("profiles").$type<Array<string>>().notNull().default([]),
     employmentCount: integer("employment_count").notNull().default(0),
     workerInternshipCount: integer("worker_internship_count").notNull().default(0),
     practicalInternshipCount: integer("practical_internship_count").notNull().default(0),

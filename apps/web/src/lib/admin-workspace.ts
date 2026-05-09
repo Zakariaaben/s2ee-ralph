@@ -117,8 +117,8 @@ export const filterAdminCompanyLedger = (
 
     return [
       entry.company.name,
+      entry.zone?.code ?? "",
       entry.room?.code ?? "",
-      entry.standNumber == null ? "" : String(entry.standNumber),
       ...entry.company.recruiters.map((recruiter) => recruiter.name),
     ].some((value) => value.toLowerCase().includes(normalizedQuery));
   });
@@ -215,8 +215,8 @@ export const describeAdminAccessAccount = (entry: AdminAccessLedgerEntry): strin
 };
 
 export const describeAdminPlacement = (entry: AdminCompanyLedgerEntry): string =>
-  entry.room == null
-    ? "Non placee"
-    : entry.standNumber == null
-      ? `Salle ${entry.room.code}`
-      : `Salle ${entry.room.code} / Stand ${entry.standNumber}`;
+  entry.room != null
+    ? `Salle ${entry.room.code}`
+    : entry.zone != null
+      ? `Zone ${entry.zone.code}`
+      : "Non affectee";

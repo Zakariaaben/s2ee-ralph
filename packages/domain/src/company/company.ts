@@ -6,5 +6,6 @@ import { Recruiter } from "./recruiter";
 export class Company extends Schema.Class<Company>("Company")({
   id: CompanyId,
   name: Schema.String,
+  logoUrl: Schema.NullOr(Schema.String),
   recruiters: Schema.Array(Recruiter),
 }) {}

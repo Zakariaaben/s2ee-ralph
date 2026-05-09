@@ -58,6 +58,26 @@ const roleOptions = [
   { value: "student", label: "Etudiant" },
 ] as const;
 
+const getAllowedRoleOptions = (entry: AdminAccessLedgerEntry) => {
+  if (entry.company != null && entry.student == null) {
+    return roleOptions.filter(
+      (option) => option.value === "company" || option.value === entry.user.role,
+    );
+  }
+
+  if (entry.student != null && entry.company == null) {
+    return roleOptions.filter(
+      (option) => option.value === "student" || option.value === entry.user.role,
+    );
+  }
+
+  if (entry.student != null && entry.company != null) {
+    return roleOptions.filter((option) => option.value === entry.user.role);
+  }
+
+  return roleOptions;
+};
+
 const roleBadgeVariant = (
   role: UserRoleValue,
 ): React.ComponentProps<typeof Badge>["variant"] => {
@@ -217,6 +237,8 @@ export function AdminAccessPage(): React.ReactElement {
               const draftRole = roleDrafts[entry.user.id] ?? entry.user.role;
               const hasPendingChange = draftRole !== entry.user.role;
               const isPending = pendingUserId === entry.user.id;
+              const allowedRoleOptions = getAllowedRoleOptions(entry);
+              const hasRestrictedRoles = allowedRoleOptions.length !== roleOptions.length;
 
               return (
                 <div className="bg-white p-5" key={entry.user.id}>
@@ -234,6 +256,11 @@ export function AdminAccessPage(): React.ReactElement {
                       <p className="text-sm text-[color:var(--s2ee-muted-foreground)]">
                         Profil lie : {describeAdminAccessSubject(entry)}
                       </p>
+                      {hasRestrictedRoles ? (
+                        <p className="text-sm text-[color:var(--s2ee-muted-foreground)]">
+                          Ce role ne peut pas changer tant qu&apos;un profil lie et ses donnees existent.
+                        </p>
+                      ) : null}
                     </div>
                     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                       <Select
@@ -249,7 +276,7 @@ export function AdminAccessPage(): React.ReactElement {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {roleOptions.map((option) => (
+                          {allowedRoleOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
                             </SelectItem>

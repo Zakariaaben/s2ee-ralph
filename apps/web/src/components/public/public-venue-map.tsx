@@ -1,492 +1,226 @@
 "use client";
 
-import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
+import { useAtomValue } from "@effect/atom-react";
 import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
-import { Alert, AlertDescription, AlertTitle } from "@project/ui/components/alert";
-import { Button } from "@project/ui/components/button";
-import {
-  Drawer,
-  DrawerHeader,
-  DrawerPanel,
-  DrawerPopup,
-  DrawerTitle,
-} from "@project/ui/components/drawer";
+import { Badge } from "@project/ui/components/badge";
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
 } from "@project/ui/components/empty";
-import { Input } from "@project/ui/components/input";
-import { Skeleton } from "@project/ui/components/skeleton";
+import { Label } from "@project/ui/components/label";
 import {
-  CircleAlertIcon,
-  ListFilterIcon,
-  MapPinnedIcon,
-  RefreshCwIcon,
-  SearchIcon,
-} from "lucide-react";
-import type { VenueRoom } from "@project/domain";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@project/ui/components/select";
+import {
+  Sheet,
+  SheetDescription,
+  SheetHeader,
+  SheetPanel,
+  SheetPopup,
+  SheetTitle,
+} from "@project/ui/components/sheet";
+import { AppRpcClient } from "@/lib/rpc-client";
+import { MapPinnedIcon } from "lucide-react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import type React from "react";
-import { useDeferredValue, useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { MapContainer, Marker, TileLayer, Tooltip } from "react-leaflet";
 
-import { publicVenueMapAtom } from "@/lib/public-venue-atoms";
-import {
-  describePublishedVenueRoom,
-  filterPublishedVenueMapPins,
-  resolvePublishedVenueMapSelection,
-  sortPublishedVenueMapPins,
-} from "@/lib/public-venue-map";
+const publicZonesAtom = AppRpcClient.query("listPublicVenueZones", undefined, {
+  reactivityKeys: ["public", "zones"],
+  timeToLive: "30 seconds",
+});
 
-type PublicVenueMapProps = {
-  readonly embedded?: boolean;
-};
+const publicCompaniesAtom = AppRpcClient.query("listPublicVenueCompanies", undefined, {
+  reactivityKeys: ["public", "companies"],
+  timeToLive: "30 seconds",
+});
 
-const toImageSource = (input: {
-  readonly contentType: string;
-  readonly contentsBase64: string;
-}): string => `data:${input.contentType};base64,${input.contentsBase64}`;
+const defaultMapCenter: [number, number] = [36.7051, 3.1739];
 
-export function PublicVenueMap({ embedded = false }: PublicVenueMapProps = {}): React.ReactElement {
-  const publishedVenueMapResult = useAtomValue(publicVenueMapAtom);
-  const refreshPublishedVenueMap = useAtomRefresh(publicVenueMapAtom);
-  const [selectedRoomId, setSelectedRoomId] = useState<VenueRoom["id"] | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isRoomDrawerOpen, setIsRoomDrawerOpen] = useState(false);
-  const deferredSearchQuery = useDeferredValue(searchQuery);
+const createZoneMarkerIcon = (selected: boolean) =>
+  L.divIcon({
+    className: "public-zone-marker-shell",
+    html: `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <span style="display:block;width:16px;height:16px;border-radius:9999px;background:${selected ? "#2563eb" : "#0f172a"};border:3px solid white;box-shadow:0 0 0 1px rgba(15,23,42,0.12);"></span>
+      <span style="display:block;width:2px;height:12px;background:${selected ? "#2563eb" : "#0f172a"};"></span>
+    </div>`,
+    iconSize: [20, 32],
+    iconAnchor: [10, 32],
+    tooltipAnchor: [0, -24],
+  });
 
-  const sortedPins = AsyncResult.isSuccess(publishedVenueMapResult)
-    ? sortPublishedVenueMapPins(publishedVenueMapResult.value)
-    : [];
-  const visiblePins = filterPublishedVenueMapPins(sortedPins, deferredSearchQuery);
+export function PublicVenueMap(): React.ReactElement {
+  const zonesResult = useAtomValue(publicZonesAtom);
+  const companiesResult = useAtomValue(publicCompaniesAtom);
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [selectedRoomCode, setSelectedRoomCode] = useState<string>("all");
 
-  useEffect(() => {
-    setSelectedRoomId((current) => resolvePublishedVenueMapSelection(visiblePins, current));
-  }, [visiblePins]);
+  const zones = AsyncResult.isSuccess(zonesResult) ? zonesResult.value : [];
+  const companies = AsyncResult.isSuccess(companiesResult) ? companiesResult.value : [];
+  const mappableZones = zones.filter((zone) => zone.latitude != null && zone.longitude != null);
+  const selectedZone = zones.find((zone) => zone.id === selectedZoneId) ?? null;
+  const selectedZoneCompanies = companies.filter((entry) => entry.zone?.id === selectedZoneId);
+  const roomCodes = Array.from(
+    new Set(selectedZoneCompanies.map((entry) => entry.room?.code).filter((value) => value != null)),
+  );
+  const visibleCompanies =
+    selectedRoomCode === "all"
+      ? selectedZoneCompanies
+      : selectedZoneCompanies.filter((entry) => entry.room?.code === selectedRoomCode);
 
-  const selectedPin =
-    visiblePins.find((pin) => pin.room.id === selectedRoomId) ?? visiblePins[0] ?? null;
-  const Root = embedded ? "section" : "main";
-  const contentMinHeightClass = embedded ? "min-h-[42rem]" : "min-h-[calc(100dvh-57px)]";
+  const mapCenter = useMemo<[number, number]>(() => {
+    const firstZone = mappableZones[0];
+
+    if (!firstZone || firstZone.latitude == null || firstZone.longitude == null) {
+      return defaultMapCenter;
+    }
+
+    return [firstZone.latitude, firstZone.longitude];
+  }, [mappableZones]);
 
   return (
-    <Root
-      className={[
-        "overflow-x-hidden bg-[var(--s2ee-canvas)] font-mono text-foreground",
-        embedded ? "min-h-0 rounded-[var(--s2ee-panel-radius)]" : "min-h-[100dvh]",
-      ].join(" ")}
-    >
-      {embedded ? null : (
-        <header className="flex items-center justify-between border-b bg-[var(--s2ee-surface-soft)] px-6 py-3 [border-color:var(--s2ee-border)]">
-          <div className="flex items-center gap-8">
-            <span className="text-sm font-bold tracking-[-0.04em] text-primary">
-              S2EE 17e edition
-            </span>
-            <nav className="hidden items-center gap-6 md:flex">
-              <a
-                className="text-sm uppercase tracking-[0.12em] text-[color:var(--s2ee-muted-foreground)] transition-colors hover:text-primary"
-                href="/"
-              >
-                Accueil
-              </a>
-              <a
-                className="border-b-2 border-primary pb-1 text-sm font-bold uppercase tracking-[0.12em] text-primary"
-                href="/map"
-              >
-                Plan du salon
-              </a>
-              <a
-                className="text-sm uppercase tracking-[0.12em] text-[color:var(--s2ee-muted-foreground)] transition-colors hover:text-primary"
-                href="/auth/sign-in"
-              >
-                Se connecter
-              </a>
-            </nav>
-          </div>
-          <div className="hidden items-center gap-3 md:flex">
-            <div className="flex items-center gap-2 border bg-[var(--s2ee-surface)] px-3 py-1 [border-color:var(--s2ee-border)]">
-              <span className="size-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-900">
-                Plan public
-              </span>
+    <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-[color:var(--s2ee-soft-foreground)]">
+      <div className="mx-auto max-w-[1480px] px-5 py-6 sm:px-8 sm:py-8">
+        <div className="space-y-6">
+          <header className="space-y-3 border-b border-[var(--s2ee-border)] pb-6">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+              Carte
+            </p>
+            <h1 className="text-3xl font-black tracking-[-0.08em] text-slate-900 sm:text-4xl">
+              Zones et entreprises
+            </h1>
+          </header>
+
+          {AsyncResult.isInitial(zonesResult) || AsyncResult.isInitial(companiesResult) ? (
+            <div className="border border-[var(--s2ee-border)] bg-white p-8 text-sm text-[color:var(--s2ee-muted-foreground)]">
+              Chargement de la carte...
             </div>
-          </div>
-        </header>
-      )}
+          ) : null}
 
-      <div className="mx-auto flex max-w-[1600px] flex-col">
-        {AsyncResult.isInitial(publishedVenueMapResult) ? (
-          <section
-            className={[
-              "grid gap-0 md:grid-cols-[16rem_minmax(0,1fr)_22rem]",
-              contentMinHeightClass,
-            ].join(" ")}
-          >
-            <div className="hidden space-y-2 border-r bg-[var(--s2ee-surface-soft)] p-6 [border-color:var(--s2ee-border)] md:block">
-              <Skeleton className="h-6 rounded-none" />
-              <Skeleton className="h-14 rounded-none" />
-              <Skeleton className="h-14 rounded-none" />
-              <Skeleton className="h-14 rounded-none" />
+          {AsyncResult.isFailure(zonesResult) || AsyncResult.isFailure(companiesResult) ? (
+            <div className="border border-[var(--s2ee-border)] bg-white p-8 text-sm text-red-600">
+              Impossible de charger la carte publique.
             </div>
-            <div className="border-r bg-[var(--s2ee-surface-soft)] p-5 md:p-8 [border-color:var(--s2ee-border)]">
-              <Skeleton className="h-full min-h-[28rem] w-full rounded-none" />
-            </div>
-            <div className="space-y-3 bg-[var(--s2ee-surface)] p-6 md:p-8">
-              <Skeleton className="h-8 rounded-none" />
-              <Skeleton className="h-20 rounded-none" />
-              <Skeleton className="h-20 rounded-none" />
-            </div>
-          </section>
-        ) : AsyncResult.isFailure(publishedVenueMapResult) ? (
-          <div className="p-6">
-            <Alert variant="error">
-              <CircleAlertIcon className="size-4" />
-              <AlertTitle>Plan indisponible</AlertTitle>
-              <AlertDescription>
-                Le plan du salon n&apos;a pas pu etre charge. Rechargez la page puis reessayez.
-              </AlertDescription>
-            </Alert>
-          </div>
-        ) : publishedVenueMapResult.value == null ? (
-          <div className="p-6">
-            <div className="border bg-[var(--s2ee-surface)] p-6 [border-color:var(--s2ee-border)]">
-              <Empty className="border border-dashed p-8 [border-color:var(--s2ee-border)]">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon" className="size-14 rounded-none">
-                    <MapPinnedIcon className="size-6" />
-                  </EmptyMedia>
-                  <EmptyTitle>Aucun plan n&apos;a encore ete publie</EmptyTitle>
-                  <EmptyDescription>
-                    Le plan du salon sera disponible ici des sa publication.
-                  </EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent>
-                  <button
-                    className="inline-flex min-h-12 items-center justify-center border px-5 py-3 text-xs font-bold uppercase tracking-[0.18em] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-[var(--s2ee-surface-soft)] [border-color:var(--s2ee-border)]"
-                    type="button"
-                    onClick={() => refreshPublishedVenueMap()}
-                  >
-                    Reessayer
-                  </button>
-                </EmptyContent>
-              </Empty>
-            </div>
-          </div>
-        ) : (
-          <section
-            className={[
-              "grid gap-0 md:grid-cols-[16rem_minmax(0,1fr)_24rem]",
-              contentMinHeightClass,
-            ].join(" ")}
-          >
-            <aside className="hidden border-r bg-[var(--s2ee-surface-soft)] [border-color:var(--s2ee-border)] md:block">
-              <div className="border-b px-6 py-6 [border-color:var(--s2ee-border)]">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                  Salles
-                </p>
-              </div>
-              <div className="border-b px-4 py-4 [border-color:var(--s2ee-border)]">
-                <div className="relative">
-                  <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[color:var(--s2ee-muted-foreground)]" />
-                  <Input
-                    autoComplete="off"
-                    className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] pl-9 shadow-none"
-                    id="public-map-room-search"
-                    name="public-map-room-search"
-                    onChange={(event) => {
-                      setSearchQuery(event.currentTarget.value);
-                    }}
-                    placeholder="Salle, entreprise ou stand"
-                    value={searchQuery}
-                  />
-                </div>
-              </div>
-              {visiblePins.length === 0 ? (
-                <div className="p-6">
-                  <Empty className="items-start text-left">
-                    <EmptyHeader className="items-start text-left">
-                      <EmptyMedia variant="icon" className="rounded-none">
-                        <SearchIcon className="size-5" />
-                      </EmptyMedia>
-                      <EmptyTitle>Aucune salle ne correspond</EmptyTitle>
-                      <EmptyDescription>
-                        Modifiez la recherche pour retrouver une salle.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                </div>
-              ) : (
-                <div className="max-h-[calc(100dvh-180px)] overflow-y-auto divide-y [divide-color:var(--s2ee-border)]">
-                  {visiblePins.map((pin) => {
-                    const isSelected = pin.room.id === selectedPin?.room.id;
+          ) : null}
 
-                    return (
-                      <button
-                        key={pin.room.id}
-                        className={[
-                          "flex w-full items-center justify-between px-6 py-4 text-left text-sm transition-colors [content-visibility:auto]",
-                          isSelected
-                            ? "bg-[color:color-mix(in_srgb,var(--color-primary)_8%,white)] text-primary"
-                            : "bg-[var(--s2ee-surface)] text-[color:var(--s2ee-soft-foreground)] hover:bg-[var(--s2ee-canvas)]",
-                        ].join(" ")}
-                        type="button"
-                        onClick={() => setSelectedRoomId(pin.room.id)}
-                      >
-                        <span className="font-semibold tracking-[-0.04em]">
-                          SALLE {pin.room.code}
-                        </span>
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
-                          {pin.room.companies.length}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </aside>
+          {!AsyncResult.isFailure(zonesResult) && !AsyncResult.isFailure(companiesResult) && mappableZones.length === 0 ? (
+            <Empty className="border border-dashed border-[var(--s2ee-border)] bg-white p-8">
+              <EmptyHeader>
+                <EmptyMedia className="rounded-none" variant="icon">
+                  <MapPinnedIcon className="size-5" />
+                </EmptyMedia>
+                <EmptyTitle>Aucune zone disponible</EmptyTitle>
+                <EmptyDescription>Les zones geo-localisees apparaitront ici.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : null}
 
-            <div className="relative bg-[var(--s2ee-surface-soft)] p-5 md:border-r md:p-8 [border-color:var(--s2ee-border)]">
-              <div className="mb-4 flex items-center gap-2 md:hidden">
-                <Button
-                  className="min-w-0 flex-1 rounded-none"
-                  onClick={() => setIsRoomDrawerOpen(true)}
-                  type="button"
-                  variant="outline"
-                >
-                  <ListFilterIcon className="size-4" />
-                  <span className="truncate">
-                    {selectedPin == null ? "Choisir une salle" : `Salle ${selectedPin.room.code}`}
-                  </span>
-                </Button>
-                <Button
-                  className="rounded-none"
-                  onClick={() => refreshPublishedVenueMap()}
-                  type="button"
-                  variant="outline"
-                >
-                  <RefreshCwIcon className="size-4" />
-                  Actualiser
-                </Button>
-              </div>
-
-              {selectedPin != null ? (
-                <div className="mb-4 border border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] p-4 md:hidden">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                        Salle
-                      </p>
-                      <h2 className="text-xl font-black tracking-[-0.07em] text-slate-900">
-                        {selectedPin.room.code}
-                      </h2>
-                      <p className="text-sm leading-6 text-[color:var(--s2ee-soft-foreground)]">
-                        {describePublishedVenueRoom(selectedPin)}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
-                      {selectedPin.room.companies.length}
-                    </span>
-                  </div>
-                </div>
-              ) : deferredSearchQuery.length > 0 ? (
-                <div className="mb-4 border border-dashed border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] p-4 md:hidden">
-                  <p className="text-sm leading-6 text-[color:var(--s2ee-soft-foreground)]">
-                    Aucune salle ne correspond a cette recherche.
-                  </p>
-                </div>
-              ) : null}
-
-              <div className="mb-6 hidden items-center justify-between gap-4 md:flex">
-                <div className="space-y-1">
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                    Plan
-                  </p>
-                </div>
-                <button
-                  className="inline-flex items-center gap-2 border bg-[var(--s2ee-surface)] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-soft-foreground)] transition-colors duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-white [border-color:var(--s2ee-border)]"
-                  type="button"
-                  onClick={() => refreshPublishedVenueMap()}
-                >
-                  Actualiser
-                  <RefreshCwIcon className="size-3.5" />
-                </button>
-              </div>
-
-              <div className="relative min-h-[24rem] overflow-hidden border bg-[var(--s2ee-surface)] md:min-h-[28rem] [border-color:var(--s2ee-border)]">
-                <img
-                  alt="Plan du salon"
-                  className="block h-full w-full object-contain p-4 md:p-6"
-                  src={toImageSource(publishedVenueMapResult.value.image)}
+          {mappableZones.length > 0 ? (
+            <div className="h-[72vh] overflow-hidden border border-[var(--s2ee-border)] bg-white">
+              <MapContainer center={mapCenter} className="h-full w-full" zoom={15} style={{ zIndex: 0 }}>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-
-                <div className="s2ee-terminal-grid pointer-events-none absolute inset-0 opacity-10" />
-
-                {visiblePins.map((pin) => {
-                  const isSelected = pin.room.id === selectedPin?.room.id;
-
-                  return (
-                    <button
-                      key={pin.room.id}
-                      aria-label={`Ouvrir la salle ${pin.room.code}`}
-                      className="absolute -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-105"
-                      style={{
-                        left: `${pin.xPercent}%`,
-                        top: `${pin.yPercent}%`,
-                      }}
-                      type="button"
-                      onClick={() => setSelectedRoomId(pin.room.id)}
-                    >
-                      <span
-                        className={[
-                          "flex min-h-11 min-w-11 items-center justify-center border px-3 text-[11px] font-semibold uppercase tracking-[0.16em]",
-                          isSelected
-                            ? "border-primary bg-primary text-primary-foreground outline outline-4 outline-[color:color-mix(in_srgb,var(--color-primary)_14%,transparent)]"
-                            : "border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] text-foreground",
-                        ].join(" ")}
-                      >
-                        {pin.room.code}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <aside className="bg-[var(--s2ee-surface)]">
-              <div className="space-y-2 border-b px-6 py-6 md:px-8 md:py-8 [border-color:var(--s2ee-border)]">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                  Salle
-                </p>
-                <h2 className="text-2xl font-semibold tracking-[-0.07em]">
-                  {selectedPin == null ? "AUCUNE SALLE" : `SALLE ${selectedPin.room.code}`}
-                </h2>
-                <p className="text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
-                  {selectedPin == null
-                    ? deferredSearchQuery.length > 0
-                      ? "Aucune salle ne correspond a cette recherche."
-                      : "Selectionnez une salle."
-                    : describePublishedVenueRoom(selectedPin)}
-                </p>
-              </div>
-
-              <div className="space-y-4 bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_45%,white)] px-6 py-6 md:px-8 md:py-8">
-                {selectedPin == null ? null : selectedPin.room.companies.length === 0 ? (
-                  <Empty className="items-start border border-dashed p-5 text-left [border-color:var(--s2ee-border)]">
-                    <EmptyHeader className="items-start text-left">
-                      <EmptyTitle>Aucune entreprise</EmptyTitle>
-                      <EmptyDescription>
-                        Aucune entreprise n&apos;est encore associee a cette salle.
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                ) : (
-                  <div className="space-y-3">
-                    {selectedPin.room.companies.map((company) => (
-                      <div
-                        key={company.companyId}
-                        className="border bg-[var(--s2ee-surface)] px-4 py-4 [border-color:var(--s2ee-border)]"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="min-w-0 space-y-1">
-                            <p className="text-sm font-semibold tracking-[-0.04em]">
-                              {company.companyName}
-                            </p>
-                            <p className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
-                              Stand {company.standNumber}
-                            </p>
-                          </div>
-                          <span
-                            className={[
-                              "shrink-0 text-[11px] uppercase tracking-[0.18em]",
-                              company.arrivalStatus === "arrived"
-                                ? "text-primary"
-                                : "text-[color:var(--s2ee-muted-foreground)]",
-                            ].join(" ")}
-                          >
-                            {company.arrivalStatus === "arrived" ? "Arrivee" : "En attente"}
-                          </span>
-                        </div>
+                {mappableZones.map((zone) => (
+                  <Marker
+                    eventHandlers={{
+                      click: () => {
+                        setSelectedZoneId(zone.id);
+                        setSelectedRoomCode("all");
+                      },
+                    }}
+                    icon={createZoneMarkerIcon(zone.id === selectedZoneId)}
+                    key={zone.id}
+                    position={[zone.latitude!, zone.longitude!]}
+                  >
+                    <Tooltip direction="top" offset={[0, -24]} opacity={1}>
+                      <div>
+                        <p className="text-xs font-semibold">{zone.code}</p>
+                        <p className="text-xs">{zone.label}</p>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </aside>
-          </section>
-        )}
+                    </Tooltip>
+                  </Marker>
+                ))}
+              </MapContainer>
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      <Drawer onOpenChange={setIsRoomDrawerOpen} open={isRoomDrawerOpen} position="bottom">
-        <DrawerPopup
-          className="max-h-[85dvh] border bg-[var(--s2ee-surface)] p-0 font-mono [border-color:var(--s2ee-border)] md:hidden"
-          showBar
-        >
-          <DrawerHeader className="border-b bg-[var(--s2ee-surface-soft)] px-5 py-5 [border-color:var(--s2ee-border)]">
-            <DrawerTitle className="text-xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
-              Salles
-            </DrawerTitle>
-          </DrawerHeader>
-          <DrawerPanel className="p-0">
-            <div className="border-b px-5 py-4 [border-color:var(--s2ee-border)]">
-              <div className="relative">
-                <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[color:var(--s2ee-muted-foreground)]" />
-                <Input
-                  autoComplete="off"
-                  className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] pl-9 shadow-none"
-                  id="public-map-room-search-mobile"
-                  name="public-map-room-search-mobile"
-                  onChange={(event) => {
-                    setSearchQuery(event.currentTarget.value);
-                  }}
-                  placeholder="Salle, entreprise ou stand"
-                  value={searchQuery}
-                />
+      <Sheet onOpenChange={(open) => !open && setSelectedZoneId(null)} open={selectedZone != null}>
+        <SheetPopup side="bottom">
+          <SheetHeader>
+            <SheetTitle>{selectedZone?.label ?? "Zone"}</SheetTitle>
+            <SheetDescription>
+              {selectedZone?.code ?? ""} · {selectedZoneCompanies.length} entreprise(s)
+            </SheetDescription>
+          </SheetHeader>
+          <SheetPanel>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="public-room-filter">Salle</Label>
+                <Select onValueChange={(value) => setSelectedRoomCode(value ?? "all")} value={selectedRoomCode}>
+                  <SelectTrigger id="public-room-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes les salles</SelectItem>
+                    {roomCodes.map((roomCode) => (
+                      <SelectItem key={roomCode} value={roomCode}>
+                        {roomCode}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-            {visiblePins.length === 0 ? (
-              <div className="p-5">
-                <Empty className="items-start text-left">
-                  <EmptyHeader className="items-start text-left">
-                    <EmptyTitle>Aucune salle ne correspond</EmptyTitle>
-                    <EmptyDescription>
-                      Modifiez la recherche pour retrouver une salle.
-                    </EmptyDescription>
+
+              {visibleCompanies.length === 0 ? (
+                <Empty className="border border-dashed border-[var(--s2ee-border)] p-8">
+                  <EmptyHeader>
+                    <EmptyTitle>Aucune entreprise</EmptyTitle>
+                    <EmptyDescription>Aucune entreprise ne correspond a cette selection.</EmptyDescription>
                   </EmptyHeader>
                 </Empty>
-              </div>
-            ) : (
-              <div className="max-h-[60dvh] overflow-y-auto divide-y [divide-color:var(--s2ee-border)]">
-                {visiblePins.map((pin) => (
-                  <button
-                    key={pin.room.id}
-                    className="flex w-full items-center justify-between bg-[var(--s2ee-surface)] px-5 py-4 text-left text-sm [content-visibility:auto]"
-                    type="button"
-                    onClick={() => {
-                      setSelectedRoomId(pin.room.id);
-                      setIsRoomDrawerOpen(false);
-                    }}
-                  >
-                    <div className="space-y-1">
-                      <p className="font-semibold tracking-[-0.04em] text-slate-900">
-                        SALLE {pin.room.code}
-                      </p>
-                      <p className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
-                        {pin.room.companies.length} entreprise
-                        {pin.room.companies.length === 1 ? "" : "s"}
-                      </p>
+              ) : (
+                <div className="grid gap-px border border-[var(--s2ee-border)] bg-[var(--s2ee-border)]">
+                  {visibleCompanies.map((entry) => (
+                    <div className="bg-white p-4" key={entry.company.id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold uppercase tracking-[0.08em] text-slate-900">
+                            {entry.company.name}
+                          </p>
+                          <p className="text-sm text-[color:var(--s2ee-muted-foreground)]">
+                            Salle: {entry.room?.code ?? "Non assignee"}
+                          </p>
+                          {entry.company.logoUrl ? (
+                            <a className="text-sm text-primary underline" href={entry.company.logoUrl} rel="noreferrer" target="_blank">
+                              Logo
+                            </a>
+                          ) : null}
+                        </div>
+                        <Badge variant={entry.arrivalStatus === "arrived" ? "success" : "outline"}>
+                          {entry.arrivalStatus === "arrived" ? "Arrivee" : "En attente"}
+                        </Badge>
+                      </div>
                     </div>
-                    <span className="text-[11px] uppercase tracking-[0.18em] text-primary">
-                      Voir
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </DrawerPanel>
-        </DrawerPopup>
-      </Drawer>
-    </Root>
+                  ))}
+                </div>
+              )}
+            </div>
+          </SheetPanel>
+        </SheetPopup>
+      </Sheet>
+    </main>
   );
 }

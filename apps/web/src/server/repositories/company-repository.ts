@@ -14,6 +14,7 @@ const toCompany = (
   new Company({
     id: companyRow.id as Company["id"],
     name: companyRow.name,
+    logoUrl: companyRow.logoUrl,
     recruiters: recruiterRows.map(
       (row) =>
         new Recruiter({

@@ -9,7 +9,7 @@ import {
   interviewGlobalTag,
 } from "@project/db/schema/interview";
 import { student as studentTable } from "@project/db/schema/student";
-import { room } from "@project/db/schema/venue";
+import { room, zone } from "@project/db/schema/venue";
 import { cvProfileType, globalInterviewTag } from "@project/db/schema/vocabulary";
 import { type GlobalInterviewTag as GlobalInterviewTagModel } from "@project/domain";
 import {
@@ -75,7 +75,8 @@ const makeVenueClient = RpcTest.makeClient(VenueRpcGroup);
 
 const makeVocabularyClient = RpcTest.makeClient(VocabularyRpcGroup);
 
-const asGlobalInterviewTagId = (value: string) => value as GlobalInterviewTagModel["id"];
+const asGlobalInterviewTagId = (value: string) =>
+  value as GlobalInterviewTagModel["id"];
 
 const storageTestInfra = getComposeTestInfraAvailability();
 
@@ -97,6 +98,7 @@ afterEach(async () => {
       featuredCompany,
       company,
       room,
+      zone,
       studentTable,
       session,
       account,
@@ -126,6 +128,7 @@ describeWithStorage("admin rpc", () => {
         featuredCompany,
         company,
         room,
+        zone,
         studentTable,
         session,
         account,
@@ -137,7 +140,7 @@ describeWithStorage("admin rpc", () => {
   it(
     "admin actors can list the global company ledger with recruiter, placement, and arrival context",
     runLayerEffect(AdminTestLive, () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
         const otherCompanyHeaders = yield* provisionSessionHeaders("company");
@@ -146,45 +149,35 @@ describeWithStorage("admin rpc", () => {
         const companyClient = yield* makeCompanyClient;
         const venueClient = yield* makeVenueClient;
 
-        const createdRoom = yield* venueClient
-          .createRoom({ code: "S27" })
-          .pipe(RpcClient.withHeaders(adminHeaders));
-        const acme = yield* companyClient
-          .upsertCompanyProfile({ name: "Acme Systems" })
-          .pipe(RpcClient.withHeaders(companyHeaders));
-        const acmeWithRecruiter = yield* companyClient
-          .addRecruiter({
-            name: "Nora Recruiter",
-          })
-          .pipe(RpcClient.withHeaders(companyHeaders));
-        const globex = yield* companyClient
-          .upsertCompanyProfile({ name: "Globex" })
-          .pipe(RpcClient.withHeaders(otherCompanyHeaders));
+        const acme = yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
+          RpcClient.withHeaders(companyHeaders),
+        );
+        const acmeWithRecruiter = yield* companyClient.addRecruiter({
+          name: "Nora Recruiter",
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const globex = yield* companyClient.upsertCompanyProfile({ name: "Globex" }).pipe(
+          RpcClient.withHeaders(otherCompanyHeaders),
+        );
 
-        yield* venueClient
-          .assignCompanyPlacement({
-            companyId: acme.id,
-            roomId: createdRoom.id,
-            standNumber: 12,
-          })
-          .pipe(RpcClient.withHeaders(adminHeaders));
-        yield* venueClient
-          .markCompanyArrived({ companyId: acme.id })
-          .pipe(RpcClient.withHeaders(checkInHeaders));
+        yield* venueClient.markCompanyArrived({ companyId: acme.id }).pipe(
+          RpcClient.withHeaders(checkInHeaders),
+        );
 
         expect(
-          yield* adminClient.listAdminCompanyLedger().pipe(RpcClient.withHeaders(adminHeaders)),
+          yield* adminClient.listAdminCompanyLedger().pipe(
+            RpcClient.withHeaders(adminHeaders),
+          ),
         ).toEqual([
           {
             company: acmeWithRecruiter,
-            room: createdRoom,
-            standNumber: 12,
+            zone: null,
+            room: null,
             arrivalStatus: "arrived",
           },
           {
             company: globex,
+            zone: null,
             room: null,
-            standNumber: null,
             arrivalStatus: "not-arrived",
           },
         ]);
@@ -195,7 +188,7 @@ describeWithStorage("admin rpc", () => {
   it(
     "admin actors can list the global interview ledger with company, student, CV, and status context across companies",
     runLayerEffect(AdminTestLive, () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const companyHeaders = yield* provisionSessionHeaders("company");
         const otherCompanyHeaders = yield* provisionSessionHeaders("company");
@@ -205,108 +198,80 @@ describeWithStorage("admin rpc", () => {
         const cvProfileClient = yield* makeCvProfileClient;
         const interviewClient = yield* makeInterviewClient;
         const studentClient = yield* makeStudentClient;
-        const venueClient = yield* makeVenueClient;
         const vocabularyClient = yield* makeVocabularyClient;
 
-        yield* vocabularyClient
-          .seedControlledVocabularies({
-            cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
-            globalInterviewTags: [{ id: "curious", label: "Curious" }],
-            studentInstitutions: [],
-            studentMajors: [],
-          })
-          .pipe(RpcClient.withHeaders(adminHeaders));
+        yield* vocabularyClient.seedControlledVocabularies({
+          cvProfileTypes: [{ id: "software-engineering", label: "Software Engineering" }],
+          globalInterviewTags: [{ id: "curious", label: "Curious" }],
+          studentInstitutions: [],
+          studentMajors: [],
+        }).pipe(RpcClient.withHeaders(adminHeaders));
 
-        const createdRoom = yield* venueClient
-          .createRoom({ code: "CP3" })
-          .pipe(RpcClient.withHeaders(adminHeaders));
-        const acme = yield* companyClient
-          .upsertCompanyProfile({ name: "Acme Systems" })
-          .pipe(RpcClient.withHeaders(companyHeaders));
-        const acmeWithRecruiter = yield* companyClient
-          .addRecruiter({
-            name: "Nora Recruiter",
-          })
-          .pipe(RpcClient.withHeaders(companyHeaders));
-        const globex = yield* companyClient
-          .upsertCompanyProfile({ name: "Globex" })
-          .pipe(RpcClient.withHeaders(otherCompanyHeaders));
-        const globexWithRecruiter = yield* companyClient
-          .addRecruiter({
-            name: "Iris Recruiter",
-          })
-          .pipe(RpcClient.withHeaders(otherCompanyHeaders));
+        const acme = yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
+          RpcClient.withHeaders(companyHeaders),
+        );
+        const acmeWithRecruiter = yield* companyClient.addRecruiter({
+          name: "Nora Recruiter",
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const globex = yield* companyClient.upsertCompanyProfile({ name: "Globex" }).pipe(
+          RpcClient.withHeaders(otherCompanyHeaders),
+        );
+        const globexWithRecruiter = yield* companyClient.addRecruiter({
+          name: "Iris Recruiter",
+        }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
 
-        yield* venueClient
-          .assignCompanyPlacement({
-            companyId: acme.id,
-            roomId: createdRoom.id,
-            standNumber: 7,
-          })
-          .pipe(RpcClient.withHeaders(adminHeaders));
-
-        const student = yield* studentClient
-          .upsertStudentOnboarding({
-            firstName: "Ada",
-            lastName: "Lovelace",
-            phoneNumber: "+213 555 12 34",
-            academicYear: "5",
-            major: "Computer Science",
-            institution: "ESI",
-            image: null,
-          })
-          .pipe(RpcClient.withHeaders(studentHeaders));
-        const cv = yield* cvProfileClient
-          .createStudentCvProfile({
-            profileTypeId: "software-engineering",
-            fileName: "ada-backend.pdf",
-            contentType: "application/pdf",
-            contentsBase64: Buffer.from("ada-backend-cv", "utf8").toString("base64"),
-          })
-          .pipe(RpcClient.withHeaders(studentHeaders));
-        const issuedQrIdentity = yield* studentClient
-          .issueStudentQrIdentity()
-          .pipe(RpcClient.withHeaders(studentHeaders));
+        const student = yield* studentClient.upsertStudentOnboarding({
+          firstName: "Ada",
+          lastName: "Lovelace",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+        const cv = yield* cvProfileClient.createStudentCvProfile({
+          profileTypeId: "software-engineering",
+          fileName: "ada-backend.pdf",
+          contentType: "application/pdf",
+          contentsBase64: Buffer.from("ada-backend-cv", "utf8").toString("base64"),
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+        const issuedQrIdentity = yield* studentClient.issueStudentQrIdentity().pipe(
+          RpcClient.withHeaders(studentHeaders),
+        );
         expect(issuedQrIdentity).toContain(student.id);
 
-        const startedCompletedInterview = yield* interviewClient
-          .startInterview({
-            recruiterId: acmeWithRecruiter.recruiters[0]!.id,
-            presentationIdentity: cv.presentationCode,
-          })
-          .pipe(RpcClient.withHeaders(companyHeaders));
-        const completedInterview = yield* interviewClient
-          .completeInterview({
-            interviewId: startedCompletedInterview.id,
-            score: 4.3,
-            globalTagIds: [asGlobalInterviewTagId("curious")],
-            companyTagLabels: ["Backend Ready"],
-            notes: "Strong backend fit.",
-          })
-          .pipe(RpcClient.withHeaders(companyHeaders));
-        const startedCancelledInterview = yield* interviewClient
-          .startInterview({
-            recruiterId: globexWithRecruiter.recruiters[0]!.id,
-            presentationIdentity: cv.presentationCode,
-          })
-          .pipe(RpcClient.withHeaders(otherCompanyHeaders));
-        const cancelledInterview = yield* interviewClient
-          .cancelInterview({
-            interviewId: startedCancelledInterview.id,
-            notes: "Candidate no-show at booth.",
-          })
-          .pipe(RpcClient.withHeaders(otherCompanyHeaders));
+        const startedCompletedInterview = yield* interviewClient.startInterview({
+          recruiterId: acmeWithRecruiter.recruiters[0]!.id,
+          presentationIdentity: cv.presentationCode,
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const completedInterview = yield* interviewClient.completeInterview({
+          interviewId: startedCompletedInterview.id,
+          score: 4.3,
+          globalTagIds: [asGlobalInterviewTagId("curious")],
+          companyTagLabels: ["Backend Ready"],
+          notes: "Strong backend fit.",
+        }).pipe(RpcClient.withHeaders(companyHeaders));
+        const startedCancelledInterview = yield* interviewClient.startInterview({
+          recruiterId: globexWithRecruiter.recruiters[0]!.id,
+          presentationIdentity: cv.presentationCode,
+        }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
+        const cancelledInterview = yield* interviewClient.cancelInterview({
+          interviewId: startedCancelledInterview.id,
+          notes: "Candidate no-show at booth.",
+        }).pipe(RpcClient.withHeaders(otherCompanyHeaders));
 
         expect(
-          yield* adminClient.listAdminInterviewLedger().pipe(RpcClient.withHeaders(adminHeaders)),
+          yield* adminClient.listAdminInterviewLedger().pipe(
+            RpcClient.withHeaders(adminHeaders),
+          ),
         ).toEqual([
           {
             interview: completedInterview,
             company: {
               id: acme.id,
               name: "Acme Systems",
-              room: createdRoom,
-              standNumber: 7,
+              zone: null,
+              room: null,
               arrivalStatus: "not-arrived",
             },
             student,
@@ -317,8 +282,8 @@ describeWithStorage("admin rpc", () => {
             company: {
               id: globex.id,
               name: "Globex",
+              zone: null,
               room: null,
-              standNumber: null,
               arrivalStatus: "not-arrived",
             },
             student,
@@ -330,9 +295,9 @@ describeWithStorage("admin rpc", () => {
   );
 
   it(
-    "admin actors can list user access entries and persist role changes without dropping linked profile context",
+    "admin actors cannot change a role when it would strand a linked profile",
     runLayerEffect(AdminTestLive, () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const studentHeaders = yield* provisionSessionHeaders("student");
         const companyHeaders = yield* provisionSessionHeaders("company");
@@ -340,24 +305,22 @@ describeWithStorage("admin rpc", () => {
         const companyClient = yield* makeCompanyClient;
         const studentClient = yield* makeStudentClient;
 
-        const studentProfile = yield* studentClient
-          .upsertStudentOnboarding({
-            firstName: "Ada",
-            lastName: "Lovelace",
-            phoneNumber: "+213 555 12 34",
-            academicYear: "5",
-            major: "Computer Science",
-            institution: "ESI",
-            image: null,
-          })
-          .pipe(RpcClient.withHeaders(studentHeaders));
-        const companyProfile = yield* companyClient
-          .upsertCompanyProfile({ name: "Acme Systems" })
-          .pipe(RpcClient.withHeaders(companyHeaders));
+        const studentProfile = yield* studentClient.upsertStudentOnboarding({
+          firstName: "Ada",
+          lastName: "Lovelace",
+          phoneNumber: "+213 555 12 34",
+          academicYear: "5",
+          major: "Computer Science",
+          institution: "ESI",
+          image: null,
+        }).pipe(RpcClient.withHeaders(studentHeaders));
+        const companyProfile = yield* companyClient.upsertCompanyProfile({ name: "Acme Systems" }).pipe(
+          RpcClient.withHeaders(companyHeaders),
+        );
 
-        const initialAccessLedger = yield* adminClient
-          .listAdminAccessLedger()
-          .pipe(RpcClient.withHeaders(adminHeaders));
+        const initialAccessLedger = yield* adminClient.listAdminAccessLedger().pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
         const studentEntry = initialAccessLedger.find(
           (entry) => entry.student?.id === studentProfile.id,
         );
@@ -380,25 +343,26 @@ describeWithStorage("admin rpc", () => {
           company: companyProfile,
         });
 
-        const updatedEntry = yield* adminClient
-          .changeAdminUserRole({
+        const rejectedCompanyRoleChange = yield* Effect.exit(
+          adminClient.changeAdminUserRole({
             userId: companyEntry!.user.id,
             role: "check-in",
-          })
-          .pipe(RpcClient.withHeaders(adminHeaders));
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        );
+        const rejectedStudentRoleChange = yield* Effect.exit(
+          adminClient.changeAdminUserRole({
+            userId: studentEntry!.user.id,
+            role: "admin",
+          }).pipe(RpcClient.withHeaders(adminHeaders)),
+        );
 
-        expect(updatedEntry).toMatchObject({
-          user: {
-            id: companyEntry!.user.id,
-            role: "check-in",
-          },
-          student: null,
-          company: companyProfile,
-        });
-
+        expect(rejectedCompanyRoleChange._tag).toBe("Failure");
+        expect(rejectedStudentRoleChange._tag).toBe("Failure");
         expect(
-          yield* adminClient.listAdminAccessLedger().pipe(RpcClient.withHeaders(adminHeaders)),
-        ).toContainEqual(updatedEntry);
+          yield* adminClient.listAdminAccessLedger().pipe(
+            RpcClient.withHeaders(adminHeaders),
+          ),
+        ).toEqual(initialAccessLedger);
       }),
     ),
   );
@@ -406,21 +370,19 @@ describeWithStorage("admin rpc", () => {
   it(
     "admin actors can provision a company account with a linked company record",
     runLayerEffect(AdminTestLive, () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const adminClient = yield* makeAdminClient;
         const actorClient = yield* makeActorClient;
 
-        const createdEntry = yield* adminClient
-          .createAdminCompanyAccount({
-            companyName: "Atlas Systems",
-            email: "atlas@example.com",
-            password: "temporary-password-123",
-          })
-          .pipe(RpcClient.withHeaders(adminHeaders));
-        const currentActorAfterProvisioning = yield* actorClient
-          .currentActor()
-          .pipe(RpcClient.withHeaders(adminHeaders));
+        const createdEntry = yield* adminClient.createAdminCompanyAccount({
+          companyName: "Atlas Systems",
+          email: "atlas@example.com",
+          password: "temporary-password-123",
+        }).pipe(RpcClient.withHeaders(adminHeaders));
+        const currentActorAfterProvisioning = yield* actorClient.currentActor().pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
 
         expect(createdEntry).toMatchObject({
           user: {
@@ -436,12 +398,12 @@ describeWithStorage("admin rpc", () => {
         });
         expect(currentActorAfterProvisioning.role).toBe("admin");
 
-        const accessLedger = yield* adminClient
-          .listAdminAccessLedger()
-          .pipe(RpcClient.withHeaders(adminHeaders));
-        const companyLedger = yield* adminClient
-          .listAdminCompanyLedger()
-          .pipe(RpcClient.withHeaders(adminHeaders));
+        const accessLedger = yield* adminClient.listAdminAccessLedger().pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
+        const companyLedger = yield* adminClient.listAdminCompanyLedger().pipe(
+          RpcClient.withHeaders(adminHeaders),
+        );
         const createdAccessEntry = accessLedger.find(
           (entry) => entry.user.email === "atlas@example.com",
         );
@@ -452,7 +414,6 @@ describeWithStorage("admin rpc", () => {
         expect(createdAccessEntry).toBeDefined();
         expect(createdCompanyEntry).toMatchObject({
           room: null,
-          standNumber: null,
           arrivalStatus: "not-arrived",
           company: {
             name: "Atlas Systems",
@@ -466,25 +427,23 @@ describeWithStorage("admin rpc", () => {
   it(
     "admin actors can publish a landing company with only a public name",
     runLayerEffect(AdminTestLive, () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
         const adminClient = yield* makeAdminClient;
 
-        const savedCompany = yield* adminClient
-          .upsertFeaturedCompany({
-            id: null,
-            name: "Minimal Landing Co",
-            description: "",
-            logoLabel: "",
-            profiles: [],
-            employmentCount: 0,
-            workerInternshipCount: 0,
-            practicalInternshipCount: 0,
-            pfeCount: 0,
-            sortOrder: 0,
-            isPublished: true,
-          })
-          .pipe(RpcClient.withHeaders(adminHeaders));
+        const savedCompany = yield* adminClient.upsertFeaturedCompany({
+          id: null,
+          name: "Minimal Landing Co",
+          description: "",
+          logoLabel: "",
+          profiles: [],
+          employmentCount: 0,
+          workerInternshipCount: 0,
+          practicalInternshipCount: 0,
+          pfeCount: 0,
+          sortOrder: 0,
+          isPublished: true,
+        }).pipe(RpcClient.withHeaders(adminHeaders));
 
         expect(savedCompany).toMatchObject({
           name: "Minimal Landing Co",
@@ -506,56 +465,58 @@ describeWithStorage("admin rpc", () => {
   );
 
   it(
-    "non-admin actors cannot manage access and changed sessions immediately observe their new role",
+    "non-admin actors cannot manage access and profile-less accounts can still change roles",
     runLayerEffect(AdminTestLive, () =>
-      Effect.gen(function* () {
+      Effect.gen(function*() {
         const adminHeaders = yield* provisionSessionHeaders("admin");
-        const companyHeaders = yield* provisionSessionHeaders("company");
+        const checkInHeaders = yield* provisionSessionHeaders("check-in");
         const adminClient = yield* makeAdminClient;
         const actorClient = yield* makeActorClient;
-        const companyActor = yield* actorClient
-          .currentActor()
-          .pipe(RpcClient.withHeaders(companyHeaders));
+        const checkInActor = yield* actorClient.currentActor().pipe(
+          RpcClient.withHeaders(checkInHeaders),
+        );
 
         const deniedListExit = yield* Effect.exit(
-          adminClient.listAdminAccessLedger().pipe(RpcClient.withHeaders(companyHeaders)),
+          adminClient.listAdminAccessLedger().pipe(RpcClient.withHeaders(checkInHeaders)),
         );
         const deniedChangeExit = yield* Effect.exit(
-          adminClient
-            .changeAdminUserRole({
-              userId: companyActor.id,
-              role: "check-in",
-            })
-            .pipe(RpcClient.withHeaders(companyHeaders)),
+          adminClient.changeAdminUserRole({
+            userId: checkInActor.id,
+            role: "admin",
+          }).pipe(RpcClient.withHeaders(checkInHeaders)),
         );
 
         expect(deniedListExit._tag).toBe("Failure");
         expect(deniedChangeExit._tag).toBe("Failure");
 
-        yield* adminClient
-          .changeAdminUserRole({
-            userId: companyActor.id,
-            role: "check-in",
-          })
-          .pipe(RpcClient.withHeaders(adminHeaders));
+        yield* adminClient.changeAdminUserRole({
+          userId: checkInActor.id,
+          role: "admin",
+        }).pipe(RpcClient.withHeaders(adminHeaders));
 
         expect(
-          yield* actorClient.currentActor().pipe(RpcClient.withHeaders(companyHeaders)),
+          yield* actorClient.currentActor().pipe(
+            RpcClient.withHeaders(checkInHeaders),
+          ),
         ).toMatchObject({
-          id: companyActor.id,
-          role: "check-in",
+          id: checkInActor.id,
+          role: "admin",
         });
 
-        const companyAccessExit = yield* Effect.exit(
-          actorClient.requireCompanyAccess().pipe(RpcClient.withHeaders(companyHeaders)),
+        const checkInAccessExit = yield* Effect.exit(
+          actorClient.requireCheckInAccess().pipe(
+            RpcClient.withHeaders(checkInHeaders),
+          ),
         );
 
-        expect(companyAccessExit._tag).toBe("Failure");
+        expect(checkInAccessExit._tag).toBe("Failure");
         expect(
-          yield* actorClient.requireCheckInAccess().pipe(RpcClient.withHeaders(companyHeaders)),
+          yield* actorClient.requireAdminAccess().pipe(
+            RpcClient.withHeaders(checkInHeaders),
+          ),
         ).toMatchObject({
-          id: companyActor.id,
-          role: "check-in",
+          id: checkInActor.id,
+          role: "admin",
         });
       }),
     ),
