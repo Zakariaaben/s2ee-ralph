@@ -29,8 +29,13 @@ This project uses PostgreSQL with Drizzle ORM and MinIO for object storage.
 1. Start the local dependencies:
 
 ```bash
-docker compose up -d
+bun run infra:up
 ```
+
+This starts Postgres, MinIO, and a one-shot MinIO setup container that creates the
+`project-local` bucket. The MinIO API is available at
+`http://127.0.0.1:9000`, and the MinIO console is available at
+`http://127.0.0.1:9001` with `minioadmin` / `minioadmin`.
 
 2. Create your local env file from the example:
 
@@ -118,6 +123,9 @@ project/
 - `bun run test`: Run workspace tests
 - `bun run typecheck`: Run workspace typechecking
 - `bun run dev:web`: Start only the web application
+- `bun run infra:up`: Start local Postgres and MinIO dependencies
+- `bun run infra:down`: Stop and remove local dependency containers
+- `bun run minio:up`: Start only MinIO and create the local bucket
 - `bun run check-types`: Check TypeScript types across all apps
 - `bun run db:push`: Push schema changes to database
 - `bun run db:generate`: Generate database client/types

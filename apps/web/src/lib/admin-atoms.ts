@@ -6,6 +6,7 @@ export const adminWorkspaceReactivity = {
   accessLedger: ["admin", "access-ledger"] as const,
   venueRooms: ["admin", "venue-rooms"] as const,
   publishedVenueMap: ["admin", "published-venue-map"] as const,
+  featuredCompanies: ["admin", "featured-companies"] as const,
   studentInstitutions: ["admin", "student-institutions"] as const,
   studentMajors: ["admin", "student-majors"] as const,
 } as const;
@@ -25,6 +26,10 @@ export const adminWorkspaceAtoms = {
   }),
   publishedVenueMap: AppRpcClient.query("getPublishedVenueMap", undefined, {
     reactivityKeys: adminWorkspaceReactivity.publishedVenueMap,
+    timeToLive: "30 seconds",
+  }),
+  featuredCompanies: AppRpcClient.query("listAdminFeaturedCompanies", undefined, {
+    reactivityKeys: adminWorkspaceReactivity.featuredCompanies,
     timeToLive: "30 seconds",
   }),
   venueRooms: AppRpcClient.query("listVenueRooms", undefined, {
@@ -49,6 +54,8 @@ export const adminWorkspaceAtoms = {
   deleteVenueMapRoomPin: AppRpcClient.mutation("deleteVenueMapRoomPin"),
   changeUserRole: AppRpcClient.mutation("changeAdminUserRole"),
   createCompanyAccount: AppRpcClient.mutation("createAdminCompanyAccount"),
+  upsertFeaturedCompany: AppRpcClient.mutation("upsertFeaturedCompany"),
+  deleteFeaturedCompany: AppRpcClient.mutation("deleteFeaturedCompany"),
   createRoom: AppRpcClient.mutation("createRoom"),
   updateRoom: AppRpcClient.mutation("updateRoom"),
   deleteRoom: AppRpcClient.mutation("deleteRoom"),

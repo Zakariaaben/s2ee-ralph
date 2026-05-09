@@ -10,7 +10,7 @@ export * from "./groups/vocabulary";
 export * from "./groups/venue";
 export * from "./middleware/current-actor";
 
-import { AdminRpcGroup } from "./groups/admin";
+import { AdminRpcGroup, PublicFeaturedCompanyRpcGroup } from "./groups/admin";
 import { ActorRpcGroup } from "./groups/actor";
 import { CompanyRpcGroup } from "./groups/company";
 import { CvProfileRpcGroup } from "./groups/cv-profile";
@@ -23,6 +23,7 @@ import { PublicVenueRpcGroup, VenueRpcGroup } from "./groups/venue";
 export const AppRpc = HealthRpcGroup.merge(AdminRpcGroup)
   .merge(ActorRpcGroup)
   .merge(CompanyRpcGroup)
+  .merge(PublicFeaturedCompanyRpcGroup)
   .merge(CvProfileRpcGroup)
   .merge(InterviewRpcGroup)
   .merge(StudentRpcGroup)

@@ -1,7 +1,7 @@
 import { makeAuth } from "@project/auth";
 import { DB } from "@project/db";
 import { user } from "@project/db/schema/auth";
-import { company, recruiter } from "@project/db/schema/company";
+import { company, featuredCompany, recruiter } from "@project/db/schema/company";
 import { cvProfile } from "@project/db/schema/cv-profile";
 import {
   interview as interviewTable,
@@ -19,6 +19,7 @@ import {
   CompanyInterviewTag,
   CvProfile,
   CvProfileType,
+  FeaturedCompany,
   GlobalInterviewTag,
   Interview,
   Recruiter,
@@ -32,6 +33,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { DateTime, Effect, Layer, ServiceMap } from "effect";
 
 const makeCompanyId = () => crypto.randomUUID();
+const makeFeaturedCompanyId = () => crypto.randomUUID();
 
 const toRoom = (roomRow: typeof room.$inferSelect) =>
   new Room({
@@ -53,6 +55,21 @@ const toCompany = (
           name: row.name,
         }),
     ),
+  });
+
+const toFeaturedCompany = (row: typeof featuredCompany.$inferSelect) =>
+  new FeaturedCompany({
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    logoLabel: row.logoLabel,
+    profiles: [...row.profiles],
+    employmentCount: row.employmentCount,
+    workerInternshipCount: row.workerInternshipCount,
+    practicalInternshipCount: row.practicalInternshipCount,
+    pfeCount: row.pfeCount,
+    sortOrder: row.sortOrder,
+    isPublished: row.isPublished,
   });
 
 const toStudent = (studentRow: typeof student.$inferSelect) =>
@@ -96,9 +113,7 @@ const toCvProfile = (cvProfileRow: typeof cvProfile.$inferSelect) =>
 export class AdminRepository extends ServiceMap.Service<
   AdminRepository,
   {
-    readonly listAccessLedger: () => Effect.Effect<
-      ReadonlyArray<AdminAccessLedgerEntry>
-    >;
+    readonly listAccessLedger: () => Effect.Effect<ReadonlyArray<AdminAccessLedgerEntry>>;
     readonly changeUserRole: (input: {
       readonly userId: string;
       readonly role: UserRoleValue;
@@ -108,22 +123,35 @@ export class AdminRepository extends ServiceMap.Service<
       readonly email: string;
       readonly password: string;
     }) => Effect.Effect<AdminAccessLedgerEntry, Error>;
-    readonly listCompanyLedger: () => Effect.Effect<
-      ReadonlyArray<AdminCompanyLedgerEntry>
-    >;
-    readonly listInterviewLedger: () => Effect.Effect<
-      ReadonlyArray<AdminInterviewLedgerEntry>
-    >;
+    readonly listCompanyLedger: () => Effect.Effect<ReadonlyArray<AdminCompanyLedgerEntry>>;
+    readonly listInterviewLedger: () => Effect.Effect<ReadonlyArray<AdminInterviewLedgerEntry>>;
+    readonly listFeaturedCompanies: (input?: {
+      readonly publishedOnly?: boolean;
+    }) => Effect.Effect<ReadonlyArray<FeaturedCompany>>;
+    readonly upsertFeaturedCompany: (input: {
+      readonly id: string | null;
+      readonly name: string;
+      readonly description: string;
+      readonly logoLabel: string;
+      readonly profiles: ReadonlyArray<string>;
+      readonly employmentCount: number;
+      readonly workerInternshipCount: number;
+      readonly practicalInternshipCount: number;
+      readonly pfeCount: number;
+      readonly sortOrder: number;
+      readonly isPublished: boolean;
+    }) => Effect.Effect<FeaturedCompany>;
+    readonly deleteFeaturedCompany: (input: { readonly id: string }) => Effect.Effect<boolean>;
   }
 >()("@project/web/AdminRepository") {
   static readonly layer = Layer.effect(
     AdminRepository,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const db = yield* DB;
       const auth = yield* makeAuth;
 
       const getRecruitersByCompanyIds = (companyIds: ReadonlyArray<string>) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           if (companyIds.length === 0) {
             return new Map<string, Array<typeof recruiter.$inferSelect>>();
           }
@@ -135,10 +163,7 @@ export class AdminRepository extends ServiceMap.Service<
               .where(inArray(recruiter.companyId, companyIds))
               .orderBy(asc(recruiter.companyId), asc(recruiter.createdAt), asc(recruiter.id)),
           );
-          const recruitersByCompanyId = new Map<
-            string,
-            Array<typeof recruiter.$inferSelect>
-          >();
+          const recruitersByCompanyId = new Map<string, Array<typeof recruiter.$inferSelect>>();
 
           for (const recruiterRow of recruiterRows) {
             const current = recruitersByCompanyId.get(recruiterRow.companyId) ?? [];
@@ -151,7 +176,7 @@ export class AdminRepository extends ServiceMap.Service<
         });
 
       const loadAccessEntryByUserId = (userId: string) =>
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const accessRows = yield* Effect.promise(() =>
             db
               .select({
@@ -180,16 +205,87 @@ export class AdminRepository extends ServiceMap.Service<
             student: accessRow.studentRow ? toStudent(accessRow.studentRow) : null,
             company: accessRow.companyRow
               ? toCompany(
-                accessRow.companyRow,
-                recruitersByCompanyId.get(accessRow.companyRow.id) ?? [],
-              )
+                  accessRow.companyRow,
+                  recruitersByCompanyId.get(accessRow.companyRow.id) ?? [],
+                )
               : null,
           });
         });
 
       return AdminRepository.of({
+        listFeaturedCompanies: (input) =>
+          Effect.gen(function* () {
+            const publishedOnly = input?.publishedOnly ?? false;
+            const rows = yield* Effect.promise(() => {
+              const query = db.select().from(featuredCompany).$dynamic();
+
+              if (publishedOnly) {
+                query.where(eq(featuredCompany.isPublished, true));
+              }
+
+              return query.orderBy(asc(featuredCompany.sortOrder), asc(featuredCompany.name));
+            });
+
+            return rows.map(toFeaturedCompany);
+          }),
+        upsertFeaturedCompany: (input) =>
+          Effect.gen(function* () {
+            const id = input.id ?? makeFeaturedCompanyId();
+            const rows = yield* Effect.promise(() =>
+              db
+                .insert(featuredCompany)
+                .values({
+                  id,
+                  name: input.name,
+                  description: input.description,
+                  logoLabel: input.logoLabel,
+                  profiles: input.profiles,
+                  employmentCount: input.employmentCount,
+                  workerInternshipCount: input.workerInternshipCount,
+                  practicalInternshipCount: input.practicalInternshipCount,
+                  pfeCount: input.pfeCount,
+                  sortOrder: input.sortOrder,
+                  isPublished: input.isPublished,
+                })
+                .onConflictDoUpdate({
+                  target: featuredCompany.id,
+                  set: {
+                    name: input.name,
+                    description: input.description,
+                    logoLabel: input.logoLabel,
+                    profiles: input.profiles,
+                    employmentCount: input.employmentCount,
+                    workerInternshipCount: input.workerInternshipCount,
+                    practicalInternshipCount: input.practicalInternshipCount,
+                    pfeCount: input.pfeCount,
+                    sortOrder: input.sortOrder,
+                    isPublished: input.isPublished,
+                    updatedAt: new Date(),
+                  },
+                })
+                .returning(),
+            );
+            const saved = rows[0];
+
+            if (!saved) {
+              return yield* Effect.die("Featured company upsert did not return a row");
+            }
+
+            return toFeaturedCompany(saved);
+          }),
+        deleteFeaturedCompany: ({ id }) =>
+          Effect.gen(function* () {
+            const rows = yield* Effect.promise(() =>
+              db
+                .delete(featuredCompany)
+                .where(eq(featuredCompany.id, id))
+                .returning({ id: featuredCompany.id }),
+            );
+
+            return rows.length > 0;
+          }),
         listAccessLedger: () =>
-          Effect.gen(function*() {
+          Effect.gen(function* () {
             const accessRows = yield* Effect.promise(() =>
               db
                 .select({
@@ -223,7 +319,7 @@ export class AdminRepository extends ServiceMap.Service<
             );
           }),
         changeUserRole: ({ userId, role }) =>
-          Effect.gen(function*() {
+          Effect.gen(function* () {
             const updatedUsers = yield* Effect.promise(() =>
               db
                 .update(user)
@@ -296,13 +392,11 @@ export class AdminRepository extends ServiceMap.Service<
                 await db.delete(user).where(eq(user.id, createdUserId));
               }
 
-              throw error instanceof Error
-                ? error
-                : new Error("Company account creation failed.");
+              throw error instanceof Error ? error : new Error("Company account creation failed.");
             }
           }),
         listCompanyLedger: () =>
-          Effect.gen(function*() {
+          Effect.gen(function* () {
             const companyRows = yield* Effect.promise(() =>
               db
                 .select({
@@ -325,10 +419,7 @@ export class AdminRepository extends ServiceMap.Service<
             return companyRows.map(
               ({ companyRow, roomRow }) =>
                 new AdminCompanyLedgerEntry({
-                  company: toCompany(
-                    companyRow,
-                    recruitersByCompanyId.get(companyRow.id) ?? [],
-                  ),
+                  company: toCompany(companyRow, recruitersByCompanyId.get(companyRow.id) ?? []),
                   room: roomRow ? toRoom(roomRow) : null,
                   standNumber: companyRow.standNumber,
                   arrivalStatus: companyRow.arrivalStatus,
@@ -336,7 +427,7 @@ export class AdminRepository extends ServiceMap.Service<
             );
           }),
         listInterviewLedger: () =>
-          Effect.gen(function*() {
+          Effect.gen(function* () {
             const interviewRows = yield* Effect.promise(() =>
               db
                 .select({

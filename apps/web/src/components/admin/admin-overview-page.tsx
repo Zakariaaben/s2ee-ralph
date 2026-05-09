@@ -10,22 +10,14 @@ import {
   AdminLoadingPanel,
   AdminPageHeader,
 } from "@/components/admin/admin-page-primitives";
-import {
-  useAdminOverviewData,
-  useRefreshAdminOverview,
-} from "@/lib/admin-page-data";
+import { useAdminOverviewData, useRefreshAdminOverview } from "@/lib/admin-page-data";
 import { adminSections } from "@/lib/admin-routing";
 import { Link } from "@tanstack/react-router";
 
 export function AdminOverviewPage(): React.ReactElement {
   const refreshOverview = useRefreshAdminOverview();
-  const {
-    accessLedgerState,
-    companyLedgerState,
-    interviewLedgerState,
-    recentInterviews,
-    summary,
-  } = useAdminOverviewData();
+  const { accessLedgerState, companyLedgerState, interviewLedgerState, recentInterviews, summary } =
+    useAdminOverviewData();
 
   const errors = [
     companyLedgerState.kind === "failure" ? companyLedgerState.message : null,
@@ -126,15 +118,19 @@ export function AdminOverviewPage(): React.ReactElement {
             {adminSections
               .filter((section) => section.id !== "overview")
               .map((section) => (
-                <Link className="bg-white p-5 transition-colors hover:bg-[var(--s2ee-surface-soft)]" key={section.id} to={section.to}>
+                <Link
+                  className="bg-white p-5 transition-colors hover:bg-[var(--s2ee-surface-soft)]"
+                  key={section.id}
+                  to={section.to}
+                >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-4">
-                        <p className="text-sm font-bold uppercase tracking-[0.1em] text-slate-900">
-                          {section.label}
-                        </p>
-                        <span className="text-[11px] uppercase tracking-[0.18em] text-primary">
-                          Ouvrir
-                        </span>
+                      <p className="text-sm font-bold uppercase tracking-[0.1em] text-slate-900">
+                        {section.label}
+                      </p>
+                      <span className="text-[11px] uppercase tracking-[0.18em] text-primary">
+                        Ouvrir
+                      </span>
                     </div>
                     <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
                       {section.description}
@@ -149,7 +145,6 @@ export function AdminOverviewPage(): React.ReactElement {
           <div className="border border-[var(--s2ee-border)] bg-white p-5">
             <div className="space-y-2 border-b border-[var(--s2ee-border)] pb-4">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                Role coverage
                 Repartition des roles
               </p>
             </div>
@@ -160,7 +155,10 @@ export function AdminOverviewPage(): React.ReactElement {
                 ["Accueil", summary.checkInCount],
                 ["Etudiant", summary.studentCount],
               ].map(([label, value]) => (
-                <div className="flex items-center justify-between border-b border-[var(--s2ee-border)] pb-3 last:border-b-0 last:pb-0" key={label}>
+                <div
+                  className="flex items-center justify-between border-b border-[var(--s2ee-border)] pb-3 last:border-b-0 last:pb-0"
+                  key={label}
+                >
                   <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
                     {label}
                   </span>
@@ -195,7 +193,10 @@ export function AdminOverviewPage(): React.ReactElement {
               {interviewLedgerState.kind === "success" && recentInterviews.length > 0 ? (
                 <div className="space-y-3">
                   {recentInterviews.map((entry) => (
-                    <div className="border-b border-[var(--s2ee-border)] pb-3 last:border-b-0 last:pb-0" key={entry.interview.id}>
+                    <div
+                      className="border-b border-[var(--s2ee-border)] pb-3 last:border-b-0 last:pb-0"
+                      key={entry.interview.id}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="space-y-1">
                           <p className="text-sm font-bold uppercase tracking-[0.08em] text-slate-900">
@@ -230,9 +231,7 @@ export function AdminOverviewPage(): React.ReactElement {
         <Alert>
           <BadgeCheckIcon className="size-4" />
           <AlertTitle>Organisation des espaces admin</AlertTitle>
-          <AlertDescription>
-            Chaque espace dispose maintenant de sa propre page.
-          </AlertDescription>
+          <AlertDescription>Chaque espace dispose maintenant de sa propre page.</AlertDescription>
         </Alert>
       ) : null}
     </div>

@@ -5,6 +5,7 @@ import {
   CvProfileRpcGroup,
   HealthRpcGroup,
   InterviewRpcGroup,
+  PublicFeaturedCompanyRpcGroup,
   PublicVenueRpcGroup,
   StudentRpcGroup,
   VenueRpcGroup,
@@ -21,7 +22,7 @@ import { StudentService } from "../services/student-service";
 import { VenueService } from "../services/venue-service";
 import { VocabularyService } from "../services/vocabulary-service";
 import { HealthService } from "../services/health-service";
-import { makeAdminRpcHandlers } from "./handlers/admin";
+import { makeAdminRpcHandlers, makePublicFeaturedCompanyRpcHandlers } from "./handlers/admin";
 import { makeActorRpcHandlers } from "./handlers/actor";
 import { makeCompanyRpcHandlers } from "./handlers/company";
 import { makeCvProfileRpcHandlers } from "./handlers/cv-profile";
@@ -36,47 +37,48 @@ export const AdminRpcLive = AdminRpcGroup.toLayer(makeAdminRpcHandlers).pipe(
   Layer.provide(AdminService.layer),
 );
 
-export const HealthRpcLive = HealthRpcGroup.toLayer(
-  makeHealthRpcHandlers,
-).pipe(
-  Layer.provide(
-    HealthService.layer.pipe(Layer.provide(InfrastructureProbeRepository.layer)),
-  ),
+export const PublicFeaturedCompanyRpcLive = PublicFeaturedCompanyRpcGroup.toLayer(
+  makePublicFeaturedCompanyRpcHandlers,
+).pipe(Layer.provide(AdminService.layer));
+
+export const HealthRpcLive = HealthRpcGroup.toLayer(makeHealthRpcHandlers).pipe(
+  Layer.provide(HealthService.layer.pipe(Layer.provide(InfrastructureProbeRepository.layer))),
 );
 
 export const ActorRpcLive = ActorRpcGroup.toLayer(makeActorRpcHandlers);
 
-export const CompanyRpcLive = CompanyRpcGroup.toLayer(
-  makeCompanyRpcHandlers,
-).pipe(Layer.provide(CompanyService.layer));
+export const CompanyRpcLive = CompanyRpcGroup.toLayer(makeCompanyRpcHandlers).pipe(
+  Layer.provide(CompanyService.layer),
+);
 
-export const CvProfileRpcLive = CvProfileRpcGroup.toLayer(
-  makeCvProfileRpcHandlers,
-).pipe(Layer.provide(CvProfileService.layer));
+export const CvProfileRpcLive = CvProfileRpcGroup.toLayer(makeCvProfileRpcHandlers).pipe(
+  Layer.provide(CvProfileService.layer),
+);
 
-export const InterviewRpcLive = InterviewRpcGroup.toLayer(
-  makeInterviewRpcHandlers,
-).pipe(Layer.provide(InterviewService.layer));
+export const InterviewRpcLive = InterviewRpcGroup.toLayer(makeInterviewRpcHandlers).pipe(
+  Layer.provide(InterviewService.layer),
+);
 
-export const StudentRpcLive = StudentRpcGroup.toLayer(
-  makeStudentRpcHandlers,
-).pipe(Layer.provide(StudentService.layer));
+export const StudentRpcLive = StudentRpcGroup.toLayer(makeStudentRpcHandlers).pipe(
+  Layer.provide(StudentService.layer),
+);
 
-export const VenueRpcLive = VenueRpcGroup.toLayer(
-  makeVenueRpcHandlers,
-).pipe(Layer.provide(VenueService.layer));
+export const VenueRpcLive = VenueRpcGroup.toLayer(makeVenueRpcHandlers).pipe(
+  Layer.provide(VenueService.layer),
+);
 
-export const PublicVenueRpcLive = PublicVenueRpcGroup.toLayer(
-  makePublicVenueRpcHandlers,
-).pipe(Layer.provide(VenueService.layer));
+export const PublicVenueRpcLive = PublicVenueRpcGroup.toLayer(makePublicVenueRpcHandlers).pipe(
+  Layer.provide(VenueService.layer),
+);
 
-export const VocabularyRpcLive = VocabularyRpcGroup.toLayer(
-  makeVocabularyRpcHandlers,
-).pipe(Layer.provide(VocabularyService.layer));
+export const VocabularyRpcLive = VocabularyRpcGroup.toLayer(makeVocabularyRpcHandlers).pipe(
+  Layer.provide(VocabularyService.layer),
+);
 
 export const AppRpcLive = Layer.mergeAll(
   HealthRpcLive,
   AdminRpcLive,
+  PublicFeaturedCompanyRpcLive,
   ActorRpcLive,
   CompanyRpcLive,
   CvProfileRpcLive,

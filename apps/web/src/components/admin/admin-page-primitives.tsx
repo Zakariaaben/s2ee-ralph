@@ -1,6 +1,12 @@
 "use client";
 
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@project/ui/components/empty";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@project/ui/components/empty";
 import { Skeleton } from "@project/ui/components/skeleton";
 import { CircleAlertIcon } from "lucide-react";
 import type React from "react";
@@ -14,9 +20,7 @@ export function AdminPageHeader(props: {
   return (
     <header className="grid gap-5 border-b border-[var(--s2ee-border)] pb-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
       <div className="space-y-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-          {props.eyebrow}
-        </p>
+        <p className="s2ee-index-label">{props.eyebrow}</p>
         <div className="space-y-2">
           <h1 className="text-3xl font-black tracking-[-0.08em] text-slate-900 sm:text-4xl">
             {props.title}
@@ -28,7 +32,9 @@ export function AdminPageHeader(props: {
           ) : null}
         </div>
       </div>
-      {props.actions ? <div className="flex flex-wrap items-center gap-3">{props.actions}</div> : null}
+      {props.actions ? (
+        <div className="flex flex-wrap items-center gap-3">{props.actions}</div>
+      ) : null}
     </header>
   );
 }

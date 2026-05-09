@@ -14,9 +14,9 @@ export function AdminShell(): React.ReactElement {
 
   return (
     <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-[color:var(--s2ee-soft-foreground)]">
-      <div className="mx-auto max-w-[1680px] px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1680px] px-3 py-3 sm:px-5 lg:px-6">
         <div className="border border-[var(--s2ee-border)] bg-[var(--s2ee-surface)]">
-          <header className="flex flex-col gap-5 border-b border-[var(--s2ee-border)] px-5 py-5 lg:flex-row lg:items-start lg:justify-between lg:px-8 lg:py-6">
+          <header className="flex flex-col gap-5 border-b border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-5 py-5 lg:flex-row lg:items-start lg:justify-between lg:px-8 lg:py-6">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary">
@@ -34,6 +34,7 @@ export function AdminShell(): React.ReactElement {
             </div>
 
             <Button
+              className="s2ee-command rounded-none"
               disabled={isSigningOut}
               onClick={() => {
                 void signOut();
@@ -46,7 +47,7 @@ export function AdminShell(): React.ReactElement {
             </Button>
           </header>
 
-          <div className="grid lg:grid-cols-[260px_minmax(0,1fr)]">
+          <div className="grid lg:grid-cols-[272px_minmax(0,1fr)]">
             <aside className="border-b border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] lg:border-r lg:border-b-0">
               <nav aria-label="Sections admin" className="grid lg:min-h-[calc(100dvh-180px)]">
                 {adminSections.map((section) => {
@@ -60,14 +61,16 @@ export function AdminShell(): React.ReactElement {
                       className={[
                         "border-b border-[var(--s2ee-border)] px-5 py-4 text-left transition-colors last:border-b-0 lg:px-6",
                         isActive
-                          ? "bg-white text-primary"
+                          ? "bg-white text-primary shadow-[inset_3px_0_0_var(--color-primary)]"
                           : "text-[color:var(--s2ee-soft-foreground)] hover:bg-white",
                       ].join(" ")}
                       key={section.id}
                       to={section.to}
                     >
                       <div className="space-y-1">
-                        <p className="text-sm font-bold uppercase tracking-[0.08em]">{section.label}</p>
+                        <p className="text-sm font-bold uppercase tracking-[0.08em]">
+                          {section.label}
+                        </p>
                         {section.description.length > 0 ? (
                           <p className="text-[11px] leading-5 text-[color:var(--s2ee-muted-foreground)]">
                             {section.description}

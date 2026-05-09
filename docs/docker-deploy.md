@@ -1,6 +1,6 @@
 # Docker Deployment
 
-This compose file runs only the TanStack Start web app. The image is expected to be built by GitHub Actions and pushed to GHCR. Postgres and MinIO are expected to exist outside this compose file.
+The compose file starts local Postgres and MinIO by default. The TanStack Start web app is available under the `deploy` profile. The image is expected to be built by GitHub Actions and pushed to GHCR. For deployment, Postgres and MinIO are expected to exist outside this compose file.
 
 ## Required External Services
 
@@ -12,7 +12,7 @@ Copy `.env.docker.example` to `.env` on the VPS and fill in real values.
 ## Pull
 
 ```sh
-docker compose pull web
+docker compose --profile deploy pull web
 ```
 
 If the GHCR package is private, log in first with a GitHub token that has `read:packages`:
@@ -24,13 +24,13 @@ echo "YOUR_GITHUB_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --passwo
 ## Run
 
 ```sh
-docker compose up -d web
+docker compose --profile deploy up -d web
 ```
 
 Run database migrations against your external Postgres before or during deploy:
 
 ```sh
-docker compose run --rm web bun run db:migrate
+docker compose --profile deploy run --rm web bun run db:migrate
 ```
 
 ## Stop And Remove Container

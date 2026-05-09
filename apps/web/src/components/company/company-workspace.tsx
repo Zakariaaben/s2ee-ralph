@@ -13,18 +13,10 @@ import {
   DrawerPopup,
   DrawerTitle,
 } from "@project/ui/components/drawer";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@project/ui/components/input-otp";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@project/ui/components/input-otp";
 import { Input } from "@project/ui/components/input";
 import { Skeleton } from "@project/ui/components/skeleton";
-import type {
-  Company,
-  PresentedCvProfilePreview,
-  Recruiter,
-} from "@project/domain";
+import type { Company, PresentedCvProfilePreview, Recruiter } from "@project/domain";
 import QrScanner from "qr-scanner";
 import qrScannerWorkerUrl from "qr-scanner/qr-scanner-worker.min.js?url";
 import { useNavigate } from "@tanstack/react-router";
@@ -39,14 +31,7 @@ import {
   Settings2Icon,
 } from "lucide-react";
 import type React from "react";
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
 import { companyWorkspaceAtoms, companyWorkspaceReactivity } from "@/lib/company-atoms";
@@ -144,8 +129,7 @@ export function CompanyWorkspace(): React.ReactElement {
 
   useEffect(() => {
     void authClient.getSession().then((session) => {
-      const name =
-        (session.data as SessionLike | null)?.user?.name?.trim() ?? "";
+      const name = (session.data as SessionLike | null)?.user?.name?.trim() ?? "";
 
       if (name.length > 0) {
         setAccountName(name);
@@ -159,7 +143,7 @@ export function CompanyWorkspace(): React.ReactElement {
     }
 
     setPreferredRecruiterId(
-      (window.localStorage.getItem(companyPreferredRecruiterStorageKey) as Recruiter["id"] | null),
+      window.localStorage.getItem(companyPreferredRecruiterStorageKey) as Recruiter["id"] | null,
     );
 
     if (window.localStorage.getItem(companySetupDrawerStorageKey) !== "dismissed") {
@@ -250,10 +234,10 @@ export function CompanyWorkspace(): React.ReactElement {
 
     try {
       const existingRecruiterIds = new Set(recruiters.map((recruiter) => recruiter.id));
-      const updatedCompany = await addRecruiter({
+      const updatedCompany = (await addRecruiter({
         payload: { name },
         reactivityKeys: companyWorkspaceReactivity.currentCompany,
-      }) as Company;
+      })) as Company;
       const addedRecruiter =
         updatedCompany.recruiters.find((recruiter) => !existingRecruiterIds.has(recruiter.id)) ??
         updatedCompany.recruiters.find((recruiter) => recruiter.name === name) ??
@@ -379,7 +363,7 @@ export function CompanyWorkspace(): React.ReactElement {
   };
 
   return (
-    <main className="min-h-[100dvh] bg-white font-mono text-[color:var(--s2ee-soft-foreground)]">
+    <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-[color:var(--s2ee-soft-foreground)]">
       <Drawer onOpenChange={handleDrawerOpenChange} open={isDrawerOpen} position="right">
         <DrawerPopup className="rounded-none" position="right" showCloseButton>
           <DrawerHeader className="border-b border-[var(--s2ee-border)]">
@@ -445,7 +429,11 @@ export function CompanyWorkspace(): React.ReactElement {
                     ) : (
                       recruiters.map((recruiter) =>
                         editingRecruiterId === recruiter.id ? (
-                          <form className="grid gap-2 border border-[var(--s2ee-border)] p-3" key={recruiter.id} onSubmit={submitRecruiterRename}>
+                          <form
+                            className="grid gap-2 border border-[var(--s2ee-border)] p-3"
+                            key={recruiter.id}
+                            onSubmit={submitRecruiterRename}
+                          >
                             <Input
                               className="rounded-none border-0 border-b border-[var(--s2ee-border)] bg-transparent px-0 py-2 text-sm shadow-none focus-visible:ring-0"
                               onChange={(event) => {
@@ -472,14 +460,18 @@ export function CompanyWorkspace(): React.ReactElement {
                             </div>
                           </form>
                         ) : (
-                          <div className="grid gap-3 border border-[var(--s2ee-border)] p-3" key={recruiter.id}>
+                          <div
+                            className="grid gap-3 border border-[var(--s2ee-border)] p-3"
+                            key={recruiter.id}
+                          >
                             <div className="flex items-start justify-between gap-3">
                               <div className="space-y-1">
                                 <p className="text-sm font-bold uppercase tracking-[0.16em]">
                                   {recruiter.name}
                                 </p>
                                 <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                                  {resolvePreferredRecruiter(recruiters, preferredRecruiterId)?.id === recruiter.id
+                                  {resolvePreferredRecruiter(recruiters, preferredRecruiterId)
+                                    ?.id === recruiter.id
                                     ? "Par defaut sur cet appareil"
                                     : "Disponible"}
                                 </p>
@@ -501,7 +493,9 @@ export function CompanyWorkspace(): React.ReactElement {
                               type="button"
                               variant={selectedRecruiterId === recruiter.id ? "default" : "outline"}
                             >
-                              {selectedRecruiterId === recruiter.id ? "Selectionne" : "Selectionner"}
+                              {selectedRecruiterId === recruiter.id
+                                ? "Selectionne"
+                                : "Selectionner"}
                             </Button>
                           </div>
                         ),
@@ -535,7 +529,9 @@ export function CompanyWorkspace(): React.ReactElement {
             )}
 
             <div className="grid gap-2 border-t border-[var(--s2ee-border)] pt-6">
-              <DrawerClose render={<Button className="rounded-none justify-start" variant="outline" />}>
+              <DrawerClose
+                render={<Button className="rounded-none justify-start" variant="outline" />}
+              >
                 <Settings2Icon />
                 Fermer
               </DrawerClose>
@@ -569,11 +565,21 @@ export function CompanyWorkspace(): React.ReactElement {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button className="rounded-none" onClick={() => setIsDrawerOpen(true)} type="button" variant="outline">
+            <Button
+              className="rounded-none"
+              onClick={() => setIsDrawerOpen(true)}
+              type="button"
+              variant="outline"
+            >
               <MenuIcon />
               Menu
             </Button>
-            <Button className="rounded-none" onClick={() => navigate({ to: "/company/interviews" })} type="button" variant="outline">
+            <Button
+              className="rounded-none"
+              onClick={() => navigate({ to: "/company/interviews" })}
+              type="button"
+              variant="outline"
+            >
               <ArrowRightIcon />
               Entretiens
             </Button>
@@ -615,20 +621,23 @@ export function CompanyWorkspace(): React.ReactElement {
           />
         ) : null}
 
-        <div className={[
-          "grid border border-[var(--s2ee-border)] lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]",
-          needsRecruiterOnboarding ? "pointer-events-none opacity-35" : "",
-        ].join(" ")}>
+        <div
+          className={[
+            "grid border border-[var(--s2ee-border)] bg-white lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]",
+            needsRecruiterOnboarding ? "pointer-events-none opacity-35" : "",
+          ].join(" ")}
+        >
           <section className="grid gap-4 border-b border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 lg:border-r lg:border-b-0">
             <div className="space-y-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
                 Camera
               </p>
             </div>
-            <CameraScanner
-              onDetected={applyDetectedCode}
-            />
-            <form className="grid gap-3 border-t border-[var(--s2ee-border)] pt-4" onSubmit={submitCandidateCode}>
+            <CameraScanner onDetected={applyDetectedCode} />
+            <form
+              className="grid gap-3 border-t border-[var(--s2ee-border)] pt-4"
+              onSubmit={submitCandidateCode}
+            >
               <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
                 Code manuel
               </label>
@@ -643,19 +652,42 @@ export function CompanyWorkspace(): React.ReactElement {
                 value={codeDraft}
               >
                 <InputOTPGroup size="lg">
-                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={0} />
-                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={1} />
-                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={2} />
-                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={3} />
-                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={4} />
-                  <InputOTPSlot className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10" index={5} />
+                  <InputOTPSlot
+                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
+                    index={0}
+                  />
+                  <InputOTPSlot
+                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
+                    index={1}
+                  />
+                  <InputOTPSlot
+                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
+                    index={2}
+                  />
+                  <InputOTPSlot
+                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
+                    index={3}
+                  />
+                  <InputOTPSlot
+                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
+                    index={4}
+                  />
+                  <InputOTPSlot
+                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
+                    index={5}
+                  />
                 </InputOTPGroup>
               </InputOTP>
               <div className="grid gap-2 sm:grid-cols-2">
                 <Button className="rounded-none" type="submit">
                   Rechercher
                 </Button>
-                <Button className="rounded-none" onClick={resetCandidate} type="button" variant="outline">
+                <Button
+                  className="rounded-none"
+                  onClick={resetCandidate}
+                  type="button"
+                  variant="outline"
+                >
                   Effacer
                 </Button>
               </div>
@@ -723,7 +755,7 @@ function RecruiterOnboardingPanel(props: {
   };
 
   return (
-    <section className="grid gap-6 border border-primary bg-[var(--s2ee-surface)] p-5 shadow-[0_24px_80px_rgba(15,23,42,0.12)] sm:p-7 lg:grid-cols-[minmax(0,0.85fr)_minmax(320px,1fr)]">
+    <section className="grid gap-6 border border-primary bg-[var(--s2ee-surface)] p-5 shadow-[inset_4px_0_0_var(--color-primary)] sm:p-7 lg:grid-cols-[minmax(0,0.85fr)_minmax(320px,1fr)]">
       <div className="space-y-5">
         <div className="space-y-3">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
@@ -733,7 +765,9 @@ function RecruiterOnboardingPanel(props: {
             Ajoutez les personnes qui conduiront les entretiens.
           </h2>
           <p className="max-w-2xl text-sm leading-7 text-[color:var(--s2ee-muted-foreground)]">
-            {props.companyLabel} doit avoir au moins un recruteur avant de scanner un candidat. Vous pouvez en ajouter plusieurs maintenant, puis choisir celui utilise par defaut sur cet appareil.
+            {props.companyLabel} doit avoir au moins un recruteur avant de scanner un candidat. Vous
+            pouvez en ajouter plusieurs maintenant, puis choisir celui utilise par defaut sur cet
+            appareil.
           </p>
         </div>
 
@@ -809,7 +843,9 @@ function CameraScanner(props: {
 }): React.ReactElement {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerRef = useRef<QrScanner | null>(null);
-  const [cameraState, setCameraState] = useState<"idle" | "ready" | "error" | "unsupported">("idle");
+  const [cameraState, setCameraState] = useState<"idle" | "ready" | "error" | "unsupported">(
+    "idle",
+  );
   const [cameraMessage, setCameraMessage] = useState<string | null>(null);
 
   const stopCamera = useCallback(() => {
@@ -838,18 +874,22 @@ function CameraScanner(props: {
         return;
       }
 
-      const scanner = new QrScanner(video, (result) => {
-        stopCamera();
-        props.onDetected(result.data);
-      }, {
-        highlightCodeOutline: false,
-        highlightScanRegion: false,
-        onDecodeError: () => {
-          // ignore transient decode misses while scanning
+      const scanner = new QrScanner(
+        video,
+        (result) => {
+          stopCamera();
+          props.onDetected(result.data);
         },
-        preferredCamera: "environment",
-        returnDetailedScanResult: true,
-      });
+        {
+          highlightCodeOutline: false,
+          highlightScanRegion: false,
+          onDecodeError: () => {
+            // ignore transient decode misses while scanning
+          },
+          preferredCamera: "environment",
+          returnDetailedScanResult: true,
+        },
+      );
       scannerRef.current = scanner;
       await scanner.start();
 
@@ -874,12 +914,7 @@ function CameraScanner(props: {
   return (
     <div className="grid gap-3">
       <div className="relative overflow-hidden border border-[var(--s2ee-border)] bg-white">
-        <video
-          className="aspect-[4/3] w-full object-cover"
-          muted
-          playsInline
-          ref={videoRef}
-        />
+        <video className="aspect-[4/3] w-full object-cover" muted playsInline ref={videoRef} />
         {cameraState !== "ready" ? (
           <div className="absolute inset-0 grid place-items-center bg-[color:rgba(255,255,255,0.92)] p-6 text-center">
             <div className="grid gap-3">
@@ -895,7 +930,12 @@ function CameraScanner(props: {
           <div className="pointer-events-none absolute inset-x-6 inset-y-6 border border-primary/80" />
         )}
       </div>
-      <Button className="rounded-none" onClick={() => void startCamera()} type="button" variant="outline">
+      <Button
+        className="rounded-none"
+        onClick={() => void startCamera()}
+        type="button"
+        variant="outline"
+      >
         <QrCodeIcon />
         Relancer la camera
       </Button>
@@ -915,10 +955,7 @@ function CandidatePreviewPanel(props: {
     [props.presentationCode],
   );
   const previewResult = useAtomValue(previewAtom);
-  const previewState = toAsyncPanelState(
-    previewResult,
-    "Ce code ne correspond a aucun CV.",
-  );
+  const previewState = toAsyncPanelState(previewResult, "Ce code ne correspond a aucun CV.");
 
   if (previewState.kind === "loading") {
     return (
@@ -932,9 +969,9 @@ function CandidatePreviewPanel(props: {
 
   if (previewState.kind === "failure") {
     return (
-        <Alert variant="error">
-          <CircleAlertIcon className="size-4" />
-          <AlertTitle>Candidat indisponible</AlertTitle>
+      <Alert variant="error">
+        <CircleAlertIcon className="size-4" />
+        <AlertTitle>Candidat indisponible</AlertTitle>
         <AlertDescription>{previewState.message}</AlertDescription>
       </Alert>
     );
@@ -954,9 +991,7 @@ function CandidatePreviewPanel(props: {
         <Alert variant="warning">
           <CircleAlertIcon className="size-4" />
           <AlertTitle>Configuration incomplete</AlertTitle>
-          <AlertDescription>
-            Ce compte doit d'abord etre relie a une entreprise.
-          </AlertDescription>
+          <AlertDescription>Ce compte doit d'abord etre relie a une entreprise.</AlertDescription>
         </Alert>
       ) : null}
 
@@ -974,7 +1009,10 @@ function CandidatePreviewPanel(props: {
         <div className="grid gap-3 border-t border-[var(--s2ee-border)] pt-4 text-sm">
           <DetailRow label="Code" value={candidatePreview.cvProfile.presentationCode} />
           <DetailRow label="CV" value={candidatePreview.cvProfile.fileName} />
-          <DetailRow label="Recruteur" value={props.selectedRecruiter?.name ?? "Selectionnez un recruteur"} />
+          <DetailRow
+            label="Recruteur"
+            value={props.selectedRecruiter?.name ?? "Selectionnez un recruteur"}
+          />
         </div>
       </div>
 
@@ -992,16 +1030,15 @@ function CandidatePreviewPanel(props: {
   );
 }
 
-function DetailRow(props: {
-  readonly label: string;
-  readonly value: string;
-}): React.ReactElement {
+function DetailRow(props: { readonly label: string; readonly value: string }): React.ReactElement {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--s2ee-border)] pb-2 last:border-b-0 last:pb-0">
       <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
         {props.label}
       </span>
-      <span className="text-right text-sm font-bold uppercase tracking-[0.14em]">{props.value}</span>
+      <span className="text-right text-sm font-bold uppercase tracking-[0.14em]">
+        {props.value}
+      </span>
     </div>
   );
 }
@@ -1009,7 +1046,9 @@ function DetailRow(props: {
 function EmptyPreview(props: { readonly message: string }): React.ReactElement {
   return (
     <div className="grid min-h-[320px] place-items-center border border-dashed border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 text-center">
-      <p className="max-w-sm text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">{props.message}</p>
+      <p className="max-w-sm text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+        {props.message}
+      </p>
     </div>
   );
 }

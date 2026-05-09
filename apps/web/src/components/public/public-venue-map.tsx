@@ -40,10 +40,16 @@ import {
   sortPublishedVenueMapPins,
 } from "@/lib/public-venue-map";
 
-const toImageSource = (input: { readonly contentType: string; readonly contentsBase64: string }): string =>
-  `data:${input.contentType};base64,${input.contentsBase64}`;
+type PublicVenueMapProps = {
+  readonly embedded?: boolean;
+};
 
-export function PublicVenueMap(): React.ReactElement {
+const toImageSource = (input: {
+  readonly contentType: string;
+  readonly contentsBase64: string;
+}): string => `data:${input.contentType};base64,${input.contentsBase64}`;
+
+export function PublicVenueMap({ embedded = false }: PublicVenueMapProps = {}): React.ReactElement {
   const publishedVenueMapResult = useAtomValue(publicVenueMapAtom);
   const refreshPublishedVenueMap = useAtomRefresh(publicVenueMapAtom);
   const [selectedRoomId, setSelectedRoomId] = useState<VenueRoom["id"] | null>(null);
@@ -57,43 +63,67 @@ export function PublicVenueMap(): React.ReactElement {
   const visiblePins = filterPublishedVenueMapPins(sortedPins, deferredSearchQuery);
 
   useEffect(() => {
-    setSelectedRoomId((current) =>
-      resolvePublishedVenueMapSelection(visiblePins, current),
-    );
+    setSelectedRoomId((current) => resolvePublishedVenueMapSelection(visiblePins, current));
   }, [visiblePins]);
 
-  const selectedPin = visiblePins.find((pin) => pin.room.id === selectedRoomId) ?? visiblePins[0] ?? null;
+  const selectedPin =
+    visiblePins.find((pin) => pin.room.id === selectedRoomId) ?? visiblePins[0] ?? null;
+  const Root = embedded ? "section" : "main";
+  const contentMinHeightClass = embedded ? "min-h-[42rem]" : "min-h-[calc(100dvh-57px)]";
 
   return (
-    <main className="min-h-[100dvh] overflow-x-hidden bg-[var(--s2ee-canvas)] font-mono text-foreground">
-      <header className="flex items-center justify-between border-b bg-[var(--s2ee-surface-soft)] px-6 py-3 [border-color:var(--s2ee-border)]">
-        <div className="flex items-center gap-8">
-          <span className="text-sm font-bold tracking-[-0.04em] text-primary">S2EE 16e edition</span>
-          <nav className="hidden items-center gap-6 md:flex">
-            <a className="text-sm uppercase tracking-[0.12em] text-[color:var(--s2ee-muted-foreground)] transition-colors hover:text-primary" href="/">
-              Accueil
-            </a>
-            <a className="border-b-2 border-primary pb-1 text-sm font-bold uppercase tracking-[0.12em] text-primary" href="/map">
-              Plan du salon
-            </a>
-            <a className="text-sm uppercase tracking-[0.12em] text-[color:var(--s2ee-muted-foreground)] transition-colors hover:text-primary" href="/auth/sign-in">
-              Se connecter
-            </a>
-          </nav>
-        </div>
-        <div className="hidden items-center gap-3 md:flex">
-          <div className="flex items-center gap-2 border bg-[var(--s2ee-surface)] px-3 py-1 [border-color:var(--s2ee-border)]">
-            <span className="size-2 rounded-full bg-primary" />
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-900">
-              Plan public
+    <Root
+      className={[
+        "overflow-x-hidden bg-[var(--s2ee-canvas)] font-mono text-foreground",
+        embedded ? "min-h-0 rounded-[var(--s2ee-panel-radius)]" : "min-h-[100dvh]",
+      ].join(" ")}
+    >
+      {embedded ? null : (
+        <header className="flex items-center justify-between border-b bg-[var(--s2ee-surface-soft)] px-6 py-3 [border-color:var(--s2ee-border)]">
+          <div className="flex items-center gap-8">
+            <span className="text-sm font-bold tracking-[-0.04em] text-primary">
+              S2EE 17e edition
             </span>
+            <nav className="hidden items-center gap-6 md:flex">
+              <a
+                className="text-sm uppercase tracking-[0.12em] text-[color:var(--s2ee-muted-foreground)] transition-colors hover:text-primary"
+                href="/"
+              >
+                Accueil
+              </a>
+              <a
+                className="border-b-2 border-primary pb-1 text-sm font-bold uppercase tracking-[0.12em] text-primary"
+                href="/map"
+              >
+                Plan du salon
+              </a>
+              <a
+                className="text-sm uppercase tracking-[0.12em] text-[color:var(--s2ee-muted-foreground)] transition-colors hover:text-primary"
+                href="/auth/sign-in"
+              >
+                Se connecter
+              </a>
+            </nav>
           </div>
-        </div>
-      </header>
+          <div className="hidden items-center gap-3 md:flex">
+            <div className="flex items-center gap-2 border bg-[var(--s2ee-surface)] px-3 py-1 [border-color:var(--s2ee-border)]">
+              <span className="size-2 rounded-full bg-primary" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-900">
+                Plan public
+              </span>
+            </div>
+          </div>
+        </header>
+      )}
 
       <div className="mx-auto flex max-w-[1600px] flex-col">
         {AsyncResult.isInitial(publishedVenueMapResult) ? (
-          <section className="grid min-h-[calc(100dvh-57px)] gap-0 md:grid-cols-[16rem_minmax(0,1fr)_22rem]">
+          <section
+            className={[
+              "grid gap-0 md:grid-cols-[16rem_minmax(0,1fr)_22rem]",
+              contentMinHeightClass,
+            ].join(" ")}
+          >
             <div className="hidden space-y-2 border-r bg-[var(--s2ee-surface-soft)] p-6 [border-color:var(--s2ee-border)] md:block">
               <Skeleton className="h-6 rounded-none" />
               <Skeleton className="h-14 rounded-none" />
@@ -145,7 +175,12 @@ export function PublicVenueMap(): React.ReactElement {
             </div>
           </div>
         ) : (
-          <section className="grid min-h-[calc(100dvh-57px)] gap-0 md:grid-cols-[16rem_minmax(0,1fr)_24rem]">
+          <section
+            className={[
+              "grid gap-0 md:grid-cols-[16rem_minmax(0,1fr)_24rem]",
+              contentMinHeightClass,
+            ].join(" ")}
+          >
             <aside className="hidden border-r bg-[var(--s2ee-surface-soft)] [border-color:var(--s2ee-border)] md:block">
               <div className="border-b px-6 py-6 [border-color:var(--s2ee-border)]">
                 <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
@@ -199,7 +234,9 @@ export function PublicVenueMap(): React.ReactElement {
                         type="button"
                         onClick={() => setSelectedRoomId(pin.room.id)}
                       >
-                        <span className="font-semibold tracking-[-0.04em]">SALLE {pin.room.code}</span>
+                        <span className="font-semibold tracking-[-0.04em]">
+                          SALLE {pin.room.code}
+                        </span>
                         <span className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
                           {pin.room.companies.length}
                         </span>
@@ -223,7 +260,12 @@ export function PublicVenueMap(): React.ReactElement {
                     {selectedPin == null ? "Choisir une salle" : `Salle ${selectedPin.room.code}`}
                   </span>
                 </Button>
-                <Button className="rounded-none" onClick={() => refreshPublishedVenueMap()} type="button" variant="outline">
+                <Button
+                  className="rounded-none"
+                  onClick={() => refreshPublishedVenueMap()}
+                  type="button"
+                  variant="outline"
+                >
                   <RefreshCwIcon className="size-4" />
                   Actualiser
                 </Button>
@@ -272,7 +314,7 @@ export function PublicVenueMap(): React.ReactElement {
                 </button>
               </div>
 
-              <div className="relative min-h-[24rem] overflow-hidden border bg-[var(--s2ee-surface)] shadow-sm md:min-h-[28rem] [border-color:var(--s2ee-border)]">
+              <div className="relative min-h-[24rem] overflow-hidden border bg-[var(--s2ee-surface)] md:min-h-[28rem] [border-color:var(--s2ee-border)]">
                 <img
                   alt="Plan du salon"
                   className="block h-full w-full object-contain p-4 md:p-6"
@@ -300,7 +342,7 @@ export function PublicVenueMap(): React.ReactElement {
                         className={[
                           "flex min-h-11 min-w-11 items-center justify-center border px-3 text-[11px] font-semibold uppercase tracking-[0.16em]",
                           isSelected
-                            ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_6px_color-mix(in_srgb,var(--color-primary)_14%,transparent)]"
+                            ? "border-primary bg-primary text-primary-foreground outline outline-4 outline-[color:color-mix(in_srgb,var(--color-primary)_14%,transparent)]"
                             : "border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] text-foreground",
                         ].join(" ")}
                       >
@@ -342,10 +384,15 @@ export function PublicVenueMap(): React.ReactElement {
                 ) : (
                   <div className="space-y-3">
                     {selectedPin.room.companies.map((company) => (
-                      <div key={company.companyId} className="border bg-[var(--s2ee-surface)] px-4 py-4 [border-color:var(--s2ee-border)]">
+                      <div
+                        key={company.companyId}
+                        className="border bg-[var(--s2ee-surface)] px-4 py-4 [border-color:var(--s2ee-border)]"
+                      >
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0 space-y-1">
-                            <p className="text-sm font-semibold tracking-[-0.04em]">{company.companyName}</p>
+                            <p className="text-sm font-semibold tracking-[-0.04em]">
+                              {company.companyName}
+                            </p>
                             <p className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
                               Stand {company.standNumber}
                             </p>
@@ -426,7 +473,8 @@ export function PublicVenueMap(): React.ReactElement {
                         SALLE {pin.room.code}
                       </p>
                       <p className="text-[11px] uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
-                        {pin.room.companies.length} entreprise{pin.room.companies.length === 1 ? "" : "s"}
+                        {pin.room.companies.length} entreprise
+                        {pin.room.companies.length === 1 ? "" : "s"}
                       </p>
                     </div>
                     <span className="text-[11px] uppercase tracking-[0.18em] text-primary">
@@ -439,6 +487,6 @@ export function PublicVenueMap(): React.ReactElement {
           </DrawerPanel>
         </DrawerPopup>
       </Drawer>
-    </main>
+    </Root>
   );
 }

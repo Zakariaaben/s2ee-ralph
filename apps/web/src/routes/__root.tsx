@@ -1,9 +1,4 @@
-import {
-  HeadContent,
-  Outlet,
-  Scripts,
-  createRootRouteWithContext,
-} from "@tanstack/react-router";
+import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 
 import appCss from "../index.css?url";
 
@@ -20,7 +15,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "App",
+        title: "S2EE | Salon de l'emploi ESI",
+      },
+      {
+        name: "description",
+        content: "S2EE public map, authentication, and event operations workspace.",
       },
     ],
     links: [
@@ -36,11 +35,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 
 function RootDocument() {
   return (
-    <html lang="en">
+    <html lang="fr">
       <head>
         <HeadContent />
       </head>
-      <body className="min-h-screen bg-background text-foreground">
+      <body className="min-h-[100dvh] bg-[var(--s2ee-canvas)] text-foreground">
         <Outlet />
         <Scripts />
       </body>
