@@ -356,25 +356,25 @@ export function SignUpForm(): React.ReactElement {
           </div>
         ) : null}
 
-        <button
-          className="s2ee-command flex min-h-14 w-full items-center justify-center gap-3 rounded-[8px] bg-primary px-6 py-4 text-sm text-primary-foreground hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
-          disabled={isSigningUp}
-          type="submit"
-        >
-          <span>{isSigningUp ? "Creation..." : "Creer un compte etudiant"}</span>
-          <ArrowRightIcon className="size-4" />
-        </button>
-      </form>
+        <div className="space-y-3">
+          <button
+            className="s2ee-command flex min-h-14 w-full items-center justify-center gap-3 rounded-[8px] bg-primary px-6 py-4 text-sm text-primary-foreground hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={isSigningUp}
+            type="submit"
+          >
+            <span>{isSigningUp ? "Creation..." : "Creer un compte etudiant"}</span>
+            <ArrowRightIcon className="size-4" />
+          </button>
 
-      <div className="border-t pt-5 [border-color:var(--s2ee-border)]">
-        <a
-          className="s2ee-command inline-flex min-h-13 w-full items-center justify-center gap-3 rounded-[8px] border bg-[var(--s2ee-surface-soft)] px-6 py-4 text-center text-xs text-[color:var(--s2ee-soft-foreground)] hover:bg-white [border-color:color-mix(in_srgb,var(--s2ee-border)_70%,transparent)]"
-          href="/auth/sign-in"
-        >
-          <LogInIcon className="size-4" />
-          Se connecter
-        </a>
-      </div>
+          <a
+            className="s2ee-command inline-flex min-h-13 w-full items-center justify-center gap-3 rounded-[8px] border bg-[var(--s2ee-surface-soft)] px-6 py-4 text-center text-xs text-[color:var(--s2ee-soft-foreground)] hover:bg-white [border-color:color-mix(in_srgb,var(--s2ee-border)_70%,transparent)]"
+            href="/auth/sign-in"
+          >
+            <LogInIcon className="size-4" />
+            Se connecter
+          </a>
+        </div>
+      </form>
     </div>
   );
 }
