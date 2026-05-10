@@ -100,6 +100,7 @@ export function StudentWorkspace(): React.ReactElement {
   const [isSavingOnboarding, setIsSavingOnboarding] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isUploadingCv, setIsUploadingCv] = useState(false);
+  const [isDraggingCv, setIsDraggingCv] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileInputResetKey, setFileInputResetKey] = useState(0);
   const [deletingProfileId, setDeletingProfileId] = useState<string | null>(null);
@@ -279,6 +280,25 @@ export function StudentWorkspace(): React.ReactElement {
     }
   };
 
+  const selectCvFile = (file: File | null) => {
+    setSelectedFile(file);
+
+    if (file != null) {
+      setWorkspaceError(null);
+    }
+  };
+
+  const handleCvDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    setIsDraggingCv(false);
+
+    if (isUploadingCv || isStudentLoading) {
+      return;
+    }
+
+    selectCvFile(event.dataTransfer.files.item(0));
+  };
+
   const submitCvUpload = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -451,16 +471,24 @@ export function StudentWorkspace(): React.ReactElement {
                   <form className="grid gap-5" onSubmit={submitCvUpload}>
                     <div className="space-y-3">
                       <label
-                        className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
+                        className={[
+                          "group flex cursor-pointer flex-col items-center justify-center gap-4 rounded-[8px] border border-dashed bg-[var(--s2ee-surface)] px-4 py-6 text-center transition-colors",
+                          isDraggingCv
+                            ? "border-primary bg-[color:color-mix(in_srgb,var(--primary)_12%,var(--s2ee-surface))]"
+                            : "[border-color:color-mix(in_srgb,var(--s2ee-border)_78%,transparent)] hover:border-primary hover:bg-white",
+                        ].join(" ")}
                         htmlFor="student-cv-upload"
+                        onDragLeave={() => setIsDraggingCv(false)}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          setIsDraggingCv(true);
+                        }}
+                        onDrop={handleCvDrop}
                       >
-                        Fichier
-                      </label>
-                      <div className="rounded-[8px] border bg-[var(--s2ee-surface)] p-4 [border-color:var(--s2ee-border)]">
                         <Input
                           key={fileInputResetKey}
                           accept={acceptedCvFileTypes}
-                          className="rounded-[8px] border-0 bg-transparent px-0 py-0 shadow-none before:shadow-none"
+                          className="sr-only"
                           disabled={isStudentLoading || isUploadingCv}
                           id="student-cv-upload"
                           nativeInput
@@ -468,26 +496,40 @@ export function StudentWorkspace(): React.ReactElement {
                           unstyled
                           onChange={(event) => {
                             const { files } = event.currentTarget;
-                            setSelectedFile(files?.[0] ?? null);
+                            selectCvFile(files?.[0] ?? null);
                           }}
                         />
-                      </div>
-                      <p className="text-[11px] leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                        PDF uniquement.
-                      </p>
-                    </div>
 
-                    {selectedFile ? (
-                      <div className="rounded-[8px] border bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_65%,white)] p-4 [border-color:var(--s2ee-border)]">
-                        <p className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]">
-                          {selectedFile.name}
-                        </p>
-                        <p className="mt-1 text-xs text-[color:var(--s2ee-muted-foreground)]">
-                          {selectedFile.type || "application/octet-stream"} -{" "}
-                          {formatFileSize(selectedFile.size)}
-                        </p>
-                      </div>
-                    ) : null}
+                        <span className="flex size-12 items-center justify-center rounded-full bg-[color:color-mix(in_srgb,var(--s2ee-identity-navy)_12%,white)] text-[color:var(--s2ee-identity-navy)] transition-transform group-hover:-translate-y-0.5">
+                          <UploadIcon className="size-5" />
+                        </span>
+
+                        {selectedFile ? (
+                          <span className="grid w-full gap-2">
+                            <span className="flex items-center justify-center gap-2 text-sm font-black text-[color:var(--s2ee-soft-foreground)]">
+                              <FileTextIcon className="size-4 shrink-0 text-[color:var(--s2ee-identity-navy)]" />
+                              <span className="truncate">{selectedFile.name}</span>
+                            </span>
+                            <span className="text-xs text-[color:var(--s2ee-muted-foreground)]">
+                              {selectedFile.type || "application/octet-stream"} -{" "}
+                              {formatFileSize(selectedFile.size)}
+                            </span>
+                            <span className="text-xs font-bold text-primary">
+                              Cliquez pour choisir un autre PDF
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="grid gap-2">
+                            <span className="text-sm font-black text-[color:var(--s2ee-soft-foreground)]">
+                              Deposez votre CV ici
+                            </span>
+                            <span className="text-xs leading-5 text-[color:var(--s2ee-muted-foreground)]">
+                              ou cliquez pour choisir un fichier PDF
+                            </span>
+                          </span>
+                        )}
+                      </label>
+                    </div>
 
                     <Button
                       className="min-h-14 rounded-[8px] px-6 py-4 text-sm"
