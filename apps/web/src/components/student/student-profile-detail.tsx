@@ -7,17 +7,13 @@ import { Button } from "@project/ui/components/button";
 import { Skeleton } from "@project/ui/components/skeleton";
 import type { CvProfile } from "@project/domain";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  ArrowLeftIcon,
-  CircleAlertIcon,
-  ExternalLinkIcon,
-  LogOutIcon,
-  Trash2Icon,
-} from "lucide-react";
+import { ArrowLeftIcon, CircleAlertIcon, ExternalLinkIcon, Trash2Icon } from "lucide-react";
 import QRCode from "qrcode";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 
+import { StudentNavbar } from "@/components/student/student-navbar";
+import { useDelayedVisibility } from "@/components/student/use-delayed-visibility";
 import { authClient } from "@/lib/auth-client";
 import { studentWorkspaceAtoms, studentWorkspaceReactivity } from "@/lib/student-atoms";
 import { findStudentCvProfileById, formatFileSize } from "@/lib/student-workspace";
@@ -31,10 +27,6 @@ const toAsyncPanelState = <Value,>(
   result: AsyncResult.AsyncResult<Value, unknown>,
   failureMessage: string,
 ): AsyncPanelState<Value> => {
-  if (AsyncResult.isInitial(result)) {
-    return { kind: "loading" };
-  }
-
   if (AsyncResult.isFailure(result)) {
     return {
       kind: "failure",
@@ -42,10 +34,14 @@ const toAsyncPanelState = <Value,>(
     };
   }
 
-  return {
-    kind: "success",
-    value: result.value,
-  };
+  if (AsyncResult.isSuccess(result)) {
+    return {
+      kind: "success",
+      value: result.value,
+    };
+  }
+
+  return { kind: "loading" };
 };
 
 const formatMutationError = (error: unknown): string => {
@@ -101,6 +97,7 @@ export function StudentProfileDetail({
 
   const cvProfiles = cvProfilesState.kind === "success" ? cvProfilesState.value : [];
   const selectedProfile = findStudentCvProfileById(cvProfiles, profileId);
+  const showCvProfilesFailure = useDelayedVisibility(cvProfilesState.kind === "failure");
 
   useEffect(() => {
     if (selectedProfile == null) {
@@ -158,12 +155,23 @@ export function StudentProfileDetail({
     }
   };
 
-  if (cvProfilesState.kind === "loading") {
+  if (
+    cvProfilesState.kind === "loading" ||
+    (cvProfilesState.kind === "failure" && !showCvProfilesFailure)
+  ) {
     return (
-      <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-foreground">
-        <div className="mx-auto grid max-w-[1400px] gap-4 px-5 py-6 sm:px-8 sm:py-8">
-          <Skeleton className="h-14 rounded-[8px]" />
-          <Skeleton className="h-[32rem] rounded-[8px]" />
+      <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] text-foreground">
+        <StudentNavbar isSigningOut={isSigningOut} onSignOut={handleSignOut} />
+        <div className="mx-auto grid max-w-5xl gap-5 px-4 py-6 sm:px-6 sm:py-8">
+          <div className="space-y-3">
+            <Skeleton className="h-8 w-40 rounded-[8px]" />
+            <Skeleton className="h-12 w-full max-w-lg rounded-[8px]" />
+            <Skeleton className="h-5 w-full max-w-md rounded-[8px]" />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <Skeleton className="h-[28rem] rounded-[8px]" />
+            <Skeleton className="h-[20rem] rounded-[8px]" />
+          </div>
         </div>
       </main>
     );
@@ -171,16 +179,17 @@ export function StudentProfileDetail({
 
   if (cvProfilesState.kind === "failure") {
     return (
-      <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-foreground">
-        <div className="mx-auto grid max-w-[1100px] gap-4 px-5 py-6 sm:px-8 sm:py-8">
-          <Button
-            className="w-fit rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
-            variant="outline"
+      <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] text-foreground">
+        <StudentNavbar isSigningOut={isSigningOut} onSignOut={handleSignOut} />
+        <div className="mx-auto grid max-w-5xl gap-4 px-4 py-6 sm:px-6 sm:py-8">
+          <button
+            className="inline-flex w-fit cursor-pointer items-center gap-2 text-lg font-black text-primary transition-all hover:-translate-x-0.5 hover:text-[color:color-mix(in_srgb,var(--primary)_82%,white)] sm:text-2xl"
+            type="button"
             onClick={() => navigate({ to: "/student" })}
           >
             <ArrowLeftIcon />
             Retour aux CV
-          </Button>
+          </button>
           <Alert variant="error">
             <CircleAlertIcon className="size-4" />
             <AlertTitle>CV indisponible</AlertTitle>
@@ -193,16 +202,17 @@ export function StudentProfileDetail({
 
   if (selectedProfile == null) {
     return (
-      <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-foreground">
-        <div className="mx-auto grid max-w-[1100px] gap-4 px-5 py-6 sm:px-8 sm:py-8">
-          <Button
-            className="w-fit rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
-            variant="outline"
+      <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] text-foreground">
+        <StudentNavbar isSigningOut={isSigningOut} onSignOut={handleSignOut} />
+        <div className="mx-auto grid max-w-5xl gap-4 px-4 py-6 sm:px-6 sm:py-8">
+          <button
+            className="inline-flex w-fit cursor-pointer items-center gap-2 text-lg font-black text-primary transition-all hover:-translate-x-0.5 hover:text-[color:color-mix(in_srgb,var(--primary)_82%,white)] sm:text-2xl"
+            type="button"
             onClick={() => navigate({ to: "/student" })}
           >
             <ArrowLeftIcon />
             Retour aux CV
-          </Button>
+          </button>
           <Alert variant="warning">
             <CircleAlertIcon className="size-4" />
             <AlertTitle>CV introuvable</AlertTitle>
@@ -215,39 +225,12 @@ export function StudentProfileDetail({
 
   return (
     <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] text-foreground">
-      <header className="border-b bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_88%,black)] px-5 py-3 sm:px-8 [border-color:var(--s2ee-border)]">
-        <nav className="mx-auto flex max-w-[1400px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <a className="flex items-center gap-3" href="/">
-            <img alt="ETIC Club" className="h-8 w-auto" src="/etic.svg" />
-            <span className="h-6 w-px bg-[var(--s2ee-border)]" />
-            <img alt="S2EE" className="h-7 w-auto" src="/s2ee.svg" />
-          </a>
-          <div className="grid gap-3 sm:flex sm:flex-wrap">
-            <Button
-              className="w-full rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white sm:w-auto"
-              variant="outline"
-              onClick={() => navigate({ to: "/student" })}
-            >
-              <ArrowLeftIcon />
-              Retour aux CV
-            </Button>
-            <Button
-              className="w-full rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white sm:w-auto"
-              loading={isSigningOut}
-              variant="outline"
-              onClick={handleSignOut}
-            >
-              Se deconnecter
-              <LogOutIcon />
-            </Button>
-          </div>
-        </nav>
-      </header>
+      <StudentNavbar isSigningOut={isSigningOut} onSignOut={handleSignOut} />
 
-      <div className="mx-auto max-w-[1400px] px-5 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="mb-6 space-y-2">
           <button
-            className="mb-5 inline-flex items-center gap-3 text-2xl font-black text-primary transition-colors hover:text-[color:color-mix(in_srgb,var(--primary)_82%,white)] sm:text-4xl"
+            className="mb-4 inline-flex cursor-pointer items-center gap-2 text-lg font-black text-primary transition-all hover:-translate-x-0.5 hover:text-[color:color-mix(in_srgb,var(--primary)_82%,white)] sm:text-2xl"
             type="button"
             onClick={() => navigate({ to: "/student" })}
           >

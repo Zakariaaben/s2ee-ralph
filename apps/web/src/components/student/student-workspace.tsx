@@ -12,8 +12,6 @@ import {
   ArrowRightIcon,
   CircleAlertIcon,
   FileTextIcon,
-  LogOutIcon,
-  RefreshCwIcon,
   SettingsIcon,
   Trash2Icon,
   UploadIcon,
@@ -21,7 +19,9 @@ import {
 import type React from "react";
 import { startTransition, useEffect, useState } from "react";
 
+import { StudentNavbar } from "@/components/student/student-navbar";
 import { StudentOnboardingDialog } from "@/components/student/student-onboarding-dialog";
+import { useDelayedVisibility } from "@/components/student/use-delayed-visibility";
 import { authClient } from "@/lib/auth-client";
 import { studentWorkspaceAtoms, studentWorkspaceReactivity } from "@/lib/student-atoms";
 import { formatFileSize, hasStudentOnboardingProfile } from "@/lib/student-workspace";
@@ -37,10 +37,6 @@ const toAsyncPanelState = <Value,>(
   result: AsyncResult.AsyncResult<Value, unknown>,
   failureMessage: string,
 ): AsyncPanelState<Value> => {
-  if (AsyncResult.isInitial(result)) {
-    return { kind: "loading" };
-  }
-
   if (AsyncResult.isFailure(result)) {
     return {
       kind: "failure",
@@ -48,10 +44,14 @@ const toAsyncPanelState = <Value,>(
     };
   }
 
-  return {
-    kind: "success",
-    value: result.value,
-  };
+  if (AsyncResult.isSuccess(result)) {
+    return {
+      kind: "success",
+      value: result.value,
+    };
+  }
+
+  return { kind: "loading" };
 };
 
 const formatMutationError = (error: unknown): string => {
@@ -118,7 +118,6 @@ export function StudentWorkspace(): React.ReactElement {
   const studentInstitutionsResult = useAtomValue(studentWorkspaceAtoms.studentInstitutions);
   const studentMajorsResult = useAtomValue(studentWorkspaceAtoms.studentMajors);
   const refreshCurrentStudent = useAtomRefresh(studentWorkspaceAtoms.currentStudent);
-  const refreshCvs = useAtomRefresh(studentWorkspaceAtoms.cvProfiles);
 
   const saveStudent = useAtomSet(studentWorkspaceAtoms.upsertStudentOnboarding, {
     mode: "promise",
@@ -153,6 +152,10 @@ export function StudentWorkspace(): React.ReactElement {
     studentState.kind === "success" && !hasStudentOnboardingProfile(student);
   const studentDisplayName =
     [student?.firstName, student?.lastName].filter(Boolean).join(" ").trim() || "Espace etudiant";
+  const isStudentLoading = studentState.kind === "loading";
+  const isCvListLoading = cvsState.kind === "loading";
+  const showStudentFailure = useDelayedVisibility(studentState.kind === "failure");
+  const showCvListFailure = useDelayedVisibility(cvsState.kind === "failure");
 
   useEffect(() => {
     if (studentState.kind !== "success") {
@@ -172,11 +175,6 @@ export function StudentWorkspace(): React.ReactElement {
       setHasCompletedOnboarding(false);
     }
   }, [onboardingRequired]);
-
-  const refreshWorkspace = () => {
-    refreshCurrentStudent();
-    refreshCvs();
-  };
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -356,46 +354,20 @@ export function StudentWorkspace(): React.ReactElement {
 
   return (
     <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] text-foreground">
-      <header className="border-b bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_88%,black)] px-5 py-3 sm:px-8 [border-color:var(--s2ee-border)]">
-        <nav className="mx-auto flex max-w-[1500px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <a className="flex items-center gap-3" href="/">
-            <img alt="ETIC Club" className="h-8 w-auto" src="/etic.svg" />
-            <span className="h-6 w-px bg-[var(--s2ee-border)]" />
-            <img alt="S2EE" className="h-7 w-auto" src="/s2ee.svg" />
-          </a>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
-              variant="outline"
-              onClick={refreshWorkspace}
-            >
-              Actualiser
-              <RefreshCwIcon />
-            </Button>
-            <Button
-              className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
-              loading={isSigningOut}
-              variant="outline"
-              onClick={handleSignOut}
-            >
-              Se deconnecter
-              <LogOutIcon />
-            </Button>
-          </div>
-        </nav>
-      </header>
+      <StudentNavbar isSigningOut={isSigningOut} onSignOut={handleSignOut} />
 
-      <div className="mx-auto max-w-[1500px] px-5 py-6 sm:px-8 sm:py-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <div className="mb-6 space-y-2">
-          <h1 className="text-4xl font-black leading-none text-[color:var(--s2ee-soft-foreground)] sm:text-5xl">
-            {studentDisplayName}
-          </h1>
+          {isStudentLoading ? (
+            <Skeleton className="h-12 w-full max-w-sm rounded-[8px] sm:h-14" />
+          ) : (
+            <h1 className="text-4xl font-black leading-none text-[color:var(--s2ee-soft-foreground)] sm:text-5xl">
+              {studentDisplayName}
+            </h1>
+          )}
         </div>
 
-        {workspaceError ||
-        workspaceMessage ||
-        studentState.kind === "failure" ||
-        cvsState.kind === "failure" ? (
+        {workspaceError || workspaceMessage || showStudentFailure || showCvListFailure ? (
           <div className="mb-6 grid gap-3">
             {workspaceError ? (
               <Alert variant="error">
@@ -410,14 +382,14 @@ export function StudentWorkspace(): React.ReactElement {
                 <AlertDescription>{workspaceMessage}</AlertDescription>
               </Alert>
             ) : null}
-            {studentState.kind === "failure" ? (
+            {studentState.kind === "failure" && showStudentFailure ? (
               <Alert variant="warning">
                 <CircleAlertIcon className="size-4" />
                 <AlertTitle>Informations indisponibles</AlertTitle>
                 <AlertDescription>{studentState.message}</AlertDescription>
               </Alert>
             ) : null}
-            {cvsState.kind === "failure" ? (
+            {cvsState.kind === "failure" && showCvListFailure ? (
               <Alert variant="warning">
                 <CircleAlertIcon className="size-4" />
                 <AlertTitle>Liste des CV indisponible</AlertTitle>
@@ -452,85 +424,108 @@ export function StudentWorkspace(): React.ReactElement {
         {activeTab === "cvs" ? (
           <section className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
             <div className="rounded-[8px] border bg-[var(--s2ee-surface-soft)] p-5 sm:p-6 [border-color:var(--s2ee-border)]">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-primary">Ajout</p>
-                  <h2 className="text-2xl font-black text-[color:var(--s2ee-soft-foreground)]">
-                    Ajouter un CV
-                  </h2>
-                  <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                    Importez un PDF, puis ouvrez sa page de presentation pour obtenir le QR code.
-                  </p>
-                </div>
-
-                <form className="grid gap-5" onSubmit={submitCvUpload}>
+              {isStudentLoading ? (
+                <div className="space-y-6">
                   <div className="space-y-3">
-                    <label
-                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
-                      htmlFor="student-cv-upload"
-                    >
-                      Fichier
-                    </label>
-                    <div className="rounded-[8px] border bg-[var(--s2ee-surface)] p-4 [border-color:var(--s2ee-border)]">
-                      <Input
-                        key={fileInputResetKey}
-                        accept={acceptedCvFileTypes}
-                        className="rounded-[8px] border-0 bg-transparent px-0 py-0 shadow-none before:shadow-none"
-                        id="student-cv-upload"
-                        nativeInput
-                        type="file"
-                        unstyled
-                        onChange={(event) => {
-                          const { files } = event.currentTarget;
-                          setSelectedFile(files?.[0] ?? null);
-                        }}
-                      />
-                    </div>
-                    <p className="text-[11px] leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                      PDF uniquement.
+                    <Skeleton className="h-8 w-40 rounded-[8px]" />
+                    <Skeleton className="h-16 rounded-[8px]" />
+                  </div>
+                  <div className="space-y-3">
+                    <Skeleton className="h-5 w-20 rounded-[8px]" />
+                    <Skeleton className="h-14 rounded-[8px]" />
+                    <Skeleton className="h-4 w-24 rounded-[8px]" />
+                  </div>
+                  <Skeleton className="h-14 rounded-[8px]" />
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-black text-[color:var(--s2ee-soft-foreground)]">
+                      Ajouter un CV
+                    </h2>
+                    <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                      Importez un PDF, puis ouvrez sa page de presentation pour obtenir le QR code.
                     </p>
                   </div>
 
-                  {selectedFile ? (
-                    <div className="rounded-[8px] border bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_65%,white)] p-4 [border-color:var(--s2ee-border)]">
-                      <p className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]">
-                        {selectedFile.name}
-                      </p>
-                      <p className="mt-1 text-xs text-[color:var(--s2ee-muted-foreground)]">
-                        {selectedFile.type || "application/octet-stream"} -{" "}
-                        {formatFileSize(selectedFile.size)}
+                  <form className="grid gap-5" onSubmit={submitCvUpload}>
+                    <div className="space-y-3">
+                      <label
+                        className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
+                        htmlFor="student-cv-upload"
+                      >
+                        Fichier
+                      </label>
+                      <div className="rounded-[8px] border bg-[var(--s2ee-surface)] p-4 [border-color:var(--s2ee-border)]">
+                        <Input
+                          key={fileInputResetKey}
+                          accept={acceptedCvFileTypes}
+                          className="rounded-[8px] border-0 bg-transparent px-0 py-0 shadow-none before:shadow-none"
+                          disabled={isStudentLoading || isUploadingCv}
+                          id="student-cv-upload"
+                          nativeInput
+                          type="file"
+                          unstyled
+                          onChange={(event) => {
+                            const { files } = event.currentTarget;
+                            setSelectedFile(files?.[0] ?? null);
+                          }}
+                        />
+                      </div>
+                      <p className="text-[11px] leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                        PDF uniquement.
                       </p>
                     </div>
-                  ) : null}
 
-                  <Button
-                    className="min-h-14 rounded-[8px] px-6 py-4 text-sm"
-                    loading={isUploadingCv}
-                    size="lg"
-                    type="submit"
-                  >
-                    {isUploadingCv ? "Ajout en cours..." : "Ajouter le CV"}
-                    <UploadIcon />
-                  </Button>
-                </form>
-              </div>
+                    {selectedFile ? (
+                      <div className="rounded-[8px] border bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_65%,white)] p-4 [border-color:var(--s2ee-border)]">
+                        <p className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]">
+                          {selectedFile.name}
+                        </p>
+                        <p className="mt-1 text-xs text-[color:var(--s2ee-muted-foreground)]">
+                          {selectedFile.type || "application/octet-stream"} -{" "}
+                          {formatFileSize(selectedFile.size)}
+                        </p>
+                      </div>
+                    ) : null}
+
+                    <Button
+                      className="min-h-14 rounded-[8px] px-6 py-4 text-sm"
+                      disabled={isStudentLoading}
+                      loading={isUploadingCv}
+                      size="lg"
+                      type="submit"
+                    >
+                      {isStudentLoading
+                        ? "Chargement..."
+                        : isUploadingCv
+                          ? "Ajout en cours..."
+                          : "Ajouter le CV"}
+                      <UploadIcon />
+                    </Button>
+                  </form>
+                </div>
+              )}
             </div>
 
             <div className="rounded-[8px] border bg-[var(--s2ee-surface)] p-5 sm:p-6 [border-color:var(--s2ee-border)]">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="space-y-2">
-                  <p className="text-xs font-bold text-primary">CV</p>
                   <h2 className="text-2xl font-black text-[color:var(--s2ee-soft-foreground)]">
-                    Liste
+                    Liste des CV
                   </h2>
                 </div>
-                <p className="text-sm font-bold text-[color:var(--s2ee-muted-foreground)]">
-                  {sortedCvs.length} fichier{sortedCvs.length === 1 ? "" : "s"}
-                </p>
+                {isCvListLoading ? (
+                  <Skeleton className="h-5 w-24 rounded-[8px]" />
+                ) : (
+                  <p className="text-sm font-bold text-[color:var(--s2ee-muted-foreground)]">
+                    {sortedCvs.length} fichier{sortedCvs.length === 1 ? "" : "s"}
+                  </p>
+                )}
               </div>
 
               <div className="mt-6">
-                {cvsState.kind === "loading" ? (
+                {isCvListLoading ? (
                   <div className="grid gap-3">
                     <Skeleton className="h-24 rounded-[8px]" />
                     <Skeleton className="h-24 rounded-[8px]" />
