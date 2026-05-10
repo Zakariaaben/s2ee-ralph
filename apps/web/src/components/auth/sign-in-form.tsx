@@ -2,6 +2,7 @@
 
 import { Input } from "@project/ui/components/input";
 import { useNavigate } from "@tanstack/react-router";
+import { ArrowRightIcon, UserPlusIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
@@ -63,24 +64,20 @@ export function SignInForm(): React.ReactElement {
   };
 
   return (
-    <div className="space-y-12 font-mono">
-      <header className="space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="s2ee-focus-marker shrink-0" />
-          <h2 className="text-2xl font-black uppercase tracking-[-0.05em] text-[color:var(--s2ee-soft-foreground)] sm:text-3xl">
+    <div className="s2ee-auth-narrow space-y-9">
+      <header className="space-y-4">
+        <div className="space-y-3">
+          <h2 className="text-4xl font-black leading-none text-[color:var(--s2ee-soft-foreground)]">
             Connexion
           </h2>
         </div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary">
-          Acceder a votre espace
-        </p>
       </header>
 
-      <form className="space-y-8" onSubmit={handleSignIn}>
+      <form className="space-y-7" onSubmit={handleSignIn}>
         <div className="space-y-6">
           <div className="space-y-2">
             <label
-              className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+              className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
               htmlFor="sign-in-email"
             >
               Email
@@ -89,10 +86,10 @@ export function SignInForm(): React.ReactElement {
               id="sign-in-email"
               autoComplete="email"
               inputMode="email"
-              className="rounded-none border-0 border-b px-0 py-3 shadow-none focus-visible:ring-0 [border-color:var(--s2ee-border)]"
+              className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
               nativeInput
-              unstyled
               placeholder="student@esi.dz"
+              size="lg"
               type="email"
               value={signInState.email}
               onChange={(event) => {
@@ -105,7 +102,7 @@ export function SignInForm(): React.ReactElement {
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-4">
               <label
-                className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
                 htmlFor="sign-in-password"
               >
                 Mot de passe
@@ -114,10 +111,10 @@ export function SignInForm(): React.ReactElement {
             <Input
               id="sign-in-password"
               autoComplete="current-password"
-              className="rounded-none border-0 border-b px-0 py-3 shadow-none focus-visible:ring-0 [border-color:var(--s2ee-border)]"
+              className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
               nativeInput
-              unstyled
               placeholder="Mot de passe"
+              size="lg"
               type="password"
               value={signInState.password}
               onChange={(event) => {
@@ -129,27 +126,26 @@ export function SignInForm(): React.ReactElement {
         </div>
 
         {signInError ? (
-          <div className="border bg-[var(--s2ee-danger-surface)] px-3 py-2 text-sm text-[color:var(--s2ee-danger-foreground)] [border-color:var(--s2ee-danger-border)]">
+          <div className="rounded-[8px] border bg-[var(--s2ee-danger-surface)] px-4 py-3 text-sm leading-6 text-[color:var(--s2ee-danger-foreground)] [border-color:var(--s2ee-danger-border)]">
             {signInError}
           </div>
         ) : null}
 
-        <div className="space-y-5">
+        <div className="space-y-3">
           <button
-            className="s2ee-command flex min-h-16 w-full items-center justify-between bg-primary px-6 py-4 text-sm text-primary-foreground hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+            className="s2ee-command flex min-h-14 w-full items-center justify-center gap-3 rounded-[8px] bg-primary px-6 py-4 text-sm text-primary-foreground hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
             disabled={isSigningIn}
             type="submit"
           >
             <span>{isSigningIn ? "Connexion..." : "Se connecter"}</span>
-            <span aria-hidden="true" className="text-base leading-none">
-              /
-            </span>
+            <ArrowRightIcon className="size-4" />
           </button>
 
           <a
-            className="s2ee-command inline-flex min-h-14 w-full items-center justify-center border bg-[var(--s2ee-surface-soft)] px-6 py-4 text-center text-xs text-[color:var(--s2ee-soft-foreground)] hover:bg-white [border-color:color-mix(in_srgb,var(--s2ee-border)_70%,transparent)]"
+            className="s2ee-command inline-flex min-h-13 w-full items-center justify-center gap-3 rounded-[8px] border bg-[var(--s2ee-surface-soft)] px-6 py-4 text-center text-xs text-[color:var(--s2ee-soft-foreground)] hover:bg-white [border-color:color-mix(in_srgb,var(--s2ee-border)_70%,transparent)]"
             href="/auth/sign-up"
           >
+            <UserPlusIcon className="size-4" />
             Creer un compte etudiant
           </a>
         </div>

@@ -120,7 +120,8 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
     setLocalError(null);
 
     try {
-      const image = imageFile != null ? await readFileAsDataUrl(imageFile) : (props.student?.image ?? null);
+      const image =
+        imageFile != null ? await readFileAsDataUrl(imageFile) : (props.student?.image ?? null);
 
       await props.onSubmit({
         firstName,
@@ -145,11 +146,11 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
     <Dialog onOpenChange={() => undefined} open={props.open}>
       <DialogPopup
         bottomStickOnMobile={false}
-        className="max-w-5xl border bg-[var(--s2ee-surface)] p-0 font-mono [border-color:var(--s2ee-border)]"
+        className="max-w-5xl rounded-[8px] border bg-[var(--s2ee-surface)] p-0 [border-color:var(--s2ee-border)]"
         showCloseButton={false}
       >
         <DialogHeader className="border-b bg-[var(--s2ee-surface-soft)] px-5 py-5 sm:px-8 sm:py-6 [border-color:var(--s2ee-border)]">
-          <DialogTitle className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
+          <DialogTitle className="text-2xl font-black text-[color:var(--s2ee-soft-foreground)]">
             Completer votre profil
           </DialogTitle>
         </DialogHeader>
@@ -159,10 +160,10 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
             <section className="border-b bg-[var(--s2ee-surface-soft)] px-5 py-6 sm:px-8 lg:border-b-0 lg:border-r [border-color:var(--s2ee-border)]">
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
+                  <p className="text-xs font-bold text-[color:var(--s2ee-muted-foreground)]">
                     Profil
                   </p>
-                  <p className="text-2xl font-black tracking-[-0.06em] text-primary">Obligatoire</p>
+                  <p className="text-2xl font-black text-primary">Obligatoire</p>
                 </div>
 
                 <div className="space-y-4 text-sm leading-7 text-[color:var(--s2ee-soft-foreground)]">
@@ -177,14 +178,14 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="space-y-2">
                     <label
-                      className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
                       htmlFor="student-onboarding-first-name"
                     >
                       {requiredLabel("Prenom")}
                     </label>
                     <Input
                       id="student-onboarding-first-name"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                       name="firstName"
                       placeholder="Prenom"
                       value={firstNameDraft}
@@ -197,14 +198,14 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
 
                   <div className="space-y-2">
                     <label
-                      className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
                       htmlFor="student-onboarding-last-name"
                     >
                       {requiredLabel("Nom")}
                     </label>
                     <Input
                       id="student-onboarding-last-name"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                       name="lastName"
                       placeholder="Nom"
                       value={lastNameDraft}
@@ -217,14 +218,14 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
 
                   <div className="space-y-2">
                     <label
-                      className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
                       htmlFor="student-onboarding-phone-number"
                     >
                       {requiredLabel("Telephone")}
                     </label>
                     <Input
                       id="student-onboarding-phone-number"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                       name="phoneNumber"
                       placeholder="+213 ..."
                       value={phoneNumberDraft}
@@ -237,14 +238,14 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
 
                   <div className="space-y-2">
                     <label
-                      className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
                       htmlFor="student-onboarding-academic-year"
                     >
                       {requiredLabel("Annee")}
                     </label>
                     <Input
                       id="student-onboarding-academic-year"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                       name="academicYear"
                       inputMode="numeric"
                       min={1}
@@ -261,13 +262,19 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
 
                   <div className="space-y-2">
                     <label
-                      className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
                       htmlFor="student-onboarding-major"
                     >
                       {requiredLabel("Specialite")}
                     </label>
-                    <Select onValueChange={(value) => setMajorDraft(value ?? "")} value={majorDraft}>
-                      <SelectTrigger id="student-onboarding-major" className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none">
+                    <Select
+                      onValueChange={(value) => setMajorDraft(value ?? "")}
+                      value={majorDraft}
+                    >
+                      <SelectTrigger
+                        id="student-onboarding-major"
+                        className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
+                      >
                         <SelectValue placeholder="Choisir une specialite" />
                       </SelectTrigger>
                       <SelectContent>
@@ -282,13 +289,19 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
 
                   <div className="space-y-2">
                     <label
-                      className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
                       htmlFor="student-onboarding-institution"
                     >
                       {requiredLabel("Institution")}
                     </label>
-                    <Select onValueChange={(value) => setInstitutionDraft(value ?? "")} value={institutionDraft}>
-                      <SelectTrigger id="student-onboarding-institution" className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none">
+                    <Select
+                      onValueChange={(value) => setInstitutionDraft(value ?? "")}
+                      value={institutionDraft}
+                    >
+                      <SelectTrigger
+                        id="student-onboarding-institution"
+                        className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
+                      >
                         <SelectValue placeholder="Choisir une institution" />
                       </SelectTrigger>
                       <SelectContent>
@@ -304,15 +317,15 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
 
                 <div className="space-y-2 border-t pt-5 [border-color:var(--s2ee-border)]">
                   <label
-                    className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                    className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
                     htmlFor="student-onboarding-image"
                   >
                     Photo de profil (optionnel)
                   </label>
-                  <div className="border bg-[var(--s2ee-surface-soft)] p-4 [border-color:var(--s2ee-border)]">
+                  <div className="rounded-[8px] border bg-[var(--s2ee-surface-soft)] p-4 [border-color:var(--s2ee-border)]">
                     <Input
                       accept="image/*"
-                      className="rounded-none border-0 bg-transparent px-0 py-0 shadow-none before:shadow-none"
+                      className="rounded-[8px] border-0 bg-transparent px-0 py-0 shadow-none before:shadow-none"
                       id="student-onboarding-image"
                       nativeInput
                       type="file"
@@ -323,7 +336,7 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                         setImageFile(file);
                       }}
                     />
-                    <p className="mt-3 text-[11px] uppercase tracking-[0.16em] text-[color:var(--s2ee-muted-foreground)]">
+                    <p className="mt-3 text-xs text-[color:var(--s2ee-muted-foreground)]">
                       Optionnel. Reutilisee dans l'apercu candidat.
                     </p>
                   </div>
@@ -338,7 +351,12 @@ export function StudentOnboardingDialog(props: StudentOnboardingDialogProps): Re
                 ) : null}
 
                 <div className="flex justify-end border-t pt-5 [border-color:var(--s2ee-border)]">
-                  <Button className="rounded-none px-6 py-4 text-sm uppercase tracking-[0.2em]" loading={props.isSaving} size="lg" type="submit">
+                  <Button
+                    className="rounded-[8px] px-6 py-4 text-sm"
+                    loading={props.isSaving}
+                    size="lg"
+                    type="submit"
+                  >
                     Enregistrer et continuer
                   </Button>
                 </div>

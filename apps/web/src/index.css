@@ -168,6 +168,10 @@
   max-width: 27rem;
 }
 
+.s2ee-auth-panel:has(.s2ee-auth-narrow) {
+  max-width: 30rem;
+}
+
 .s2ee-organizer-panel {
   max-width: 29rem;
   border: 1px solid color-mix(in srgb, var(--s2ee-identity-gray) 18%, transparent);

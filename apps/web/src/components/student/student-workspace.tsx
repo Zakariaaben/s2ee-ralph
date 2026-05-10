@@ -11,8 +11,10 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowRightIcon,
   CircleAlertIcon,
+  FileTextIcon,
   LogOutIcon,
   RefreshCwIcon,
+  SettingsIcon,
   Trash2Icon,
   UploadIcon,
 } from "lucide-react";
@@ -97,6 +99,7 @@ export function StudentWorkspace(): React.ReactElement {
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isSavingOnboarding, setIsSavingOnboarding] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isUploadingCv, setIsUploadingCv] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileInputResetKey, setFileInputResetKey] = useState(0);
   const [deletingProfileId, setDeletingProfileId] = useState<string | null>(null);
@@ -131,18 +134,13 @@ export function StudentWorkspace(): React.ReactElement {
     currentStudentResult,
     "Vos informations n'ont pas pu etre chargees.",
   );
-  const cvsState = toAsyncPanelState(
-    cvsResult,
-    "Votre liste de CV n'a pas pu etre chargee.",
-  );
+  const cvsState = toAsyncPanelState(cvsResult, "Votre liste de CV n'a pas pu etre chargee.");
   const student = studentState.kind === "success" ? studentState.value : null;
   const cvs = cvsState.kind === "success" ? cvsState.value : [];
   const studentInstitutions = AsyncResult.isSuccess(studentInstitutionsResult)
     ? studentInstitutionsResult.value
     : [];
-  const studentMajors = AsyncResult.isSuccess(studentMajorsResult)
-    ? studentMajorsResult.value
-    : [];
+  const studentMajors = AsyncResult.isSuccess(studentMajorsResult) ? studentMajorsResult.value : [];
   const sortedCvs = [...cvs].sort((left, right) => {
     const byFileName = left.fileName.localeCompare(right.fileName);
     if (byFileName !== 0) {
@@ -151,7 +149,10 @@ export function StudentWorkspace(): React.ReactElement {
 
     return left.id.localeCompare(right.id);
   });
-  const onboardingRequired = studentState.kind === "success" && !hasStudentOnboardingProfile(student);
+  const onboardingRequired =
+    studentState.kind === "success" && !hasStudentOnboardingProfile(student);
+  const studentDisplayName =
+    [student?.firstName, student?.lastName].filter(Boolean).join(" ").trim() || "Espace etudiant";
 
   useEffect(() => {
     if (studentState.kind !== "success") {
@@ -293,13 +294,17 @@ export function StudentWorkspace(): React.ReactElement {
       return;
     }
 
-    if (selectedFile.type !== "application/pdf" && !selectedFile.name.toLowerCase().endsWith(".pdf")) {
+    if (
+      selectedFile.type !== "application/pdf" &&
+      !selectedFile.name.toLowerCase().endsWith(".pdf")
+    ) {
       setWorkspaceError("Seuls les fichiers PDF sont autorises.");
       return;
     }
 
     setWorkspaceError(null);
     setWorkspaceMessage(null);
+    setIsUploadingCv(true);
 
     try {
       const contentsBase64 = await readFileAsBase64(selectedFile);
@@ -321,6 +326,8 @@ export function StudentWorkspace(): React.ReactElement {
       });
     } catch (error) {
       setWorkspaceError(formatMutationError(error));
+    } finally {
+      setIsUploadingCv(false);
     }
   };
 
@@ -348,24 +355,17 @@ export function StudentWorkspace(): React.ReactElement {
   };
 
   return (
-    <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-foreground">
-      <header className="border-b bg-[var(--s2ee-surface-soft)] [border-color:var(--s2ee-border)]">
-        <div className="mx-auto flex max-w-[1500px] flex-col gap-4 px-5 py-4 sm:px-8 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em]">
-              <span className="text-primary">S2EE</span>
-              <span className="text-[color:var(--s2ee-muted-foreground)]">Etudiant</span>
-            </div>
-            <div className="space-y-2">
-              <h1 className="text-[clamp(2rem,5vw,3.25rem)] font-black tracking-[-0.08em] text-[color:var(--s2ee-soft-foreground)]">
-                Mes CV
-              </h1>
-            </div>
-          </div>
-
+    <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] text-foreground">
+      <header className="border-b bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_88%,black)] px-5 py-3 sm:px-8 [border-color:var(--s2ee-border)]">
+        <nav className="mx-auto flex max-w-[1500px] flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <a className="flex items-center gap-3" href="/">
+            <img alt="ETIC Club" className="h-8 w-auto" src="/etic.svg" />
+            <span className="h-6 w-px bg-[var(--s2ee-border)]" />
+            <img alt="S2EE" className="h-7 w-auto" src="/s2ee.svg" />
+          </a>
           <div className="flex flex-wrap gap-3">
             <Button
-              className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 uppercase tracking-[0.18em] text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
+              className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
               variant="outline"
               onClick={refreshWorkspace}
             >
@@ -373,7 +373,7 @@ export function StudentWorkspace(): React.ReactElement {
               <RefreshCwIcon />
             </Button>
             <Button
-              className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 uppercase tracking-[0.18em] text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
+              className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
               loading={isSigningOut}
               variant="outline"
               onClick={handleSignOut}
@@ -382,11 +382,20 @@ export function StudentWorkspace(): React.ReactElement {
               <LogOutIcon />
             </Button>
           </div>
-        </div>
+        </nav>
       </header>
 
       <div className="mx-auto max-w-[1500px] px-5 py-6 sm:px-8 sm:py-8">
-        {(workspaceError || workspaceMessage || studentState.kind === "failure" || cvsState.kind === "failure") ? (
+        <div className="mb-6 space-y-2">
+          <h1 className="text-4xl font-black leading-none text-[color:var(--s2ee-soft-foreground)] sm:text-5xl">
+            {studentDisplayName}
+          </h1>
+        </div>
+
+        {workspaceError ||
+        workspaceMessage ||
+        studentState.kind === "failure" ||
+        cvsState.kind === "failure" ? (
           <div className="mb-6 grid gap-3">
             {workspaceError ? (
               <Alert variant="error">
@@ -396,7 +405,7 @@ export function StudentWorkspace(): React.ReactElement {
               </Alert>
             ) : null}
             {workspaceMessage ? (
-                <Alert>
+              <Alert>
                 <AlertTitle>Mise a jour</AlertTitle>
                 <AlertDescription>{workspaceMessage}</AlertDescription>
               </Alert>
@@ -420,13 +429,13 @@ export function StudentWorkspace(): React.ReactElement {
 
         <div className="mb-6 flex gap-2 border-b pb-4 [border-color:var(--s2ee-border)]">
           {[
-            { id: "cvs", label: "CV" },
-            { id: "settings", label: "Informations" },
+            { icon: FileTextIcon, id: "cvs", label: "CV" },
+            { icon: SettingsIcon, id: "settings", label: "Informations" },
           ].map((tab) => (
             <button
               key={tab.id}
               className={[
-                "min-h-11 border px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] transition-colors",
+                "inline-flex min-h-11 items-center gap-2 rounded-[8px] border px-4 py-2 text-sm font-bold transition-colors",
                 activeTab === tab.id
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] text-[color:var(--s2ee-soft-foreground)] hover:bg-white",
@@ -434,37 +443,39 @@ export function StudentWorkspace(): React.ReactElement {
               type="button"
               onClick={() => setActiveTab(tab.id as StudentTab)}
             >
+              <tab.icon className="size-4" />
               {tab.label}
             </button>
           ))}
         </div>
 
         {activeTab === "cvs" ? (
-          <section className="grid gap-0 lg:grid-cols-[20rem_minmax(0,1fr)]">
-            <div className="border-b bg-[var(--s2ee-surface-soft)] p-5 sm:p-6 lg:border-b-0 lg:border-r [border-color:var(--s2ee-border)]">
+          <section className="grid gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
+            <div className="rounded-[8px] border bg-[var(--s2ee-surface-soft)] p-5 sm:p-6 [border-color:var(--s2ee-border)]">
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                    Ajout
-                  </p>
-                  <h2 className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
+                  <p className="text-xs font-bold text-primary">Ajout</p>
+                  <h2 className="text-2xl font-black text-[color:var(--s2ee-soft-foreground)]">
                     Ajouter un CV
                   </h2>
+                  <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                    Importez un PDF, puis ouvrez sa page de presentation pour obtenir le QR code.
+                  </p>
                 </div>
 
                 <form className="grid gap-5" onSubmit={submitCvUpload}>
                   <div className="space-y-3">
                     <label
-                      className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
                       htmlFor="student-cv-upload"
                     >
                       Fichier
                     </label>
-                    <div className="border bg-[var(--s2ee-surface)] p-4 [border-color:var(--s2ee-border)]">
+                    <div className="rounded-[8px] border bg-[var(--s2ee-surface)] p-4 [border-color:var(--s2ee-border)]">
                       <Input
                         key={fileInputResetKey}
                         accept={acceptedCvFileTypes}
-                        className="rounded-none border-0 bg-transparent px-0 py-0 shadow-none before:shadow-none"
+                        className="rounded-[8px] border-0 bg-transparent px-0 py-0 shadow-none before:shadow-none"
                         id="student-cv-upload"
                         nativeInput
                         type="file"
@@ -477,73 +488,84 @@ export function StudentWorkspace(): React.ReactElement {
                     </div>
                     <p className="text-[11px] leading-6 text-[color:var(--s2ee-muted-foreground)]">
                       PDF uniquement.
-                      </p>
+                    </p>
                   </div>
 
                   {selectedFile ? (
-                    <div className="border bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_65%,white)] p-4 [border-color:var(--s2ee-border)]">
-                      <p className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]">{selectedFile.name}</p>
-                      <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-[color:var(--s2ee-muted-foreground)]">
-                        {selectedFile.type || "application/octet-stream"} · {formatFileSize(selectedFile.size)}
+                    <div className="rounded-[8px] border bg-[color:color-mix(in_srgb,var(--s2ee-surface-soft)_65%,white)] p-4 [border-color:var(--s2ee-border)]">
+                      <p className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]">
+                        {selectedFile.name}
+                      </p>
+                      <p className="mt-1 text-xs text-[color:var(--s2ee-muted-foreground)]">
+                        {selectedFile.type || "application/octet-stream"} -{" "}
+                        {formatFileSize(selectedFile.size)}
                       </p>
                     </div>
                   ) : null}
 
-                  <Button className="min-h-14 rounded-none px-6 py-4 text-sm uppercase tracking-[0.2em]" size="lg" type="submit">
-                    Ajouter le CV
+                  <Button
+                    className="min-h-14 rounded-[8px] px-6 py-4 text-sm"
+                    loading={isUploadingCv}
+                    size="lg"
+                    type="submit"
+                  >
+                    {isUploadingCv ? "Ajout en cours..." : "Ajouter le CV"}
                     <UploadIcon />
                   </Button>
                 </form>
               </div>
             </div>
 
-            <div className="bg-[var(--s2ee-surface)] p-5 sm:p-6">
-              <div className="space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                  CV
+            <div className="rounded-[8px] border bg-[var(--s2ee-surface)] p-5 sm:p-6 [border-color:var(--s2ee-border)]">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-primary">CV</p>
+                  <h2 className="text-2xl font-black text-[color:var(--s2ee-soft-foreground)]">
+                    Liste
+                  </h2>
+                </div>
+                <p className="text-sm font-bold text-[color:var(--s2ee-muted-foreground)]">
+                  {sortedCvs.length} fichier{sortedCvs.length === 1 ? "" : "s"}
                 </p>
-                <h2 className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
-                  Liste
-                </h2>
               </div>
 
               <div className="mt-6">
                 {cvsState.kind === "loading" ? (
                   <div className="grid gap-3">
-                    <Skeleton className="h-24 rounded-none" />
-                    <Skeleton className="h-24 rounded-none" />
+                    <Skeleton className="h-24 rounded-[8px]" />
+                    <Skeleton className="h-24 rounded-[8px]" />
                   </div>
                 ) : sortedCvs.length === 0 ? (
-                  <div className="border bg-[var(--s2ee-surface-soft)] p-6 [border-color:var(--s2ee-border)]">
+                  <div className="rounded-[8px] border bg-[var(--s2ee-surface-soft)] p-6 [border-color:var(--s2ee-border)]">
                     <div className="space-y-3">
-                      <p className="text-lg font-black tracking-[-0.05em] text-[color:var(--s2ee-soft-foreground)]">
+                      <p className="text-lg font-black text-[color:var(--s2ee-soft-foreground)]">
                         Aucun CV
+                      </p>
+                      <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                        Ajoutez votre premier PDF pour generer un code de presentation.
                       </p>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-3 border-b pb-3 [border-color:var(--s2ee-border)]">
-                      <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[color:var(--s2ee-muted-foreground)]">
-                        {sortedCvs.length} fichier{sortedCvs.length === 1 ? "" : "s"}
-                      </span>
-                    </div>
-
-                    <div className="divide-y [divide-color:var(--s2ee-border)] border-y [border-color:var(--s2ee-border)]">
+                    <div className="divide-y overflow-hidden rounded-[8px] border [border-color:var(--s2ee-border)] [divide-color:var(--s2ee-border)]">
                       {sortedCvs.map((cv) => (
-                        <article key={cv.id} className="grid gap-4 py-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+                        <article
+                          key={cv.id}
+                          className="grid gap-4 bg-[var(--s2ee-surface-soft)] p-4 lg:grid-cols-[minmax(0,1fr)_auto]"
+                        >
                           <div className="min-w-0 space-y-2">
-                            <p className="truncate text-sm font-bold uppercase tracking-[0.08em] text-[color:var(--s2ee-soft-foreground)]">
+                            <p className="truncate text-sm font-bold text-[color:var(--s2ee-soft-foreground)]">
                               {cv.fileName}
                             </p>
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--s2ee-muted-foreground)]">
-                              {cv.contentType} · {formatFileSize(cv.fileSizeBytes)}
+                            <p className="text-xs text-[color:var(--s2ee-muted-foreground)]">
+                              {cv.contentType} - {formatFileSize(cv.fileSizeBytes)}
                             </p>
                           </div>
 
                           <div className="flex flex-wrap gap-2">
                             <Button
-                              className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] px-4 uppercase tracking-[0.18em] text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
+                              className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-4 text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white"
                               size="sm"
                               variant="outline"
                               onClick={() =>
@@ -557,7 +579,7 @@ export function StudentWorkspace(): React.ReactElement {
                               <ArrowRightIcon />
                             </Button>
                             <Button
-                              className="rounded-none px-4 uppercase tracking-[0.18em]"
+                              className="rounded-[8px] px-4"
                               loading={deletingProfileId === cv.id}
                               size="sm"
                               variant="destructive-outline"
@@ -576,93 +598,112 @@ export function StudentWorkspace(): React.ReactElement {
             </div>
           </section>
         ) : (
-          <section className="max-w-3xl border bg-[var(--s2ee-surface)] p-5 sm:p-6 [border-color:var(--s2ee-border)]">
+          <section className="mx-auto w-full max-w-4xl rounded-[8px] border bg-[var(--s2ee-surface)] p-5 sm:p-6 [border-color:var(--s2ee-border)]">
             <div className="space-y-2">
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                Informations
-              </p>
-              <h2 className="text-2xl font-black tracking-[-0.06em] text-[color:var(--s2ee-soft-foreground)]">
+              <p className="text-xs font-bold text-primary">Informations</p>
+              <h2 className="text-2xl font-black text-[color:var(--s2ee-soft-foreground)]">
                 Informations personnelles
               </h2>
+              <p className="max-w-2xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                Ces donnees accompagnent vos CV pendant les echanges avec les entreprises.
+              </p>
             </div>
 
             {studentState.kind === "loading" ? (
               <div className="mt-6 grid gap-3">
-                <Skeleton className="h-12 rounded-none" />
-                <Skeleton className="h-12 rounded-none" />
-                <Skeleton className="h-12 rounded-none" />
-                <Skeleton className="h-12 rounded-none" />
+                <Skeleton className="h-12 rounded-[8px]" />
+                <Skeleton className="h-12 rounded-[8px]" />
+                <Skeleton className="h-12 rounded-[8px]" />
+                <Skeleton className="h-12 rounded-[8px]" />
               </div>
             ) : (
               <form className="mt-6 grid gap-5" onSubmit={saveSettings}>
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-first-name">
+                    <label
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
+                      htmlFor="student-settings-first-name"
+                    >
                       Prenom
                     </label>
                     <Input
                       id="student-settings-first-name"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                       value={firstNameDraft}
                       onChange={(event) => setFirstNameDraft(event.currentTarget.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-last-name">
+                    <label
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
+                      htmlFor="student-settings-last-name"
+                    >
                       Nom
                     </label>
                     <Input
                       id="student-settings-last-name"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                       value={lastNameDraft}
                       onChange={(event) => setLastNameDraft(event.currentTarget.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-school">
+                    <label
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
+                      htmlFor="student-settings-school"
+                    >
                       Etablissement
                     </label>
                     <Input
                       id="student-settings-school"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                       value={institutionDraft}
                       onChange={(event) => setInstitutionDraft(event.currentTarget.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-major">
+                    <label
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
+                      htmlFor="student-settings-major"
+                    >
                       Specialite
                     </label>
                     <Input
                       id="student-settings-major"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                       value={majorDraft}
                       onChange={(event) => setMajorDraft(event.currentTarget.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-academic-year">
+                    <label
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
+                      htmlFor="student-settings-academic-year"
+                    >
                       Annee
                     </label>
                     <Input
                       id="student-settings-academic-year"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                       value={academicYearDraft}
                       onChange={(event) => setAcademicYearDraft(event.currentTarget.value)}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]" htmlFor="student-settings-phone-number">
+                    <label
+                      className="text-sm font-bold text-[color:var(--s2ee-soft-foreground)]"
+                      htmlFor="student-settings-phone-number"
+                    >
                       Telephone
                     </label>
                     <Input
                       id="student-settings-phone-number"
-                      className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] shadow-none"
+                      className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                       value={phoneNumberDraft}
                       onChange={(event) => setPhoneNumberDraft(event.currentTarget.value)}
                     />
@@ -670,7 +711,12 @@ export function StudentWorkspace(): React.ReactElement {
                 </div>
 
                 <div className="flex justify-end border-t pt-5 [border-color:var(--s2ee-border)]">
-                  <Button className="rounded-none px-6 py-4 text-sm uppercase tracking-[0.2em]" loading={isSavingSettings} size="lg" type="submit">
+                  <Button
+                    className="rounded-[8px] px-6 py-4 text-sm"
+                    loading={isSavingSettings}
+                    size="lg"
+                    type="submit"
+                  >
                     Enregistrer
                   </Button>
                 </div>
