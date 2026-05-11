@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { CompanyInterviewsPage } from "@/components/company/company-interviews-page";
+import { CompanyWorkspace } from "@/components/company/company-workspace";
 
 export const Route = createFileRoute("/company/interviews/")({
   component: CompanyInterviewsRouteComponent,
 });
 
 function CompanyInterviewsRouteComponent() {
-  return <CompanyInterviewsPage />;
+  return <CompanyWorkspace initialSubview="interviews" />;
 }

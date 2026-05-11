@@ -22,8 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@project/ui/components/table";
-import type { Interview } from "@project/domain";
-import type { Company, PresentedCvProfilePreview, Recruiter } from "@project/domain";
+import type { Company, Interview, PresentedCvProfilePreview, Recruiter } from "@project/domain";
 import QrScanner from "qr-scanner";
 import qrScannerWorkerUrl from "qr-scanner/qr-scanner-worker.min.js?url";
 import { useNavigate } from "@tanstack/react-router";
@@ -57,11 +56,11 @@ import {
   companyPreferredRecruiterStorageKey,
   normalizeStudentQrIdentityInput,
   resolveInterviewStartRecruiterId,
-  resolvePreferredRecruiter,
 } from "@/lib/company-interview-start";
 import {
   buildCompanyInterviewListRows,
   filterCompanyInterviewListRows,
+  type CompanyInterviewListRow,
 } from "@/lib/company-interviews";
 
 type AsyncPanelState<Value> =
@@ -109,9 +108,13 @@ const formatMutationError = (error: unknown): string => {
   return "La mise a jour n'a pas pu etre effectuee. Reessayez.";
 };
 
-export function CompanyWorkspace(): React.ReactElement {
+export function CompanyWorkspace({
+  initialSubview = "scan",
+}: {
+  readonly initialSubview?: CompanySubview;
+} = {}): React.ReactElement {
   const navigate = useNavigate();
-  const [activeSubview, setActiveSubview] = useState<CompanySubview>("scan");
+  const [activeSubview, setActiveSubview] = useState<CompanySubview>(initialSubview);
   const [interviewQuery, setInterviewQuery] = useState("");
   const [interviewStatus, setInterviewStatus] = useState<InterviewStatusFilter>("all");
   const [submittedCode, setSubmittedCode] = useState<string | null>(null);
@@ -443,75 +446,103 @@ export function CompanyWorkspace(): React.ReactElement {
           />
         ) : null}
 
-        <div
-          className={[
-            "s2ee-data-plane grid lg:grid-cols-[minmax(0,1fr)_22rem]",
-            needsRecruiterOnboarding ? "pointer-events-none opacity-35" : "",
-          ].join(" ")}
-        >
-          <section className="grid gap-4 border-b border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 lg:border-r lg:border-b-0">
-            <CameraScanner onDetected={applyDetectedCode} />
-          </section>
+        {activeSubview === "scan" ? (
+          <div
+            className={[
+              "s2ee-data-plane grid lg:grid-cols-[minmax(0,1fr)_22rem]",
+              needsRecruiterOnboarding ? "pointer-events-none opacity-35" : "",
+            ].join(" ")}
+          >
+            <section className="grid gap-4 border-b border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 lg:border-r lg:border-b-0">
+              <CameraScanner onDetected={applyDetectedCode} />
+            </section>
 
-          <section className="flex min-h-full flex-col gap-5 p-6">
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                Code manuel
-              </p>
-              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                Utilisez cette alternative si le QR code ne passe pas a la camera.
-              </p>
-            </div>
-
-            <form className="grid gap-4" onSubmit={submitCandidateCode}>
-              <div className="grid gap-2">
-                <label
-                  className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
-                  htmlFor="company-manual-code"
-                >
-                  Code candidat
-                </label>
-                <Input
-                  id="company-manual-code"
-                  className="h-14 rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] px-4 text-lg font-black uppercase tracking-[0.16em] shadow-none"
-                  inputMode="text"
-                  maxLength={6}
-                  nativeInput
-                  onChange={(event) => {
-                    const nextValue = event.currentTarget.value
-                      .replace(/[^a-zA-Z0-9]/g, "")
-                      .toUpperCase();
-                    setCodeDraft(nextValue);
-                  }}
-                  pattern="[A-Za-z0-9]*"
-                  placeholder="ABC123"
-                  value={codeDraft}
-                />
+            <section className="flex min-h-full flex-col gap-5 p-6">
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
+                  Code manuel
+                </p>
+                <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                  Utilisez cette alternative si le QR code ne passe pas a la camera.
+                </p>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Button className="s2ee-command rounded-[var(--s2ee-control-radius)]" type="submit">
-                  Rechercher
-                </Button>
-                <Button
-                  className="s2ee-command rounded-[var(--s2ee-control-radius)]"
-                  onClick={resetCandidate}
-                  type="button"
-                  variant="outline"
-                >
-                  Effacer
-                </Button>
-              </div>
-            </form>
 
-            <RecruiterDropdown
-              addRecruiter={addRecruiterByName}
-              onSelectRecruiter={rememberRecruiter}
-              recruiters={recruiters}
-              selectedRecruiter={selectedRecruiter}
-              selectedRecruiterId={selectedRecruiterId}
-            />
-          </section>
-        </div>
+              <form className="grid gap-4" onSubmit={submitCandidateCode}>
+                <div className="grid gap-2">
+                  <label
+                    className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                    htmlFor="company-manual-code"
+                  >
+                    Code candidat
+                  </label>
+                  <Input
+                    id="company-manual-code"
+                    className="h-14 rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] px-4 text-lg font-black uppercase tracking-[0.16em] shadow-none"
+                    inputMode="text"
+                    maxLength={6}
+                    nativeInput
+                    onChange={(event) => {
+                      const nextValue = event.currentTarget.value
+                        .replace(/[^a-zA-Z0-9]/g, "")
+                        .toUpperCase();
+                      setCodeDraft(nextValue);
+                    }}
+                    pattern="[A-Za-z0-9]*"
+                    placeholder="ABC123"
+                    value={codeDraft}
+                  />
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button
+                    className="s2ee-command rounded-[var(--s2ee-control-radius)]"
+                    type="submit"
+                  >
+                    Rechercher
+                  </Button>
+                  <Button
+                    className="s2ee-command rounded-[var(--s2ee-control-radius)]"
+                    onClick={resetCandidate}
+                    type="button"
+                    variant="outline"
+                  >
+                    Effacer
+                  </Button>
+                </div>
+              </form>
+
+              <RecruiterDropdown
+                addRecruiter={addRecruiterByName}
+                onSelectRecruiter={rememberRecruiter}
+                recruiters={recruiters}
+                selectedRecruiter={selectedRecruiter}
+                selectedRecruiterId={selectedRecruiterId}
+              />
+            </section>
+          </div>
+        ) : (
+          <CompanyInterviewsSubview
+            isLoading={
+              activeInterviewsState.kind === "loading" ||
+              completedInterviewsState.kind === "loading"
+            }
+            hasFailure={
+              activeInterviewsState.kind === "failure" ||
+              completedInterviewsState.kind === "failure"
+            }
+            interviewQuery={interviewQuery}
+            interviewStatus={interviewStatus}
+            onQueryChange={setInterviewQuery}
+            onStatusChange={setInterviewStatus}
+            rows={visibleInterviewRows}
+            statusFilters={interviewStatusFilters}
+            onOpenInterview={(interviewId) =>
+              navigate({
+                to: "/company/interviews/$interviewId",
+                params: { interviewId },
+              })
+            }
+          />
+        )}
       </div>
 
       <Dialog onOpenChange={setIsCandidatePreviewOpen} open={isCandidatePreviewOpen}>
@@ -540,6 +571,189 @@ export function CompanyWorkspace(): React.ReactElement {
         </DialogPopup>
       </Dialog>
     </main>
+  );
+}
+
+function CompanyLogo(props: {
+  readonly company: Company | null;
+  readonly companyLabel: string;
+}): React.ReactElement {
+  const initials =
+    props.companyLabel
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || "CO";
+
+  return (
+    <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-[var(--s2ee-panel-radius)] border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] sm:size-20">
+      {props.company?.logoUrl ? (
+        <img
+          alt={`${props.companyLabel} logo`}
+          className="size-full object-contain p-2"
+          src={props.company.logoUrl}
+        />
+      ) : (
+        <span className="text-lg font-black uppercase tracking-[0.08em] text-primary sm:text-2xl">
+          {initials}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function CompanyInterviewsSubview(props: {
+  readonly hasFailure: boolean;
+  readonly interviewQuery: string;
+  readonly interviewStatus: InterviewStatusFilter;
+  readonly isLoading: boolean;
+  readonly onOpenInterview: (interviewId: Interview["id"]) => void;
+  readonly onQueryChange: (value: string) => void;
+  readonly onStatusChange: (status: InterviewStatusFilter) => void;
+  readonly rows: ReadonlyArray<CompanyInterviewListRow>;
+  readonly statusFilters: ReadonlyArray<{
+    readonly value: InterviewStatusFilter;
+    readonly label: string;
+    readonly count: number;
+  }>;
+}): React.ReactElement {
+  if (props.isLoading) {
+    return (
+      <div className="grid gap-4">
+        <Skeleton className="h-24 rounded-[var(--s2ee-panel-radius)]" />
+        <Skeleton className="h-[34rem] rounded-[var(--s2ee-panel-radius)]" />
+      </div>
+    );
+  }
+
+  return (
+    <section className="s2ee-data-plane">
+      <div className="grid gap-4 border-b border-[var(--s2ee-border)] p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <label className="grid gap-2">
+          <span className="s2ee-index-label">Recherche</span>
+          <span className="relative block">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[color:var(--s2ee-muted-foreground)]" />
+            <Input
+              className="rounded-[var(--s2ee-control-radius)] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] pl-9 shadow-none"
+              onChange={(event) => props.onQueryChange(event.currentTarget.value)}
+              placeholder="Candidat, recruteur ou note"
+              value={props.interviewQuery}
+            />
+          </span>
+        </label>
+
+        <div className="grid gap-2">
+          <span className="s2ee-index-label flex items-center gap-2">
+            <ListFilterIcon className="size-3.5 text-primary" />
+            Statut
+          </span>
+          <div className="flex flex-wrap gap-1 rounded-[var(--s2ee-control-radius)] border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-1">
+            {props.statusFilters.map((filter) => (
+              <button
+                className={[
+                  "min-h-10 rounded-[calc(var(--s2ee-control-radius)-0.25rem)] px-3 text-[11px] font-black uppercase tracking-[0.16em] transition-colors",
+                  props.interviewStatus === filter.value
+                    ? "bg-primary text-primary-foreground"
+                    : "text-[color:var(--s2ee-muted-foreground)] hover:bg-[var(--s2ee-accent-wash)] hover:text-primary",
+                ].join(" ")}
+                key={filter.value}
+                onClick={() => props.onStatusChange(filter.value)}
+                type="button"
+              >
+                {filter.label} {filter.count}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {props.hasFailure ? (
+        <div className="p-4">
+          <Alert variant="error">
+            <CircleAlertIcon className="size-4" />
+            <AlertTitle>Entretiens indisponibles</AlertTitle>
+            <AlertDescription>La liste des entretiens n'a pas pu etre chargee.</AlertDescription>
+          </Alert>
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em]">
+                Candidat / Entretien
+              </TableHead>
+              <TableHead className="px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em]">
+                Statut
+              </TableHead>
+              <TableHead className="px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em]">
+                Recruteur
+              </TableHead>
+              <TableHead className="px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em]">
+                Parcours
+              </TableHead>
+              <TableHead className="px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em]">
+                Note
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {props.rows.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  className="px-4 py-10 text-sm text-[color:var(--s2ee-muted-foreground)]"
+                  colSpan={5}
+                >
+                  Aucun entretien ne correspond aux filtres actuels.
+                </TableCell>
+              </TableRow>
+            ) : (
+              props.rows.map((row) => (
+                <TableRow
+                  className={[
+                    "group",
+                    row.kind === "active"
+                      ? "cursor-pointer hover:bg-[var(--s2ee-accent-wash)]"
+                      : "hover:bg-[var(--s2ee-surface-soft)]",
+                  ].join(" ")}
+                  key={`${row.kind}:${row.id}`}
+                  onClick={() =>
+                    row.kind === "active"
+                      ? props.onOpenInterview(row.id as Interview["id"])
+                      : undefined
+                  }
+                >
+                  <TableCell className="px-4 py-4 font-bold uppercase tracking-[0.12em]">
+                    {row.label}
+                  </TableCell>
+                  <TableCell className="px-4 py-4">
+                    <span
+                      className={[
+                        "s2ee-status-chip",
+                        row.kind === "active" ? "border-primary text-primary" : "",
+                      ].join(" ")}
+                    >
+                      {row.kind === "active" ? "En cours" : "Termine"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="px-4 py-4 text-sm text-[color:var(--s2ee-muted-foreground)]">
+                    {row.recruiterName}
+                  </TableCell>
+                  <TableCell className="px-4 py-4 text-sm text-[color:var(--s2ee-muted-foreground)]">
+                    {row.institution.length === 0
+                      ? "En cours"
+                      : `${row.institution} / ${row.major}`}
+                  </TableCell>
+                  <TableCell className="px-4 py-4 text-sm font-bold uppercase tracking-[0.12em]">
+                    {row.scoreLabel}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      )}
+    </section>
   );
 }
 
