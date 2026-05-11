@@ -9,9 +9,7 @@ import { Input } from "@project/ui/components/input";
 import { Popover, PopoverPopup, PopoverTrigger } from "@project/ui/components/popover";
 import { Skeleton } from "@project/ui/components/skeleton";
 import { Textarea } from "@project/ui/components/textarea";
-import type {
-  Interview,
-} from "@project/domain";
+import type { Interview } from "@project/domain";
 import { Rating, ThinRoundedStar } from "@smastrom/react-rating";
 import "@smastrom/react-rating/style.css";
 import { useNavigate } from "@tanstack/react-router";
@@ -206,12 +204,12 @@ export function CompanyInterviewDetail({
 
   if (detailState.kind === "loading") {
     return (
-      <main className="min-h-[100dvh] bg-white font-mono text-[color:var(--s2ee-soft-foreground)]">
-        <div className="mx-auto grid max-w-[1600px] gap-4 px-5 py-6 sm:px-8 sm:py-8">
-          <Skeleton className="h-14 rounded-none" />
+      <main className="s2ee-workspace-page">
+        <div className="s2ee-workspace-wrap grid gap-4">
+          <Skeleton className="h-24 rounded-[var(--s2ee-panel-radius)]" />
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-            <Skeleton className="min-h-[60vh] rounded-none" />
-            <Skeleton className="min-h-[60vh] rounded-none" />
+            <Skeleton className="min-h-[60vh] rounded-[var(--s2ee-panel-radius)]" />
+            <Skeleton className="min-h-[60vh] rounded-[var(--s2ee-panel-radius)]" />
           </div>
         </div>
       </main>
@@ -220,14 +218,23 @@ export function CompanyInterviewDetail({
 
   if (detailState.kind === "failure" || detail == null) {
     return (
-      <main className="min-h-[100dvh] bg-white font-mono text-[color:var(--s2ee-soft-foreground)]">
-        <div className="mx-auto grid max-w-[1200px] gap-4 px-5 py-6 sm:px-8 sm:py-8">
-          <div className="flex flex-wrap gap-2">
-            <Button className="rounded-none" onClick={() => navigate({ to: "/company/interviews" })} variant="outline">
+      <main className="s2ee-workspace-page">
+        <div className="s2ee-workspace-wrap grid max-w-[1200px] gap-4">
+          <div className="s2ee-command-bar">
+            <Button
+              className="s2ee-command rounded-[var(--s2ee-control-radius)]"
+              onClick={() => navigate({ to: "/company/interviews" })}
+              variant="outline"
+            >
               <ArrowLeftIcon />
               Retour
             </Button>
-            <Button className="rounded-none" loading={isSigningOut} onClick={handleSignOut} variant="outline">
+            <Button
+              className="s2ee-command rounded-[var(--s2ee-control-radius)]"
+              loading={isSigningOut}
+              onClick={handleSignOut}
+              variant="outline"
+            >
               <LogOutIcon />
               Se deconnecter
             </Button>
@@ -235,7 +242,11 @@ export function CompanyInterviewDetail({
           <Alert variant="error">
             <CircleAlertIcon className="size-4" />
             <AlertTitle>Entretien indisponible</AlertTitle>
-            <AlertDescription>{detailState.kind === "failure" ? detailState.message : "Cet entretien n'existe plus."}</AlertDescription>
+            <AlertDescription>
+              {detailState.kind === "failure"
+                ? detailState.message
+                : "Cet entretien n'existe plus."}
+            </AlertDescription>
           </Alert>
         </div>
       </main>
@@ -243,35 +254,54 @@ export function CompanyInterviewDetail({
   }
 
   return (
-    <main className="min-h-[100dvh] bg-white font-mono text-[color:var(--s2ee-soft-foreground)]">
-      <div className="mx-auto grid max-w-[1680px] gap-6 px-5 py-6 sm:px-8 sm:py-8">
-        <header className="flex flex-col gap-4 border-b border-[var(--s2ee-border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em]">
+    <main className="s2ee-workspace-page">
+      <div className="s2ee-workspace-wrap grid gap-6">
+        <header className="s2ee-workspace-header">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3 text-[11px] font-black uppercase tracking-[0.22em]">
               <span className="text-primary">S2EE Entreprise</span>
               <span className="text-[color:var(--s2ee-muted-foreground)]">Entretien</span>
-              <span className="text-[color:var(--s2ee-muted-foreground)]">{detail.interview.id.slice(0, 8)}</span>
+              <span className="text-[color:var(--s2ee-muted-foreground)]">
+                {detail.interview.id.slice(0, 8)}
+              </span>
             </div>
-            <div className="space-y-1">
-              <h1 className="text-[clamp(2rem,4vw,3.2rem)] font-black tracking-[-0.08em]">
+            <div className="space-y-3">
+              <h1 className="s2ee-workspace-title">
                 {detail.student.firstName} {detail.student.lastName}
               </h1>
-              <p className="max-w-3xl text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                {detail.student.institution} · {detail.student.academicYear} · {detail.student.major} · Recruteur{" "}
-                {detail.interview.recruiterName}
-              </p>
+              <div className="flex flex-wrap gap-2">
+                <span className="s2ee-status-chip">{detail.student.institution}</span>
+                <span className="s2ee-status-chip">{detail.student.academicYear}</span>
+                <span className="s2ee-status-chip">{detail.student.major}</span>
+                <span className="s2ee-status-chip">
+                  Recruteur: {detail.interview.recruiterName}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button className="rounded-none" onClick={() => navigate({ to: "/company/interviews" })} variant="outline">
+          <div className="s2ee-command-bar">
+            <Button
+              className="s2ee-command rounded-[var(--s2ee-control-radius)]"
+              onClick={() => navigate({ to: "/company/interviews" })}
+              variant="outline"
+            >
               <ArrowLeftIcon />
               Retour
             </Button>
-            <Button className="rounded-none" onClick={() => navigate({ to: "/company" })} variant="outline">
+            <Button
+              className="s2ee-command rounded-[var(--s2ee-control-radius)]"
+              onClick={() => navigate({ to: "/company" })}
+              variant="outline"
+            >
               Scan
             </Button>
-            <Button className="rounded-none" loading={isSigningOut} onClick={handleSignOut} variant="outline">
+            <Button
+              className="s2ee-command rounded-[var(--s2ee-control-radius)]"
+              loading={isSigningOut}
+              onClick={handleSignOut}
+              variant="outline"
+            >
               <LogOutIcon />
               Se deconnecter
             </Button>
@@ -279,10 +309,10 @@ export function CompanyInterviewDetail({
         </header>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-          <section className="overflow-hidden border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)]">
+          <section className="s2ee-data-plane bg-[var(--s2ee-surface-soft)]">
             {cvUrlState.kind === "loading" ? (
               <div className="grid min-h-[72vh] place-items-center">
-                <Skeleton className="h-full min-h-[72vh] w-full rounded-none" />
+                <Skeleton className="h-full min-h-[72vh] w-full rounded-[var(--s2ee-panel-radius)]" />
               </div>
             ) : cvUrlState.kind === "failure" ? (
               <div className="p-4">
@@ -294,7 +324,7 @@ export function CompanyInterviewDetail({
               </div>
             ) : (
               <iframe
-                className="min-h-[72vh] w-full bg-white"
+                className="min-h-[72vh] w-full bg-[white]"
                 src={cvUrlState.value.url}
                 title={`CV de ${detail.student.firstName} ${detail.student.lastName}`}
               />
@@ -302,7 +332,7 @@ export function CompanyInterviewDetail({
           </section>
 
           <section className="grid gap-4">
-            <div className="grid gap-4 border border-[var(--s2ee-border)] bg-white p-5">
+            <div className="s2ee-data-plane grid gap-4 p-5">
               <div className="space-y-1">
                 <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
                   Evaluation
@@ -313,7 +343,7 @@ export function CompanyInterviewDetail({
                 <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
                   Note
                 </label>
-                <div className="grid gap-3 border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-4">
+                <div className="grid gap-3 rounded-[var(--s2ee-control-radius)] border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-4">
                   <Rating
                     itemStyles={ratingStyles}
                     onChange={(value: number) => setScore(value)}
@@ -333,9 +363,15 @@ export function CompanyInterviewDetail({
                   Tags
                 </label>
                 <Popover>
-                  <PopoverTrigger render={
-                    <Button className="justify-between rounded-none" type="button" variant="outline" />
-                  }>
+                  <PopoverTrigger
+                    render={
+                      <Button
+                        className="s2ee-command justify-between rounded-[var(--s2ee-control-radius)]"
+                        type="button"
+                        variant="outline"
+                      />
+                    }
+                  >
                     <span className="truncate text-left">
                       {selectedTagLabels.length === 0
                         ? "Selectionner"
@@ -343,10 +379,14 @@ export function CompanyInterviewDetail({
                     </span>
                     <ChevronDownIcon />
                   </PopoverTrigger>
-                  <PopoverPopup align="start" className="w-[min(420px,calc(100vw-3rem))] rounded-none p-0" sideOffset={8}>
+                  <PopoverPopup
+                    align="start"
+                    className="w-[min(420px,calc(100vw-3rem))] rounded-[var(--s2ee-panel-radius)] p-0"
+                    sideOffset={8}
+                  >
                     <div className="grid gap-3 p-4">
                       <Input
-                        className="rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
+                        className="rounded-[var(--s2ee-control-radius)] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                         onChange={(event) => {
                           const { value } = event.currentTarget;
                           setTagQuery(value);
@@ -358,14 +398,15 @@ export function CompanyInterviewDetail({
                         {customTagLabel != null &&
                         !selectedTagLabels.some(
                           (selectedLabel) =>
-                            selectedLabel.toLocaleLowerCase() === customTagLabel.toLocaleLowerCase(),
+                            selectedLabel.toLocaleLowerCase() ===
+                            customTagLabel.toLocaleLowerCase(),
                         ) &&
                         !tagOptions.some(
                           (option) =>
                             option.label.toLocaleLowerCase() === customTagLabel.toLocaleLowerCase(),
                         ) ? (
                           <button
-                            className="flex items-center justify-between border border-dashed border-[var(--s2ee-border)] px-3 py-2 text-left text-sm hover:bg-[var(--s2ee-surface-soft)]"
+                            className="flex items-center justify-between rounded-[var(--s2ee-control-radius)] border border-dashed border-[var(--s2ee-border)] px-3 py-2 text-left text-sm hover:bg-[var(--s2ee-surface-soft)]"
                             onClick={() => {
                               setSelectedTagLabels((current) =>
                                 toggleAggregatedTagSelection(current, customTagLabel),
@@ -389,12 +430,13 @@ export function CompanyInterviewDetail({
                           visibleTagOptions.map((option) => {
                             const checked = selectedTagLabels.some(
                               (selectedLabel) =>
-                                selectedLabel.toLocaleLowerCase() === option.label.toLocaleLowerCase(),
+                                selectedLabel.toLocaleLowerCase() ===
+                                option.label.toLocaleLowerCase(),
                             );
 
                             return (
                               <label
-                                className="flex cursor-pointer items-center justify-between gap-3 border border-[var(--s2ee-border)] px-3 py-2 hover:bg-[var(--s2ee-surface-soft)]"
+                                className="flex cursor-pointer items-center justify-between gap-3 rounded-[var(--s2ee-control-radius)] border border-[var(--s2ee-border)] px-3 py-2 hover:bg-[var(--s2ee-surface-soft)]"
                                 key={option.key}
                               >
                                 <div className="grid gap-1">
@@ -425,7 +467,7 @@ export function CompanyInterviewDetail({
                   <div className="flex flex-wrap gap-2">
                     {selectedTagLabels.map((label) => (
                       <button
-                        className="border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] hover:bg-white"
+                        className="rounded-[var(--s2ee-control-radius)] border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] hover:bg-[var(--s2ee-accent-wash)]"
                         key={label}
                         onClick={() =>
                           setSelectedTagLabels((current) =>
@@ -446,7 +488,7 @@ export function CompanyInterviewDetail({
                   Notes
                 </label>
                 <Textarea
-                  className="min-h-40 rounded-none border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
+                  className="min-h-40 rounded-[var(--s2ee-control-radius)] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
                   onChange={(event) => {
                     const { value } = event.currentTarget;
                     setNotes(value);
@@ -466,7 +508,7 @@ export function CompanyInterviewDetail({
 
               <div className="grid gap-2 pt-2 sm:grid-cols-2">
                 <Button
-                  className="h-12 rounded-none text-sm font-black uppercase tracking-[0.18em]"
+                  className="s2ee-command h-12 rounded-[var(--s2ee-control-radius)] text-sm font-black uppercase tracking-[0.18em]"
                   loading={isSubmittingAction === "complete"}
                   onClick={() => submitInterview("complete")}
                   type="button"
@@ -474,7 +516,7 @@ export function CompanyInterviewDetail({
                   Terminer l'entretien
                 </Button>
                 <Button
-                  className="h-12 rounded-none text-sm font-black uppercase tracking-[0.18em]"
+                  className="s2ee-command h-12 rounded-[var(--s2ee-control-radius)] text-sm font-black uppercase tracking-[0.18em]"
                   loading={isSubmittingAction === "cancel"}
                   onClick={() => submitInterview("cancel")}
                   type="button"
@@ -486,10 +528,16 @@ export function CompanyInterviewDetail({
               </div>
             </div>
 
-            <div className="grid gap-3 border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-5 text-sm">
-              <MetaRow label="Candidat" value={`${detail.student.firstName} ${detail.student.lastName}`} />
+            <div className="s2ee-ruled-list p-5 text-sm">
+              <MetaRow
+                label="Candidat"
+                value={`${detail.student.firstName} ${detail.student.lastName}`}
+              />
               <MetaRow label="Etablissement" value={detail.student.institution} />
-              <MetaRow label="Parcours" value={`${detail.student.academicYear} · ${detail.student.major}`} />
+              <MetaRow
+                label="Parcours"
+                value={`${detail.student.academicYear} / ${detail.student.major}`}
+              />
               <MetaRow label="Recruteur" value={detail.interview.recruiterName} />
               <MetaRow label="Code" value={detail.cvProfile.presentationCode} />
             </div>
@@ -500,10 +548,7 @@ export function CompanyInterviewDetail({
   );
 }
 
-function MetaRow(props: {
-  readonly label: string;
-  readonly value: string;
-}): React.ReactElement {
+function MetaRow(props: { readonly label: string; readonly value: string }): React.ReactElement {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--s2ee-border)] pb-2 last:border-b-0 last:pb-0">
       <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">

@@ -5,17 +5,24 @@ import * as AsyncResult from "effect/unstable/reactivity/AsyncResult";
 import { Alert, AlertDescription, AlertTitle } from "@project/ui/components/alert";
 import { Button } from "@project/ui/components/button";
 import {
-  Drawer,
-  DrawerClose,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerPanel,
-  DrawerPopup,
-  DrawerTitle,
-} from "@project/ui/components/drawer";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@project/ui/components/input-otp";
+  Dialog,
+  DialogHeader,
+  DialogPanel,
+  DialogPopup,
+  DialogTitle,
+} from "@project/ui/components/dialog";
 import { Input } from "@project/ui/components/input";
+import { Popover, PopoverPopup, PopoverTrigger } from "@project/ui/components/popover";
 import { Skeleton } from "@project/ui/components/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@project/ui/components/table";
+import type { Interview } from "@project/domain";
 import type { Company, PresentedCvProfilePreview, Recruiter } from "@project/domain";
 import QrScanner from "qr-scanner";
 import qrScannerWorkerUrl from "qr-scanner/qr-scanner-worker.min.js?url";
@@ -23,16 +30,26 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowRightIcon,
   CameraIcon,
+  ChevronDownIcon,
   CircleAlertIcon,
-  LogOutIcon,
-  MenuIcon,
+  ListFilterIcon,
   QrCodeIcon,
   ScanLineIcon,
-  Settings2Icon,
+  SearchIcon,
+  UserPlusIcon,
 } from "lucide-react";
 import type React from "react";
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
+import { AppIslandNavbar } from "@/components/app-island-navbar";
 import { authClient } from "@/lib/auth-client";
 import { companyWorkspaceAtoms, companyWorkspaceReactivity } from "@/lib/company-atoms";
 import {
@@ -42,6 +59,10 @@ import {
   resolveInterviewStartRecruiterId,
   resolvePreferredRecruiter,
 } from "@/lib/company-interview-start";
+import {
+  buildCompanyInterviewListRows,
+  filterCompanyInterviewListRows,
+} from "@/lib/company-interviews";
 
 type AsyncPanelState<Value> =
   | { readonly kind: "loading" }
@@ -54,7 +75,8 @@ type SessionLike = {
   } | null;
 };
 
-const companySetupDrawerStorageKey = "company:setup-drawer-dismissed:v1";
+type CompanySubview = "scan" | "interviews";
+type InterviewStatusFilter = "all" | "active" | "completed";
 
 QrScanner.WORKER_PATH = qrScannerWorkerUrl;
 
@@ -89,28 +111,27 @@ const formatMutationError = (error: unknown): string => {
 
 export function CompanyWorkspace(): React.ReactElement {
   const navigate = useNavigate();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [newRecruiterName, setNewRecruiterName] = useState("");
-  const [editingRecruiterId, setEditingRecruiterId] = useState<Recruiter["id"] | null>(null);
-  const [editingRecruiterName, setEditingRecruiterName] = useState("");
+  const [activeSubview, setActiveSubview] = useState<CompanySubview>("scan");
+  const [interviewQuery, setInterviewQuery] = useState("");
+  const [interviewStatus, setInterviewStatus] = useState<InterviewStatusFilter>("all");
   const [submittedCode, setSubmittedCode] = useState<string | null>(null);
   const [codeDraft, setCodeDraft] = useState("");
+  const [isCandidatePreviewOpen, setIsCandidatePreviewOpen] = useState(false);
   const [preferredRecruiterId, setPreferredRecruiterId] = useState<Recruiter["id"] | null>(null);
   const [selectedRecruiterId, setSelectedRecruiterId] = useState<Recruiter["id"] | null>(null);
   const [accountName, setAccountName] = useState<string>("Compte entreprise");
   const [pageMessage, setPageMessage] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [isStartingInterview, setIsStartingInterview] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [hadNoRecruitersOnLoad, setHadNoRecruitersOnLoad] = useState(false);
   const [hasCompletedRecruiterOnboarding, setHasCompletedRecruiterOnboarding] = useState(false);
+  const deferredInterviewQuery = useDeferredValue(interviewQuery);
 
   const currentCompanyResult = useAtomValue(companyWorkspaceAtoms.currentCompany);
+  const activeInterviewsResult = useAtomValue(companyWorkspaceAtoms.activeInterviews);
+  const completedInterviewsResult = useAtomValue(companyWorkspaceAtoms.completedInterviews);
   const refreshCompany = useAtomRefresh(companyWorkspaceAtoms.currentCompany);
   const addRecruiter = useAtomSet(companyWorkspaceAtoms.addRecruiter, {
-    mode: "promise",
-  });
-  const renameRecruiter = useAtomSet(companyWorkspaceAtoms.renameRecruiter, {
     mode: "promise",
   });
   const startInterview = useAtomSet(companyWorkspaceAtoms.startInterview, {
@@ -122,10 +143,46 @@ export function CompanyWorkspace(): React.ReactElement {
     "Les informations de l'entreprise n'ont pas pu etre chargees.",
   );
   const company = companyState.kind === "success" ? companyState.value : null;
+  const activeInterviewsState = toAsyncPanelState(
+    activeInterviewsResult,
+    "La liste des entretiens en cours n'a pas pu etre chargee.",
+  );
+  const completedInterviewsState = toAsyncPanelState(
+    completedInterviewsResult,
+    "La liste des entretiens termines n'a pas pu etre chargee.",
+  );
   const recruiters = company?.recruiters ?? [];
   const selectedRecruiter =
     recruiters.find((recruiter) => recruiter.id === selectedRecruiterId) ?? null;
   const companyLabel = company?.name ?? accountName;
+  const allInterviewRows =
+    activeInterviewsState.kind === "success" && completedInterviewsState.kind === "success"
+      ? buildCompanyInterviewListRows({
+          activeInterviews: activeInterviewsState.value,
+          completedInterviews: completedInterviewsState.value,
+        })
+      : [];
+  const visibleInterviewRows = filterCompanyInterviewListRows(allInterviewRows, {
+    query: deferredInterviewQuery,
+    status: interviewStatus,
+  });
+  const interviewStatusFilters: ReadonlyArray<{
+    readonly value: InterviewStatusFilter;
+    readonly label: string;
+    readonly count: number;
+  }> = [
+    { value: "all", label: "Tous", count: allInterviewRows.length },
+    {
+      value: "active",
+      label: "En cours",
+      count: allInterviewRows.filter((row) => row.kind === "active").length,
+    },
+    {
+      value: "completed",
+      label: "Termines",
+      count: allInterviewRows.filter((row) => row.kind === "completed").length,
+    },
+  ];
 
   useEffect(() => {
     void authClient.getSession().then((session) => {
@@ -145,10 +202,6 @@ export function CompanyWorkspace(): React.ReactElement {
     setPreferredRecruiterId(
       window.localStorage.getItem(companyPreferredRecruiterStorageKey) as Recruiter["id"] | null,
     );
-
-    if (window.localStorage.getItem(companySetupDrawerStorageKey) !== "dismissed") {
-      setIsDrawerOpen(true);
-    }
   }, []);
 
   useEffect(() => {
@@ -192,30 +245,12 @@ export function CompanyWorkspace(): React.ReactElement {
     }
   };
 
-  const handleDrawerOpenChange = (open: boolean) => {
-    setIsDrawerOpen(open);
-
-    if (!open && typeof window !== "undefined") {
-      window.localStorage.setItem(companySetupDrawerStorageKey, "dismissed");
-    }
-  };
-
   const resetCandidate = () => {
     setSubmittedCode(null);
     setCodeDraft("");
+    setIsCandidatePreviewOpen(false);
     setPageError(null);
     setPageMessage(null);
-  };
-
-  const handleSignOut = async () => {
-    setIsSigningOut(true);
-
-    try {
-      await authClient.signOut();
-      await navigate({ replace: true, to: "/" });
-    } finally {
-      setIsSigningOut(false);
-    }
   };
 
   const addRecruiterByName = async (name: string): Promise<Recruiter | null> => {
@@ -247,7 +282,6 @@ export function CompanyWorkspace(): React.ReactElement {
         rememberRecruiter(addedRecruiter.id);
       }
 
-      setNewRecruiterName("");
       setPageMessage(`Recruteur ${name} ajoute.`);
       refreshCompany();
 
@@ -255,43 +289,6 @@ export function CompanyWorkspace(): React.ReactElement {
     } catch (error) {
       setPageError(formatMutationError(error));
       return null;
-    }
-  };
-
-  const submitRecruiter = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    await addRecruiterByName(newRecruiterName.trim());
-  };
-
-  const submitRecruiterRename = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (company == null || editingRecruiterId == null) {
-      return;
-    }
-
-    const name = editingRecruiterName.trim();
-
-    if (name.length === 0) {
-      setPageError("Le nom du recruteur est obligatoire.");
-      return;
-    }
-
-    setPageError(null);
-    setPageMessage(null);
-
-    try {
-      await renameRecruiter({
-        payload: { recruiterId: editingRecruiterId, name },
-        reactivityKeys: companyWorkspaceReactivity.currentCompany,
-      });
-      setEditingRecruiterId(null);
-      setEditingRecruiterName("");
-      setPageMessage("Recruteur mis a jour.");
-      refreshCompany();
-    } catch (error) {
-      setPageError(formatMutationError(error));
     }
   };
 
@@ -309,6 +306,7 @@ export function CompanyWorkspace(): React.ReactElement {
     setPageMessage(null);
     setSubmittedCode(normalizedCode);
     setCodeDraft(normalizedCode);
+    setIsCandidatePreviewOpen(true);
   };
 
   const applyDetectedCode = useCallback((value: string) => {
@@ -322,6 +320,7 @@ export function CompanyWorkspace(): React.ReactElement {
     setPageMessage(null);
     setCodeDraft(normalizedCode);
     setSubmittedCode(normalizedCode);
+    setIsCandidatePreviewOpen(true);
   }, []);
 
   const beginInterview = async (candidatePreview: PresentedCvProfilePreview) => {
@@ -363,220 +362,34 @@ export function CompanyWorkspace(): React.ReactElement {
   };
 
   return (
-    <main className="min-h-[100dvh] bg-[var(--s2ee-canvas)] font-mono text-[color:var(--s2ee-soft-foreground)]">
-      <Drawer onOpenChange={handleDrawerOpenChange} open={isDrawerOpen} position="right">
-        <DrawerPopup className="rounded-none" position="right" showCloseButton>
-          <DrawerHeader className="border-b border-[var(--s2ee-border)]">
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                Entreprise
-              </p>
-              <DrawerTitle className="font-mono text-2xl font-black tracking-[-0.06em]">
-                {companyLabel}
-              </DrawerTitle>
-              <DrawerDescription className="font-mono text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]" />
-            </div>
-          </DrawerHeader>
-
-          <DrawerPanel className="grid gap-6 overflow-y-auto">
-            <div className="grid gap-2">
-              <Button
-                className="justify-start rounded-none"
-                onClick={() => navigate({ to: "/company" })}
-                type="button"
-                variant="outline"
-              >
-                <ScanLineIcon />
-                Scan
-              </Button>
-              <Button
-                className="justify-start rounded-none"
-                onClick={() => navigate({ to: "/company/interviews" })}
-                type="button"
-                variant="outline"
-              >
-                <ArrowRightIcon />
-                Entretiens
-              </Button>
-            </div>
-
-            {companyState.kind === "loading" ? (
-              <div className="grid gap-3">
-                <Skeleton className="h-20 rounded-none" />
-                <Skeleton className="h-20 rounded-none" />
-              </div>
-            ) : company == null ? (
-              <Alert variant="warning">
-                <CircleAlertIcon className="size-4" />
-                <AlertTitle>Entreprise manquante</AlertTitle>
-                <AlertDescription>
-                  Ce compte n&apos;est pas encore lie a une entreprise.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <div className="grid gap-6">
-                <section className="grid gap-3">
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                      Recruteurs
-                    </p>
-                  </div>
-                  <div className="grid gap-2">
-                    {recruiters.length === 0 ? (
-                      <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-                        Aucun recruteur.
-                      </p>
-                    ) : (
-                      recruiters.map((recruiter) =>
-                        editingRecruiterId === recruiter.id ? (
-                          <form
-                            className="grid gap-2 border border-[var(--s2ee-border)] p-3"
-                            key={recruiter.id}
-                            onSubmit={submitRecruiterRename}
-                          >
-                            <Input
-                              className="rounded-none border-0 border-b border-[var(--s2ee-border)] bg-transparent px-0 py-2 text-sm shadow-none focus-visible:ring-0"
-                              onChange={(event) => {
-                                const { value } = event.currentTarget;
-                                setEditingRecruiterName(value);
-                              }}
-                              value={editingRecruiterName}
-                            />
-                            <div className="flex gap-2">
-                              <Button className="flex-1 rounded-none" type="submit">
-                                Enregistrer
-                              </Button>
-                              <Button
-                                className="flex-1 rounded-none"
-                                onClick={() => {
-                                  setEditingRecruiterId(null);
-                                  setEditingRecruiterName("");
-                                }}
-                                type="button"
-                                variant="outline"
-                              >
-                                Annuler
-                              </Button>
-                            </div>
-                          </form>
-                        ) : (
-                          <div
-                            className="grid gap-3 border border-[var(--s2ee-border)] p-3"
-                            key={recruiter.id}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="space-y-1">
-                                <p className="text-sm font-bold uppercase tracking-[0.16em]">
-                                  {recruiter.name}
-                                </p>
-                                <p className="text-[11px] uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                                  {resolvePreferredRecruiter(recruiters, preferredRecruiterId)
-                                    ?.id === recruiter.id
-                                    ? "Par defaut sur cet appareil"
-                                    : "Disponible"}
-                                </p>
-                              </div>
-                              <button
-                                className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary"
-                                onClick={() => {
-                                  setEditingRecruiterId(recruiter.id);
-                                  setEditingRecruiterName(recruiter.name);
-                                }}
-                                type="button"
-                              >
-                                Renommer
-                              </button>
-                            </div>
-                            <Button
-                              className="rounded-none"
-                              onClick={() => rememberRecruiter(recruiter.id)}
-                              type="button"
-                              variant={selectedRecruiterId === recruiter.id ? "default" : "outline"}
-                            >
-                              {selectedRecruiterId === recruiter.id
-                                ? "Selectionne"
-                                : "Selectionner"}
-                            </Button>
-                          </div>
-                        ),
-                      )
-                    )}
-                  </div>
-                </section>
-
-                <section className="grid gap-3 border-t border-[var(--s2ee-border)] pt-6">
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                      Ajouter un recruteur
-                    </p>
-                  </div>
-                  <form className="grid gap-3" onSubmit={submitRecruiter}>
-                    <Input
-                      className="rounded-none border-0 border-b border-[var(--s2ee-border)] bg-transparent px-0 py-2 text-sm shadow-none focus-visible:ring-0"
-                      onChange={(event) => {
-                        const { value } = event.currentTarget;
-                        setNewRecruiterName(value);
-                      }}
-                      placeholder="Nom du recruteur"
-                      value={newRecruiterName}
-                    />
-                    <Button className="rounded-none" type="submit">
-                      Ajouter
-                    </Button>
-                  </form>
-                </section>
-              </div>
-            )}
-
-            <div className="grid gap-2 border-t border-[var(--s2ee-border)] pt-6">
-              <DrawerClose
-                render={<Button className="rounded-none justify-start" variant="outline" />}
-              >
-                <Settings2Icon />
-                Fermer
-              </DrawerClose>
-              <Button
-                className="justify-start rounded-none"
-                loading={isSigningOut}
-                onClick={handleSignOut}
-                type="button"
-                variant="outline"
-              >
-                <LogOutIcon />
-                Se deconnecter
-              </Button>
-            </div>
-          </DrawerPanel>
-        </DrawerPopup>
-      </Drawer>
-
-      <div className="mx-auto grid max-w-[1600px] gap-8 px-5 py-6 sm:px-8 sm:py-8">
-        <header className="flex flex-col gap-4 border-b border-[var(--s2ee-border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em]">
-              <span className="text-primary">S2EE Entreprise</span>
-              <span className="text-[color:var(--s2ee-muted-foreground)]">{companyLabel}</span>
-            </div>
-            <div className="space-y-1">
-              <h1 className="text-[clamp(2rem,4vw,3.4rem)] font-black tracking-[-0.08em]">
-                Scan entretien
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
+    <main className="s2ee-workspace-page">
+      <AppIslandNavbar
+        action={
+          <div className="flex items-center gap-2">
             <Button
-              className="rounded-none"
-              onClick={() => setIsDrawerOpen(true)}
+              className={[
+                "rounded-[8px] border-[var(--s2ee-border)] px-3 text-sm font-bold shadow-none hover:bg-white sm:px-4",
+                activeSubview === "scan"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-[var(--s2ee-surface)] text-[color:var(--s2ee-soft-foreground)]",
+              ].join(" ")}
+              onClick={() => setActiveSubview("scan")}
+              size="sm"
               type="button"
               variant="outline"
             >
-              <MenuIcon />
-              Menu
+              <ScanLineIcon />
+              Scan
             </Button>
             <Button
-              className="rounded-none"
-              onClick={() => navigate({ to: "/company/interviews" })}
+              className={[
+                "rounded-[8px] border-[var(--s2ee-border)] px-3 text-sm font-bold shadow-none hover:bg-white sm:px-4",
+                activeSubview === "interviews"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-[var(--s2ee-surface)] text-[color:var(--s2ee-soft-foreground)]",
+              ].join(" ")}
+              onClick={() => setActiveSubview("interviews")}
+              size="sm"
               type="button"
               variant="outline"
             >
@@ -584,7 +397,16 @@ export function CompanyWorkspace(): React.ReactElement {
               Entretiens
             </Button>
           </div>
-        </header>
+        }
+      />
+
+      <div className="mx-auto grid max-w-5xl gap-6 px-4 py-6 sm:px-6 sm:py-8">
+        <div className="flex items-center gap-4">
+          <CompanyLogo company={company} companyLabel={companyLabel} />
+          <h1 className="text-4xl font-black leading-none text-[color:var(--s2ee-soft-foreground)] sm:text-5xl">
+            {companyLabel}
+          </h1>
+        </div>
 
         {pageMessage != null ? (
           <Alert>
@@ -623,67 +445,55 @@ export function CompanyWorkspace(): React.ReactElement {
 
         <div
           className={[
-            "grid border border-[var(--s2ee-border)] bg-white lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]",
+            "s2ee-data-plane grid lg:grid-cols-[minmax(0,1fr)_22rem]",
             needsRecruiterOnboarding ? "pointer-events-none opacity-35" : "",
           ].join(" ")}
         >
           <section className="grid gap-4 border-b border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 lg:border-r lg:border-b-0">
+            <CameraScanner onDetected={applyDetectedCode} />
+          </section>
+
+          <section className="flex min-h-full flex-col gap-5 p-6">
             <div className="space-y-2">
               <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                Camera
+                Code manuel
+              </p>
+              <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                Utilisez cette alternative si le QR code ne passe pas a la camera.
               </p>
             </div>
-            <CameraScanner onDetected={applyDetectedCode} />
-            <form
-              className="grid gap-3 border-t border-[var(--s2ee-border)] pt-4"
-              onSubmit={submitCandidateCode}
-            >
-              <label className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
-                Code manuel
-              </label>
-              <InputOTP
-                containerClassName="justify-center"
-                inputMode="text"
-                maxLength={6}
-                onChange={(value) => {
-                  setCodeDraft(value.toUpperCase());
-                }}
-                pattern="[A-Za-z0-9]*"
-                value={codeDraft}
-              >
-                <InputOTPGroup size="lg">
-                  <InputOTPSlot
-                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
-                    index={0}
-                  />
-                  <InputOTPSlot
-                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
-                    index={1}
-                  />
-                  <InputOTPSlot
-                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
-                    index={2}
-                  />
-                  <InputOTPSlot
-                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
-                    index={3}
-                  />
-                  <InputOTPSlot
-                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
-                    index={4}
-                  />
-                  <InputOTPSlot
-                    className="rounded-none border-[var(--s2ee-border)] bg-white text-xl font-black uppercase tracking-[0.12em] shadow-none sm:size-10"
-                    index={5}
-                  />
-                </InputOTPGroup>
-              </InputOTP>
+
+            <form className="grid gap-4" onSubmit={submitCandidateCode}>
+              <div className="grid gap-2">
+                <label
+                  className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                  htmlFor="company-manual-code"
+                >
+                  Code candidat
+                </label>
+                <Input
+                  id="company-manual-code"
+                  className="h-14 rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] px-4 text-lg font-black uppercase tracking-[0.16em] shadow-none"
+                  inputMode="text"
+                  maxLength={6}
+                  nativeInput
+                  onChange={(event) => {
+                    const nextValue = event.currentTarget.value
+                      .replace(/[^a-zA-Z0-9]/g, "")
+                      .toUpperCase();
+                    setCodeDraft(nextValue);
+                  }}
+                  pattern="[A-Za-z0-9]*"
+                  placeholder="ABC123"
+                  value={codeDraft}
+                />
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                <Button className="rounded-none" type="submit">
+                <Button className="s2ee-command rounded-[var(--s2ee-control-radius)]" type="submit">
                   Rechercher
                 </Button>
                 <Button
-                  className="rounded-none"
+                  className="s2ee-command rounded-[var(--s2ee-control-radius)]"
                   onClick={resetCandidate}
                   type="button"
                   variant="outline"
@@ -692,15 +502,29 @@ export function CompanyWorkspace(): React.ReactElement {
                 </Button>
               </div>
             </form>
+
+            <RecruiterDropdown
+              addRecruiter={addRecruiterByName}
+              onSelectRecruiter={rememberRecruiter}
+              recruiters={recruiters}
+              selectedRecruiter={selectedRecruiter}
+              selectedRecruiterId={selectedRecruiterId}
+            />
           </section>
+        </div>
+      </div>
 
-          <section className="grid gap-4 p-6">
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
-                Apercu candidat
-              </p>
-            </div>
-
+      <Dialog onOpenChange={setIsCandidatePreviewOpen} open={isCandidatePreviewOpen}>
+        <DialogPopup className="max-w-2xl rounded-[var(--s2ee-panel-radius)]" showCloseButton>
+          <DialogHeader className="border-b bg-[var(--s2ee-surface-soft)] [border-color:var(--s2ee-border)]">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
+              Apercu candidat
+            </p>
+            <DialogTitle className="text-2xl font-black tracking-[-0.04em] text-[color:var(--s2ee-soft-foreground)]">
+              Confirmer l'entretien
+            </DialogTitle>
+          </DialogHeader>
+          <DialogPanel className="p-5 sm:p-6" scrollFade={false}>
             {submittedCode == null ? (
               <EmptyPreview message="En attente d'un QR code ou d'un code a 6 caracteres." />
             ) : (
@@ -712,9 +536,9 @@ export function CompanyWorkspace(): React.ReactElement {
                 selectedRecruiter={selectedRecruiter}
               />
             )}
-          </section>
-        </div>
-      </div>
+          </DialogPanel>
+        </DialogPopup>
+      </Dialog>
     </main>
   );
 }
@@ -755,37 +579,40 @@ function RecruiterOnboardingPanel(props: {
   };
 
   return (
-    <section className="grid gap-6 border border-primary bg-[var(--s2ee-surface)] p-5 shadow-[inset_4px_0_0_var(--color-primary)] sm:p-7 lg:grid-cols-[minmax(0,0.85fr)_minmax(320px,1fr)]">
+    <section className="grid gap-6 rounded-[var(--s2ee-panel-radius)] border border-primary bg-[var(--s2ee-surface)] p-5 shadow-[inset_4px_0_0_var(--color-primary)] sm:p-7 lg:grid-cols-[minmax(0,0.85fr)_minmax(320px,1fr)]">
       <div className="space-y-5">
         <div className="space-y-3">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
             Onboarding recruteurs
           </p>
-          <h2 className="max-w-2xl text-3xl font-black tracking-[-0.08em] text-slate-900 sm:text-4xl">
-            Ajoutez les personnes qui conduiront les entretiens.
+          <h2 className="max-w-2xl text-2xl font-black tracking-[-0.04em] text-slate-900 sm:text-3xl">
+            Configurez le recruteur de cet appareil.
           </h2>
           <p className="max-w-2xl text-sm leading-7 text-[color:var(--s2ee-muted-foreground)]">
             {props.companyLabel} doit avoir au moins un recruteur avant de scanner un candidat. Vous
-            pouvez en ajouter plusieurs maintenant, puis choisir celui utilise par defaut sur cet
-            appareil.
+            pouvez en ajouter plusieurs, puis choisir celui utilise par defaut sur cet appareil.
           </p>
         </div>
 
         <form className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]" onSubmit={submitRecruiter}>
           <Input
-            className="h-12 rounded-none border-[var(--s2ee-border)] bg-white shadow-none"
+            className="h-12 rounded-[var(--s2ee-control-radius)] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
             disabled={isAdding}
             onChange={(event) => setNameDraft(event.currentTarget.value)}
             placeholder="Nom du recruteur"
             value={nameDraft}
           />
-          <Button className="h-12 rounded-none px-6" loading={isAdding} type="submit">
+          <Button
+            className="s2ee-command h-12 rounded-[var(--s2ee-control-radius)] px-6"
+            loading={isAdding}
+            type="submit"
+          >
             Ajouter
           </Button>
         </form>
       </div>
 
-      <div className="grid gap-4 border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-4">
+      <div className="grid gap-4 rounded-[var(--s2ee-panel-radius)] border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]">
@@ -796,7 +623,7 @@ function RecruiterOnboardingPanel(props: {
             </p>
           </div>
           <Button
-            className="rounded-none"
+            className="s2ee-command rounded-[var(--s2ee-control-radius)]"
             disabled={selectedRecruiter == null}
             onClick={props.onContinue}
             type="button"
@@ -807,17 +634,17 @@ function RecruiterOnboardingPanel(props: {
 
         <div className="grid gap-2">
           {props.recruiters.length === 0 ? (
-            <div className="border border-dashed border-[var(--s2ee-border)] bg-white p-4 text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+            <div className="rounded-[var(--s2ee-control-radius)] border border-dashed border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] p-4 text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
               Aucun recruteur ajoute pour le moment.
             </div>
           ) : (
             props.recruiters.map((recruiter) => (
               <button
                 className={[
-                  "flex items-center justify-between gap-4 border p-4 text-left transition-colors",
+                  "flex items-center justify-between gap-4 rounded-[var(--s2ee-control-radius)] border p-4 text-left transition-colors",
                   props.selectedRecruiterId === recruiter.id
-                    ? "border-primary bg-white text-primary"
-                    : "border-[var(--s2ee-border)] bg-white text-slate-900 hover:border-primary/60",
+                    ? "border-primary bg-[var(--s2ee-accent-wash)] text-primary"
+                    : "border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] text-slate-900 hover:border-primary/60",
                 ].join(" ")}
                 key={recruiter.id}
                 onClick={() => props.onSelectRecruiter(recruiter.id)}
@@ -835,6 +662,128 @@ function RecruiterOnboardingPanel(props: {
         </div>
       </div>
     </section>
+  );
+}
+
+function RecruiterDropdown(props: {
+  readonly addRecruiter: (name: string) => Promise<Recruiter | null>;
+  readonly onSelectRecruiter: (recruiterId: Recruiter["id"]) => void;
+  readonly recruiters: ReadonlyArray<Recruiter>;
+  readonly selectedRecruiter: Recruiter | null;
+  readonly selectedRecruiterId: Recruiter["id"] | null;
+}): React.ReactElement {
+  const [isOpen, setIsOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+
+  const submitRecruiter = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const name = nameDraft.trim();
+
+    if (name.length === 0) {
+      return;
+    }
+
+    setIsAdding(true);
+
+    try {
+      const recruiter = await props.addRecruiter(name);
+
+      if (recruiter != null) {
+        setNameDraft("");
+        setIsOpen(false);
+      }
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  return (
+    <div className="mt-auto grid gap-2 border-t border-[var(--s2ee-border)] pt-5">
+      <span className="s2ee-index-label">Recruteur</span>
+      <Popover onOpenChange={setIsOpen} open={isOpen}>
+        <PopoverTrigger>
+          <Button
+            className="s2ee-command h-12 w-full justify-between rounded-[var(--s2ee-control-radius)]"
+            type="button"
+            variant="outline"
+          >
+            <span className="truncate text-left">
+              Recruteur: {props.selectedRecruiter?.name ?? "Aucun"}
+            </span>
+            <ChevronDownIcon />
+          </Button>
+        </PopoverTrigger>
+        <PopoverPopup
+          align="end"
+          className="w-[min(22rem,calc(100vw-2rem))] rounded-[var(--s2ee-panel-radius)] p-0"
+          sideOffset={8}
+        >
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              {props.recruiters.length === 0 ? (
+                <p className="rounded-[var(--s2ee-control-radius)] border border-dashed border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-3 text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                  Aucun recruteur ajoute.
+                </p>
+              ) : (
+                props.recruiters.map((recruiter) => (
+                  <button
+                    className={[
+                      "flex items-center justify-between gap-3 rounded-[var(--s2ee-control-radius)] border px-3 py-3 text-left transition-colors",
+                      props.selectedRecruiterId === recruiter.id
+                        ? "border-primary bg-[var(--s2ee-accent-wash)] text-primary"
+                        : "border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] hover:border-primary/60",
+                    ].join(" ")}
+                    key={recruiter.id}
+                    onClick={() => {
+                      props.onSelectRecruiter(recruiter.id);
+                      setIsOpen(false);
+                    }}
+                    type="button"
+                  >
+                    <span className="truncate text-sm font-bold uppercase tracking-[0.12em]">
+                      {recruiter.name}
+                    </span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.18em]">
+                      {props.selectedRecruiterId === recruiter.id ? "Actif" : "Choisir"}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+
+            <form
+              className="grid gap-3 border-t border-[var(--s2ee-border)] pt-4"
+              onSubmit={submitRecruiter}
+            >
+              <label
+                className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--s2ee-muted-foreground)]"
+                htmlFor="company-recruiter-dropdown-name"
+              >
+                Ajouter un recruteur
+              </label>
+              <Input
+                id="company-recruiter-dropdown-name"
+                className="rounded-[var(--s2ee-control-radius)] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] shadow-none"
+                disabled={isAdding}
+                onChange={(event) => setNameDraft(event.currentTarget.value)}
+                placeholder="Nom du recruteur"
+                value={nameDraft}
+              />
+              <Button
+                className="s2ee-command rounded-[var(--s2ee-control-radius)]"
+                loading={isAdding}
+                type="submit"
+              >
+                <UserPlusIcon />
+                Ajouter
+              </Button>
+            </form>
+          </div>
+        </PopoverPopup>
+      </Popover>
+    </div>
   );
 }
 
@@ -913,12 +862,12 @@ function CameraScanner(props: {
 
   return (
     <div className="grid gap-3">
-      <div className="relative overflow-hidden border border-[var(--s2ee-border)] bg-white">
+      <div className="relative overflow-hidden rounded-[var(--s2ee-panel-radius)] border border-[var(--s2ee-border)] bg-[var(--s2ee-surface)]">
         <video className="aspect-[4/3] w-full object-cover" muted playsInline ref={videoRef} />
         {cameraState !== "ready" ? (
-          <div className="absolute inset-0 grid place-items-center bg-[color:rgba(255,255,255,0.92)] p-6 text-center">
+          <div className="absolute inset-0 grid place-items-center bg-[var(--s2ee-surface)]/95 p-6 text-center">
             <div className="grid gap-3">
-              <div className="mx-auto flex size-14 items-center justify-center border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)]">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-[var(--s2ee-control-radius)] border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)]">
                 <CameraIcon className="size-6 text-primary" />
               </div>
               <p className="max-w-sm text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
@@ -931,7 +880,7 @@ function CameraScanner(props: {
         )}
       </div>
       <Button
-        className="rounded-none"
+        className="s2ee-command rounded-[var(--s2ee-control-radius)]"
         onClick={() => void startCamera()}
         type="button"
         variant="outline"
@@ -960,9 +909,9 @@ function CandidatePreviewPanel(props: {
   if (previewState.kind === "loading") {
     return (
       <div className="grid gap-3">
-        <Skeleton className="h-14 rounded-none" />
-        <Skeleton className="h-40 rounded-none" />
-        <Skeleton className="h-14 rounded-none" />
+        <Skeleton className="h-14 rounded-[var(--s2ee-panel-radius)]" />
+        <Skeleton className="h-40 rounded-[var(--s2ee-panel-radius)]" />
+        <Skeleton className="h-14 rounded-[var(--s2ee-panel-radius)]" />
       </div>
     );
   }
@@ -995,14 +944,14 @@ function CandidatePreviewPanel(props: {
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-5">
+      <div className="grid gap-4 rounded-[var(--s2ee-panel-radius)] border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-5">
         <div className="space-y-2">
           <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">Candidat</p>
           <h3 className="text-2xl font-black tracking-[-0.06em]">
             {candidatePreview.student.firstName} {candidatePreview.student.lastName}
           </h3>
           <p className="text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
-            {candidatePreview.student.institution} · {candidatePreview.student.academicYear} ·{" "}
+            {candidatePreview.student.institution} / {candidatePreview.student.academicYear} /{" "}
             {candidatePreview.student.major}
           </p>
         </div>
@@ -1017,7 +966,7 @@ function CandidatePreviewPanel(props: {
       </div>
 
       <Button
-        className="h-14 rounded-none text-base font-black uppercase tracking-[0.18em]"
+        className="s2ee-command h-14 rounded-[var(--s2ee-control-radius)] text-base font-black uppercase tracking-[0.18em]"
         disabled={!canStartInterview}
         loading={props.isStartingInterview}
         onClick={() => props.onStartInterview(candidatePreview)}
@@ -1045,7 +994,7 @@ function DetailRow(props: { readonly label: string; readonly value: string }): R
 
 function EmptyPreview(props: { readonly message: string }): React.ReactElement {
   return (
-    <div className="grid min-h-[320px] place-items-center border border-dashed border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 text-center">
+    <div className="grid min-h-[320px] place-items-center rounded-[var(--s2ee-panel-radius)] border border-dashed border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-6 text-center">
       <p className="max-w-sm text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
         {props.message}
       </p>
