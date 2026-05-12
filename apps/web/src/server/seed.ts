@@ -13,6 +13,8 @@ import { ServerEnvLive } from "@project/env/server";
 import { eq, inArray } from "drizzle-orm";
 import { Effect, Layer } from "effect";
 
+import { defaultGlobalInterviewTags } from "./default-vocabularies";
+
 type SeedUser = {
   readonly name: string;
   readonly email: string;
@@ -114,14 +116,8 @@ const cvProfileTypesSeed = [
   { id: "data-science", label: "Data Science" },
 ] as const;
 
-const globalInterviewTagsSeed = [
-  { id: "curious", label: "Curious" },
-  { id: "strong-technical", label: "Strong Technical" },
-  { id: "follow-up", label: "Follow Up" },
-] as const;
-
 const recreateAuthUser = (seededUser: SeedUser) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const db = yield* DB;
     const auth = yield* makeAuth;
 
@@ -135,8 +131,7 @@ const recreateAuthUser = (seededUser: SeedUser) =>
       }),
     );
 
-    const createdUserId =
-      (signUpResult as { user?: { id?: string } } | null)?.user?.id ?? null;
+    const createdUserId = (signUpResult as { user?: { id?: string } } | null)?.user?.id ?? null;
 
     if (!createdUserId) {
       return yield* Effect.fail(
@@ -158,17 +153,13 @@ const recreateAuthUser = (seededUser: SeedUser) =>
     return createdUserId;
   });
 
-const program = Effect.gen(function*() {
+const program = Effect.gen(function* () {
   const db = yield* DB;
   const userIdsByEmail = new Map<string, string>();
 
   const seedEmails = usersSeed.map((seededUser) => seededUser.email);
 
-  yield* Effect.promise(() =>
-    db
-      .delete(user)
-      .where(inArray(user.email, seedEmails)),
-  );
+  yield* Effect.promise(() => db.delete(user).where(inArray(user.email, seedEmails)));
 
   for (const seededUser of usersSeed) {
     const userId = yield* recreateAuthUser(seededUser);
@@ -198,9 +189,7 @@ const program = Effect.gen(function*() {
         const ownerUserId = userIdsByEmail.get(seededCompany.ownerEmail);
 
         if (!ownerUserId) {
-          throw new Error(
-            `Missing owner user for company seed: ${seededCompany.ownerEmail}`,
-          );
+          throw new Error(`Missing owner user for company seed: ${seededCompany.ownerEmail}`);
         }
 
         await tx
@@ -229,18 +218,20 @@ const program = Effect.gen(function*() {
       await tx.delete(studentInstitution);
       await tx.delete(studentMajor);
 
-      await tx.insert(cvProfileType).values(
-        cvProfileTypesSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })),
-      );
-      await tx.insert(globalInterviewTag).values(
-        globalInterviewTagsSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })),
-      );
-      await tx.insert(studentMajor).values(
-        studentMajorsSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })),
-      );
-      await tx.insert(studentInstitution).values(
-        studentInstitutionsSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })),
-      );
+      await tx
+        .insert(cvProfileType)
+        .values(cvProfileTypesSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })));
+      if (defaultGlobalInterviewTags.length > 0) {
+        await tx
+          .insert(globalInterviewTag)
+          .values(defaultGlobalInterviewTags.map((entry, sortOrder) => ({ ...entry, sortOrder })));
+      }
+      await tx
+        .insert(studentMajor)
+        .values(studentMajorsSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })));
+      await tx
+        .insert(studentInstitution)
+        .values(studentInstitutionsSeed.map((entry, sortOrder) => ({ ...entry, sortOrder })));
     }),
   );
 
@@ -251,9 +242,7 @@ const program = Effect.gen(function*() {
   }));
 });
 
-Effect.runPromise(
-  program.pipe(Effect.provide(Layer.mergeAll(ServerEnvLive, DatabaseLive))),
-)
+Effect.runPromise(program.pipe(Effect.provide(Layer.mergeAll(ServerEnvLive, DatabaseLive))))
   .then((credentials) => {
     console.log("Seeded users, companies, and rooms.");
     console.table(credentials);

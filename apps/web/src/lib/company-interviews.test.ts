@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  CompanyActiveInterviewDetail,
   CompanyCompletedInterviewLedgerEntry,
+  CompanyInterviewTag,
   CvProfile,
   CvProfileType,
   Interview,
@@ -14,17 +16,41 @@ import {
 
 const asId = <Value extends string>(value: string): Value => value as Value;
 
-const activeInterview = new Interview({
-  id: asId<Interview["id"]>("active-1"),
-  companyId: asId<Interview["companyId"]>("company-1"),
-  studentId: asId<Interview["studentId"]>("student-1"),
-  cvProfileId: asId<Interview["cvProfileId"]>("cv-1"),
-  recruiterName: "Nora Lane",
-  status: "active",
-  score: null,
-  notes: "",
-  globalTags: [],
-  companyTags: [],
+const activeInterview = new CompanyActiveInterviewDetail({
+  interview: new Interview({
+    id: asId<Interview["id"]>("active-1"),
+    companyId: asId<Interview["companyId"]>("company-1"),
+    studentId: asId<Interview["studentId"]>("student-1"),
+    cvProfileId: asId<Interview["cvProfileId"]>("cv-1"),
+    recruiterName: "Nora Lane",
+    status: "active",
+    score: null,
+    notes: "",
+    globalTags: [],
+    companyTags: [],
+  }),
+  student: new Student({
+    id: asId<Student["id"]>("student-1"),
+    firstName: "Grace",
+    lastName: "Hopper",
+    phoneNumber: "+213 555 12 34",
+    academicYear: "5th year",
+    major: "Computer Science",
+    institution: "ESI",
+    image: null,
+  }),
+  cvProfile: new CvProfile({
+    id: asId<CvProfile["id"]>("cv-1"),
+    studentId: asId<CvProfile["studentId"]>("student-1"),
+    presentationCode: "DEF456",
+    profileType: new CvProfileType({
+      id: asId<CvProfileType["id"]>("type-1"),
+      label: "General CV",
+    }),
+    fileName: "grace.pdf",
+    contentType: "application/pdf",
+    fileSizeBytes: 1024,
+  }),
 });
 
 const completedInterview = new CompanyCompletedInterviewLedgerEntry({
@@ -38,7 +64,12 @@ const completedInterview = new CompanyCompletedInterviewLedgerEntry({
     score: 4.4,
     notes: "",
     globalTags: [],
-    companyTags: [],
+    companyTags: [
+      new CompanyInterviewTag({
+        id: asId<CompanyInterviewTag["id"]>("backend"),
+        label: "Backend Ready",
+      }),
+    ],
   }),
   student: new Student({
     id: asId<Student["id"]>("student-2"),
@@ -74,13 +105,14 @@ describe("company-interviews", () => {
     ).toEqual([
       {
         id: "active-1",
-        institution: "",
+        institution: "ESI",
         kind: "active",
-        label: "Entretien active-1",
-        major: "",
+        label: "Grace Hopper",
+        major: "Computer Science",
         recruiterName: "Nora Lane",
         scoreLabel: "En cours",
         status: "active",
+        tagLabels: [],
       },
       {
         id: "completed-1",
@@ -91,6 +123,7 @@ describe("company-interviews", () => {
         recruiterName: "Ilyes Haddad",
         scoreLabel: "4.4 / 5",
         status: "completed",
+        tagLabels: ["Backend Ready"],
       },
     ]);
   });
@@ -105,6 +138,7 @@ describe("company-interviews", () => {
       filterCompanyInterviewListRows(rows, {
         query: "ada",
         status: "all",
+        tag: null,
       }).map((row) => row.id),
     ).toEqual(["completed-1"]);
 
@@ -112,7 +146,16 @@ describe("company-interviews", () => {
       filterCompanyInterviewListRows(rows, {
         query: "",
         status: "active",
+        tag: null,
       }).map((row) => row.id),
     ).toEqual(["active-1"]);
+
+    expect(
+      filterCompanyInterviewListRows(rows, {
+        query: "",
+        status: "all",
+        tag: "Backend Ready",
+      }).map((row) => row.id),
+    ).toEqual(["completed-1"]);
   });
 });

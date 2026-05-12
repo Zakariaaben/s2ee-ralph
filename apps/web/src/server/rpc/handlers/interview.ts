@@ -3,24 +3,30 @@ import { Effect } from "effect";
 
 import { InterviewService } from "../../services/interview-service";
 
-export const makeInterviewRpcHandlers = Effect.gen(function*() {
+export const makeInterviewRpcHandlers = Effect.gen(function* () {
   const interviewService = yield* InterviewService;
 
   return InterviewRpcGroup.of({
     listCurrentCompanyInterviews: () =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const actor = yield* CurrentActor;
 
         return yield* interviewService.listCurrentCompanyInterviews(actor);
       }),
+    listCurrentCompanyInterviewDetails: () =>
+      Effect.gen(function* () {
+        const actor = yield* CurrentActor;
+
+        return yield* interviewService.listCurrentCompanyInterviewDetails(actor);
+      }),
     listCurrentCompanyCompletedInterviews: () =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const actor = yield* CurrentActor;
 
         return yield* interviewService.listCurrentCompanyCompletedInterviews(actor);
       }),
     getCurrentCompanyInterviewDetail: (input) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const actor = yield* CurrentActor;
 
         return yield* interviewService.getCurrentCompanyInterviewDetail({
@@ -29,7 +35,7 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
         });
       }),
     getCurrentCompanyInterviewCvDownloadUrl: (input) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const actor = yield* CurrentActor;
 
         return yield* interviewService.getCurrentCompanyInterviewCvDownloadUrl({
@@ -38,7 +44,7 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
         });
       }),
     exportCurrentCompanyCompletedInterviews: (input) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const actor = yield* CurrentActor;
 
         return yield* interviewService.exportCurrentCompanyCompletedInterviews({
@@ -47,7 +53,7 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
         });
       }),
     startInterview: (input) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const actor = yield* CurrentActor;
 
         return yield* interviewService.startInterview({
@@ -57,7 +63,7 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
         });
       }),
     completeInterview: (input) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const actor = yield* CurrentActor;
 
         return yield* interviewService.completeInterview({
@@ -70,7 +76,7 @@ export const makeInterviewRpcHandlers = Effect.gen(function*() {
         });
       }),
     cancelInterview: (input) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const actor = yield* CurrentActor;
 
         return yield* interviewService.cancelInterview({

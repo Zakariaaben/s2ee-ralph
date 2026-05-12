@@ -113,7 +113,7 @@ describe("company-workspace", () => {
       activeInterviewCount: 1,
       completedInterviewCount: 2,
       averageCompletedScore: 3,
-      distinctTagCount: 3,
+      distinctTagCount: 2,
     });
   });
 

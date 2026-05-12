@@ -4,7 +4,6 @@ import {
   CompanyInterviewTag,
   CvProfile,
   CvProfileType,
-  GlobalInterviewTag,
   Interview,
   PresentedCvProfilePreview,
   Student,
@@ -130,26 +129,19 @@ describe("company-interview-execution", () => {
 
   it("builds and filters one aggregated tag option list", () => {
     const options = buildAggregatedInterviewTagOptions({
-      globalTags: [
-        new GlobalInterviewTag({
-          id: asId<GlobalInterviewTag["id"]>("g-1"),
-          label: "Curious",
-        }),
-      ],
       companyTagSuggestions: ["Backend Ready", "curious"],
     });
 
     expect(options).toEqual([
       {
-        globalTagId: "g-1",
-        key: "curious",
-        kind: "global",
-        label: "Curious",
-      },
-      {
         key: "backend ready",
         kind: "company",
         label: "Backend Ready",
+      },
+      {
+        key: "curious",
+        kind: "company",
+        label: "curious",
       },
     ]);
 
@@ -164,25 +156,19 @@ describe("company-interview-execution", () => {
 
   it("toggles selected labels and partitions them back into rpc payloads", () => {
     const options = buildAggregatedInterviewTagOptions({
-      globalTags: [
-        new GlobalInterviewTag({
-          id: asId<GlobalInterviewTag["id"]>("g-1"),
-          label: "Curious",
-        }),
-      ],
-      companyTagSuggestions: ["Backend Ready"],
+      companyTagSuggestions: ["Curious", "Backend Ready"],
     });
     const selected = toggleAggregatedTagSelection(["Curious"], "Backend Ready");
 
     expect(toggleAggregatedTagSelection(selected, "curious")).toEqual(["Backend Ready"]);
+    expect(options.map((option) => option.label)).toEqual(["Curious", "Backend Ready"]);
     expect(
       partitionAggregatedInterviewTags({
-        options,
         selectedLabels: selected,
       }),
     ).toEqual({
-      globalTagIds: ["g-1"],
-      companyTagLabels: ["Backend Ready"],
+      globalTagIds: [],
+      companyTagLabels: ["Curious", "Backend Ready"],
     });
   });
 

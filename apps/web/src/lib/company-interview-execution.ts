@@ -15,9 +15,8 @@ export type CompanyInterviewDraft = {
 
 export type AggregatedInterviewTagOption = {
   readonly key: string;
-  readonly kind: "company" | "global";
+  readonly kind: "company";
   readonly label: string;
-  readonly globalTagId?: GlobalInterviewTag["id"];
 };
 
 const normalizeTagLabelKey = (value: string): string => value.trim().toLocaleLowerCase();
@@ -76,27 +75,10 @@ export const collectSuggestedCompanyTagLabels = (input: {
 };
 
 export const buildAggregatedInterviewTagOptions = (input: {
-  readonly globalTags: ReadonlyArray<GlobalInterviewTag>;
   readonly companyTagSuggestions: ReadonlyArray<string>;
 }): ReadonlyArray<AggregatedInterviewTagOption> => {
   const options: Array<AggregatedInterviewTagOption> = [];
   const seen = new Set<string>();
-
-  for (const tag of input.globalTags) {
-    const key = normalizeTagLabelKey(tag.label);
-
-    if (seen.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-    options.push({
-      key,
-      kind: "global",
-      label: tag.label,
-      globalTagId: tag.id,
-    });
-  }
 
   for (const label of input.companyTagSuggestions) {
     const key = normalizeTagLabelKey(label);
@@ -126,9 +108,7 @@ export const filterAggregatedInterviewTagOptions = (
     return options;
   }
 
-  return options.filter((option) =>
-    normalizeTagLabelKey(option.label).includes(normalizedQuery),
-  );
+  return options.filter((option) => normalizeTagLabelKey(option.label).includes(normalizedQuery));
 };
 
 export const toggleAggregatedTagSelection = (
@@ -148,40 +128,26 @@ export const toggleAggregatedTagSelection = (
 };
 
 export const partitionAggregatedInterviewTags = (input: {
-  readonly options: ReadonlyArray<AggregatedInterviewTagOption>;
   readonly selectedLabels: ReadonlyArray<string>;
 }): {
   readonly companyTagLabels: ReadonlyArray<string>;
   readonly globalTagIds: ReadonlyArray<GlobalInterviewTag["id"]>;
 } => {
-  const optionsByKey = new Map(
-    input.options.map((option) => [normalizeTagLabelKey(option.label), option]),
-  );
-  const globalTagIds: Array<GlobalInterviewTag["id"]> = [];
   const companyTagLabels: Array<string> = [];
-  const seenGlobalTagIds = new Set<GlobalInterviewTag["id"]>();
   const seenCompanyLabels = new Set<string>();
 
   for (const label of input.selectedLabels) {
     const normalizedLabel = normalizeTagLabelKey(label);
-    const option = optionsByKey.get(normalizedLabel);
+    const cleanLabel = label.trim();
 
-    if (option?.kind === "global" && option.globalTagId != null) {
-      if (!seenGlobalTagIds.has(option.globalTagId)) {
-        seenGlobalTagIds.add(option.globalTagId);
-        globalTagIds.push(option.globalTagId);
-      }
-      continue;
-    }
-
-    if (!seenCompanyLabels.has(normalizedLabel)) {
+    if (cleanLabel.length > 0 && !seenCompanyLabels.has(normalizedLabel)) {
       seenCompanyLabels.add(normalizedLabel);
-      companyTagLabels.push(label.trim());
+      companyTagLabels.push(cleanLabel);
     }
   }
 
   return {
-    globalTagIds,
+    globalTagIds: [],
     companyTagLabels,
   };
 };

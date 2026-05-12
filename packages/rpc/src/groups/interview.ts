@@ -20,9 +20,7 @@ import {
   InterviewScore,
 } from "../request-schemas";
 
-export class StartInterviewInput extends Schema.Class<StartInterviewInput>(
-  "StartInterviewInput",
-)({
+export class StartInterviewInput extends Schema.Class<StartInterviewInput>("StartInterviewInput")({
   recruiterId: RecruiterId,
   presentationIdentity: CvProfilePresentationIdentity,
 }) {}
@@ -76,6 +74,10 @@ export const InterviewRpcMutationError = Schema.Union([
 export const InterviewRpcGroup = RpcGroup.make(
   Rpc.make("listCurrentCompanyInterviews", {
     success: Schema.Array(Interview),
+    error: InterviewRpcAccessError,
+  }),
+  Rpc.make("listCurrentCompanyInterviewDetails", {
+    success: Schema.Array(CompanyActiveInterviewDetail),
     error: InterviewRpcAccessError,
   }),
   Rpc.make("listCurrentCompanyCompletedInterviews", {

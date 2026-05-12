@@ -29,9 +29,12 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   ArrowRightIcon,
   CameraIcon,
+  CheckIcon,
   ChevronDownIcon,
   CircleAlertIcon,
+  DownloadIcon,
   ListFilterIcon,
+  LogOutIcon,
   QrCodeIcon,
   ScanLineIcon,
   SearchIcon,
@@ -59,6 +62,7 @@ import {
 } from "@/lib/company-interview-start";
 import {
   buildCompanyInterviewListRows,
+  collectCompanyInterviewListTagFilters,
   filterCompanyInterviewListRows,
   type CompanyInterviewListRow,
 } from "@/lib/company-interviews";
@@ -108,6 +112,30 @@ const formatMutationError = (error: unknown): string => {
   return "La mise a jour n'a pas pu etre effectuee. Reessayez.";
 };
 
+const downloadBase64File = (input: {
+  readonly contentsBase64: string;
+  readonly contentType: string;
+  readonly fileName: string;
+}) => {
+  const binary = window.atob(input.contentsBase64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  const url = window.URL.createObjectURL(
+    new Blob([bytes], {
+      type: input.contentType,
+    }),
+  );
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = input.fileName;
+  anchor.click();
+  window.URL.revokeObjectURL(url);
+};
+
 export function CompanyWorkspace({
   initialSubview = "scan",
 }: {
@@ -117,6 +145,7 @@ export function CompanyWorkspace({
   const [activeSubview, setActiveSubview] = useState<CompanySubview>(initialSubview);
   const [interviewQuery, setInterviewQuery] = useState("");
   const [interviewStatus, setInterviewStatus] = useState<InterviewStatusFilter>("all");
+  const [interviewTagFilter, setInterviewTagFilter] = useState<string | null>(null);
   const [submittedCode, setSubmittedCode] = useState<string | null>(null);
   const [codeDraft, setCodeDraft] = useState("");
   const [isCandidatePreviewOpen, setIsCandidatePreviewOpen] = useState(false);
@@ -126,18 +155,23 @@ export function CompanyWorkspace({
   const [pageMessage, setPageMessage] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [isStartingInterview, setIsStartingInterview] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isExportingInterviews, setIsExportingInterviews] = useState(false);
   const [hadNoRecruitersOnLoad, setHadNoRecruitersOnLoad] = useState(false);
   const [hasCompletedRecruiterOnboarding, setHasCompletedRecruiterOnboarding] = useState(false);
   const deferredInterviewQuery = useDeferredValue(interviewQuery);
 
   const currentCompanyResult = useAtomValue(companyWorkspaceAtoms.currentCompany);
-  const activeInterviewsResult = useAtomValue(companyWorkspaceAtoms.activeInterviews);
+  const activeInterviewsResult = useAtomValue(companyWorkspaceAtoms.activeInterviewDetails);
   const completedInterviewsResult = useAtomValue(companyWorkspaceAtoms.completedInterviews);
   const refreshCompany = useAtomRefresh(companyWorkspaceAtoms.currentCompany);
   const addRecruiter = useAtomSet(companyWorkspaceAtoms.addRecruiter, {
     mode: "promise",
   });
   const startInterview = useAtomSet(companyWorkspaceAtoms.startInterview, {
+    mode: "promise",
+  });
+  const exportCompletedInterviews = useAtomSet(companyWorkspaceAtoms.exportCompletedInterviews, {
     mode: "promise",
   });
 
@@ -168,7 +202,9 @@ export function CompanyWorkspace({
   const visibleInterviewRows = filterCompanyInterviewListRows(allInterviewRows, {
     query: deferredInterviewQuery,
     status: interviewStatus,
+    tag: interviewTagFilter,
   });
+  const interviewTagFilters = collectCompanyInterviewListTagFilters(allInterviewRows);
   const interviewStatusFilters: ReadonlyArray<{
     readonly value: InterviewStatusFilter;
     readonly label: string;
@@ -364,11 +400,69 @@ export function CompanyWorkspace({
     }
   };
 
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+
+    try {
+      await authClient.signOut();
+      await navigate({ replace: true, to: "/" });
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
+  const exportInterviewArchive = async () => {
+    setIsExportingInterviews(true);
+    setPageError(null);
+    setPageMessage(null);
+
+    try {
+      const exportFile = await exportCompletedInterviews({
+        payload: {
+          includeCvFiles: true,
+        },
+        reactivityKeys: {
+          completedInterviews: companyWorkspaceReactivity.completedInterviews,
+        },
+      });
+
+      downloadBase64File(exportFile);
+      setPageMessage("Export des entretiens prepare.");
+    } catch (error) {
+      setPageError(formatMutationError(error));
+    } finally {
+      setIsExportingInterviews(false);
+    }
+  };
+
   return (
     <main className="s2ee-workspace-page">
       <AppIslandNavbar
         action={
-          <div className="flex items-center gap-2">
+          <Button
+            className="rounded-[8px] border-[var(--s2ee-border)] bg-[var(--s2ee-surface)] px-3 text-sm font-bold text-[color:var(--s2ee-soft-foreground)] shadow-none hover:bg-white sm:px-4"
+            loading={isSigningOut}
+            onClick={handleSignOut}
+            size="sm"
+            type="button"
+            variant="outline"
+          >
+            <LogOutIcon />
+            Se deconnecter
+          </Button>
+        }
+      />
+
+      <div className="mx-auto grid max-w-5xl gap-6 px-4 py-6 sm:px-6 sm:py-8">
+        <header className="grid gap-4 border-b border-[var(--s2ee-border)] pb-5">
+          <div className="flex items-center gap-4">
+            <CompanyLogo company={company} companyLabel={companyLabel} />
+            <h1 className="text-4xl font-black leading-none text-[color:var(--s2ee-soft-foreground)] sm:text-5xl">
+              {companyLabel}
+            </h1>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
             <Button
               className={[
                 "rounded-[8px] border-[var(--s2ee-border)] px-3 text-sm font-bold shadow-none hover:bg-white sm:px-4",
@@ -400,16 +494,7 @@ export function CompanyWorkspace({
               Entretiens
             </Button>
           </div>
-        }
-      />
-
-      <div className="mx-auto grid max-w-5xl gap-6 px-4 py-6 sm:px-6 sm:py-8">
-        <div className="flex items-center gap-4">
-          <CompanyLogo company={company} companyLabel={companyLabel} />
-          <h1 className="text-4xl font-black leading-none text-[color:var(--s2ee-soft-foreground)] sm:text-5xl">
-            {companyLabel}
-          </h1>
-        </div>
+        </header>
 
         {pageMessage != null ? (
           <Alert>
@@ -531,10 +616,15 @@ export function CompanyWorkspace({
             }
             interviewQuery={interviewQuery}
             interviewStatus={interviewStatus}
+            interviewTagFilter={interviewTagFilter}
+            isExporting={isExportingInterviews}
             onQueryChange={setInterviewQuery}
             onStatusChange={setInterviewStatus}
+            onTagFilterChange={setInterviewTagFilter}
+            onExport={exportInterviewArchive}
             rows={visibleInterviewRows}
             statusFilters={interviewStatusFilters}
+            tagFilters={interviewTagFilters}
             onOpenInterview={(interviewId) =>
               navigate({
                 to: "/company/interviews/$interviewId",
@@ -603,68 +693,234 @@ function CompanyLogo(props: {
   );
 }
 
+function InterviewStatusFilterDropdown(props: {
+  readonly filters: ReadonlyArray<{
+    readonly value: InterviewStatusFilter;
+    readonly label: string;
+    readonly count: number;
+  }>;
+  readonly value: InterviewStatusFilter;
+  readonly onChange: (status: InterviewStatusFilter) => void;
+}): React.ReactElement {
+  const [isOpen, setIsOpen] = useState(false);
+  const activeFilter = props.filters.find((filter) => filter.value === props.value);
+
+  return (
+    <div className="grid gap-2">
+      <span className="s2ee-index-label flex items-center gap-2">
+        <ListFilterIcon className="size-3.5 text-primary" />
+        Statut
+      </span>
+      <Popover onOpenChange={setIsOpen} open={isOpen}>
+        <PopoverTrigger>
+          <Button
+            className="s2ee-command h-12 w-full justify-between rounded-[var(--s2ee-control-radius)]"
+            type="button"
+            variant="outline"
+          >
+            <span className="truncate text-left">
+              {activeFilter == null
+                ? "Statut"
+                : `${activeFilter.label} (${activeFilter.count})`}
+            </span>
+            <ChevronDownIcon />
+          </Button>
+        </PopoverTrigger>
+        <PopoverPopup
+          align="start"
+          className="w-[min(22rem,calc(100vw-2rem))] rounded-[var(--s2ee-panel-radius)] p-0"
+          sideOffset={8}
+        >
+          <div className="grid gap-2">
+            {props.filters.map((filter) => {
+              const selected = props.value === filter.value;
+
+              return (
+                <button
+                  className={[
+                    "flex items-center justify-between gap-3 rounded-[var(--s2ee-control-radius)] border px-3 py-3 text-left transition-colors",
+                    selected
+                      ? "border-primary bg-[var(--s2ee-accent-wash)] text-primary"
+                      : "border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] hover:border-primary/60",
+                  ].join(" ")}
+                  key={filter.value}
+                  onClick={() => {
+                    props.onChange(filter.value);
+                    setIsOpen(false);
+                  }}
+                  type="button"
+                >
+                  <span className="truncate text-sm font-bold uppercase tracking-[0.12em]">
+                    {filter.label}
+                  </span>
+                  <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em]">
+                    {filter.count}
+                    {selected ? <CheckIcon className="size-3.5" /> : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </PopoverPopup>
+      </Popover>
+    </div>
+  );
+}
+
+function InterviewTagFilterDropdown(props: {
+  readonly tags: ReadonlyArray<string>;
+  readonly value: string | null;
+  readonly onChange: (tag: string | null) => void;
+}): React.ReactElement {
+  const [isOpen, setIsOpen] = useState(false);
+  const activeLabel = props.value ?? "Tous les tags";
+
+  return (
+    <div className="grid gap-2">
+      <span className="s2ee-index-label">Tags</span>
+      <Popover onOpenChange={setIsOpen} open={isOpen}>
+        <PopoverTrigger>
+          <Button
+            className="s2ee-command h-12 w-full justify-between rounded-[var(--s2ee-control-radius)]"
+            type="button"
+            variant="outline"
+          >
+            <span className="truncate text-left">{activeLabel}</span>
+            <ChevronDownIcon />
+          </Button>
+        </PopoverTrigger>
+        <PopoverPopup
+          align="start"
+          className="w-[min(24rem,calc(100vw-2rem))] rounded-[var(--s2ee-panel-radius)] p-0"
+          sideOffset={8}
+        >
+          <div className="grid max-h-80 gap-2 overflow-y-auto">
+            <button
+              className={[
+                "flex items-center justify-between gap-3 rounded-[var(--s2ee-control-radius)] border px-3 py-3 text-left transition-colors",
+                props.value == null
+                  ? "border-primary bg-[var(--s2ee-accent-wash)] text-primary"
+                  : "border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] hover:border-primary/60",
+              ].join(" ")}
+              onClick={() => {
+                props.onChange(null);
+                setIsOpen(false);
+              }}
+              type="button"
+            >
+              <span className="truncate text-sm font-bold uppercase tracking-[0.12em]">
+                Tous les tags
+              </span>
+              {props.value == null ? <CheckIcon className="size-3.5" /> : null}
+            </button>
+
+            {props.tags.length === 0 ? (
+              <p className="rounded-[var(--s2ee-control-radius)] border border-dashed border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-3 text-sm leading-6 text-[color:var(--s2ee-muted-foreground)]">
+                Aucun tag entreprise pour le moment.
+              </p>
+            ) : (
+              props.tags.map((tag) => {
+                const selected = props.value === tag;
+
+                return (
+                  <button
+                    className={[
+                      "flex items-center justify-between gap-3 rounded-[var(--s2ee-control-radius)] border px-3 py-3 text-left transition-colors",
+                      selected
+                        ? "border-primary bg-[var(--s2ee-accent-wash)] text-primary"
+                        : "border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] hover:border-primary/60",
+                    ].join(" ")}
+                    key={tag}
+                    onClick={() => {
+                      props.onChange(tag);
+                      setIsOpen(false);
+                    }}
+                    type="button"
+                  >
+                    <span className="truncate text-sm font-bold uppercase tracking-[0.12em]">
+                      {tag}
+                    </span>
+                    {selected ? <CheckIcon className="size-3.5" /> : null}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </PopoverPopup>
+      </Popover>
+    </div>
+  );
+}
+
 function CompanyInterviewsSubview(props: {
   readonly hasFailure: boolean;
   readonly interviewQuery: string;
   readonly interviewStatus: InterviewStatusFilter;
+  readonly interviewTagFilter: string | null;
+  readonly isExporting: boolean;
   readonly isLoading: boolean;
+  readonly onExport: () => void;
   readonly onOpenInterview: (interviewId: Interview["id"]) => void;
   readonly onQueryChange: (value: string) => void;
   readonly onStatusChange: (status: InterviewStatusFilter) => void;
+  readonly onTagFilterChange: (tag: string | null) => void;
   readonly rows: ReadonlyArray<CompanyInterviewListRow>;
   readonly statusFilters: ReadonlyArray<{
     readonly value: InterviewStatusFilter;
     readonly label: string;
     readonly count: number;
   }>;
+  readonly tagFilters: ReadonlyArray<string>;
 }): React.ReactElement {
   if (props.isLoading) {
     return (
       <div className="grid gap-4">
-        <Skeleton className="h-24 rounded-[var(--s2ee-panel-radius)]" />
-        <Skeleton className="h-[34rem] rounded-[var(--s2ee-panel-radius)]" />
+        <Skeleton className="s2ee-skeleton h-24 rounded-[var(--s2ee-panel-radius)]" />
+        <Skeleton className="s2ee-skeleton h-[34rem] rounded-[var(--s2ee-panel-radius)]" />
       </div>
     );
   }
 
   return (
     <section className="s2ee-data-plane">
-      <div className="grid gap-4 border-b border-[var(--s2ee-border)] p-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-        <label className="grid gap-2">
-          <span className="s2ee-index-label">Recherche</span>
-          <span className="relative block">
-            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[color:var(--s2ee-muted-foreground)]" />
-            <Input
-              className="rounded-[var(--s2ee-control-radius)] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] pl-9 shadow-none"
-              onChange={(event) => props.onQueryChange(event.currentTarget.value)}
-              placeholder="Candidat, recruteur ou note"
-              value={props.interviewQuery}
-            />
-          </span>
-        </label>
+      <div className="grid gap-4 border-b border-[var(--s2ee-border)] p-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <label className="grid min-w-[min(100%,18rem)] flex-1 gap-2">
+            <span className="s2ee-index-label">Recherche</span>
+            <span className="relative block">
+              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[color:var(--s2ee-muted-foreground)]" />
+              <Input
+                className="rounded-[var(--s2ee-control-radius)] border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] pl-9 shadow-none"
+                onChange={(event) => props.onQueryChange(event.currentTarget.value)}
+                placeholder="Candidat, recruteur, tag ou note"
+                value={props.interviewQuery}
+              />
+            </span>
+          </label>
 
-        <div className="grid gap-2">
-          <span className="s2ee-index-label flex items-center gap-2">
-            <ListFilterIcon className="size-3.5 text-primary" />
-            Statut
-          </span>
-          <div className="flex flex-wrap gap-1 rounded-[var(--s2ee-control-radius)] border border-[var(--s2ee-border)] bg-[var(--s2ee-surface-soft)] p-1">
-            {props.statusFilters.map((filter) => (
-              <button
-                className={[
-                  "min-h-10 rounded-[calc(var(--s2ee-control-radius)-0.25rem)] px-3 text-[11px] font-black uppercase tracking-[0.16em] transition-colors",
-                  props.interviewStatus === filter.value
-                    ? "bg-primary text-primary-foreground"
-                    : "text-[color:var(--s2ee-muted-foreground)] hover:bg-[var(--s2ee-accent-wash)] hover:text-primary",
-                ].join(" ")}
-                key={filter.value}
-                onClick={() => props.onStatusChange(filter.value)}
-                type="button"
-              >
-                {filter.label} {filter.count}
-              </button>
-            ))}
-          </div>
+          <Button
+            className="s2ee-command rounded-[var(--s2ee-control-radius)]"
+            loading={props.isExporting}
+            onClick={props.onExport}
+            type="button"
+            variant="outline"
+          >
+            <DownloadIcon />
+            Exporter
+          </Button>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:max-w-3xl">
+          <InterviewStatusFilterDropdown
+            filters={props.statusFilters}
+            onChange={props.onStatusChange}
+            value={props.interviewStatus}
+          />
+          <InterviewTagFilterDropdown
+            onChange={props.onTagFilterChange}
+            tags={props.tagFilters}
+            value={props.interviewTagFilter}
+          />
         </div>
       </div>
 
@@ -710,18 +966,9 @@ function CompanyInterviewsSubview(props: {
             ) : (
               props.rows.map((row) => (
                 <TableRow
-                  className={[
-                    "group",
-                    row.kind === "active"
-                      ? "cursor-pointer hover:bg-[var(--s2ee-accent-wash)]"
-                      : "hover:bg-[var(--s2ee-surface-soft)]",
-                  ].join(" ")}
+                  className="group cursor-pointer hover:bg-[var(--s2ee-accent-wash)]"
                   key={`${row.kind}:${row.id}`}
-                  onClick={() =>
-                    row.kind === "active"
-                      ? props.onOpenInterview(row.id as Interview["id"])
-                      : undefined
-                  }
+                  onClick={() => props.onOpenInterview(row.id as Interview["id"])}
                 >
                   <TableCell className="px-4 py-4 font-bold uppercase tracking-[0.12em]">
                     {row.label}
@@ -1123,9 +1370,9 @@ function CandidatePreviewPanel(props: {
   if (previewState.kind === "loading") {
     return (
       <div className="grid gap-3">
-        <Skeleton className="h-14 rounded-[var(--s2ee-panel-radius)]" />
-        <Skeleton className="h-40 rounded-[var(--s2ee-panel-radius)]" />
-        <Skeleton className="h-14 rounded-[var(--s2ee-panel-radius)]" />
+        <Skeleton className="s2ee-skeleton h-14 rounded-[var(--s2ee-panel-radius)]" />
+        <Skeleton className="s2ee-skeleton h-40 rounded-[var(--s2ee-panel-radius)]" />
+        <Skeleton className="s2ee-skeleton h-14 rounded-[var(--s2ee-panel-radius)]" />
       </div>
     );
   }

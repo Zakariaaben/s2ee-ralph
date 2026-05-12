@@ -25,20 +25,12 @@ export const summarizeCompanyWorkspace = (input: {
   const distinctTags = new Set<string>();
 
   for (const interview of input.activeInterviews) {
-    for (const tag of interview.globalTags) {
-      distinctTags.add(`global:${tag.id}`);
-    }
-
     for (const tag of interview.companyTags) {
       distinctTags.add(`company:${tag.id}`);
     }
   }
 
   for (const entry of input.completedInterviews) {
-    for (const tag of entry.interview.globalTags) {
-      distinctTags.add(`global:${tag.id}`);
-    }
-
     for (const tag of entry.interview.companyTags) {
       distinctTags.add(`company:${tag.id}`);
     }

@@ -27,6 +27,14 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
         rel: "stylesheet",
         href: appCss,
       },
+      {
+        rel: "icon",
+        href: "/s2ee.ico",
+      },
+      {
+        rel: "shortcut icon",
+        href: "/s2ee.ico",
+      },
     ],
   }),
 

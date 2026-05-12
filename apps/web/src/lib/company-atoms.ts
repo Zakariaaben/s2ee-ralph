@@ -17,10 +17,22 @@ export const companyWorkspaceAtoms = {
     reactivityKeys: companyWorkspaceReactivity.activeInterviews,
     timeToLive: "30 seconds",
   }),
+  activeInterviewDetails: AppRpcClient.query("listCurrentCompanyInterviewDetails", undefined, {
+    reactivityKeys: companyWorkspaceReactivity.activeInterviews,
+    timeToLive: "30 seconds",
+  }),
   getCurrentCompanyInterviewDetail: (interviewId: Interview["id"]) =>
-    AppRpcClient.query("getCurrentCompanyInterviewDetail", { interviewId }, { timeToLive: "30 seconds" }),
+    AppRpcClient.query(
+      "getCurrentCompanyInterviewDetail",
+      { interviewId },
+      { timeToLive: "30 seconds" },
+    ),
   getCurrentCompanyInterviewCvDownloadUrl: (interviewId: Interview["id"]) =>
-    AppRpcClient.query("getCurrentCompanyInterviewCvDownloadUrl", { interviewId }, { timeToLive: "30 seconds" }),
+    AppRpcClient.query(
+      "getCurrentCompanyInterviewCvDownloadUrl",
+      { interviewId },
+      { timeToLive: "30 seconds" },
+    ),
   completedInterviews: AppRpcClient.query("listCurrentCompanyCompletedInterviews", undefined, {
     reactivityKeys: companyWorkspaceReactivity.completedInterviews,
     timeToLive: "30 seconds",
@@ -30,9 +42,13 @@ export const companyWorkspaceAtoms = {
     timeToLive: "5 minutes",
   }),
   resolvePresentedCvProfile: (presentationIdentity: string) =>
-    AppRpcClient.query("resolvePresentedCvProfile", { presentationIdentity }, {
-      timeToLive: "30 seconds",
-    }),
+    AppRpcClient.query(
+      "resolvePresentedCvProfile",
+      { presentationIdentity },
+      {
+        timeToLive: "30 seconds",
+      },
+    ),
   upsertCompanyProfile: AppRpcClient.mutation("upsertCompanyProfile"),
   addRecruiter: AppRpcClient.mutation("addRecruiter"),
   renameRecruiter: AppRpcClient.mutation("renameRecruiter"),
